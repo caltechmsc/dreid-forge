@@ -563,3 +563,76 @@ impl FromStr for BondOrder {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::str::FromStr;
+
+    fn approx_eq(a: f64, b: f64, eps: f64) -> bool {
+        (a - b).abs() <= eps
+    }
+
+    #[test]
+    fn element_from_str_valid() {
+        assert_eq!(Element::from_str("H").unwrap(), Element::H);
+        assert_eq!(Element::from_str("He").unwrap(), Element::He);
+        assert_eq!(Element::from_str("Fe").unwrap(), Element::Fe);
+        assert_eq!(Element::from_str("Og").unwrap(), Element::Og);
+    }
+
+    #[test]
+    fn element_from_str_invalid_case() {
+        let err = Element::from_str("h").unwrap_err();
+        let s = format!("{}", err);
+        assert_eq!(s, "invalid or unsupported element symbol: 'h'");
+    }
+
+    #[test]
+    fn element_symbol_display_and_atomic_number() {
+        let el = Element::Na;
+        assert_eq!(el.symbol(), "Na");
+        assert_eq!(el.to_string(), "Na");
+        assert_eq!(el.atomic_number(), 11u8);
+    }
+
+    #[test]
+    fn atomic_mass_values() {
+        assert!(approx_eq(Element::H.atomic_mass(), 1.008, 1e-6));
+        assert!(approx_eq(Element::C.atomic_mass(), 12.011, 1e-6));
+        assert!(approx_eq(Element::Fe.atomic_mass(), 55.845, 1e-6));
+        assert!(approx_eq(Element::Og.atomic_mass(), 294.0, 1e-6));
+    }
+
+    #[test]
+    fn bondorder_from_str_variants() {
+        assert_eq!(BondOrder::from_str("single").unwrap(), BondOrder::Single);
+        assert_eq!(BondOrder::from_str("1").unwrap(), BondOrder::Single);
+        assert_eq!(BondOrder::from_str("Double").unwrap(), BondOrder::Double);
+        assert_eq!(BondOrder::from_str("2").unwrap(), BondOrder::Double);
+        assert_eq!(BondOrder::from_str("triple").unwrap(), BondOrder::Triple);
+        assert_eq!(BondOrder::from_str("3").unwrap(), BondOrder::Triple);
+        assert_eq!(BondOrder::from_str("AR").unwrap(), BondOrder::Aromatic);
+        assert_eq!(BondOrder::from_str("aromatic").unwrap(), BondOrder::Aromatic);
+    }
+
+    #[test]
+    fn bondorder_from_str_invalid() {
+        let err = BondOrder::from_str("quad").unwrap_err();
+        let s = format!("{}", err);
+        assert_eq!(s, "invalid bond order string: 'quad'");
+    }
+
+    #[test]
+    fn bondorder_value_and_display() {
+        assert!(approx_eq(BondOrder::Single.value(), 1.0, 1e-12));
+        assert!(approx_eq(BondOrder::Double.value(), 2.0, 1e-12));
+        assert!(approx_eq(BondOrder::Triple.value(), 3.0, 1e-12));
+        assert!(approx_eq(BondOrder::Aromatic.value(), 1.5, 1e-12));
+
+        assert_eq!(BondOrder::Single.to_string(), "Single");
+        assert_eq!(BondOrder::Double.to_string(), "Double");
+        assert_eq!(BondOrder::Triple.to_string(), "Triple");
+        assert_eq!(BondOrder::Aromatic.to_string(), "Aromatic");
+    }
+}
