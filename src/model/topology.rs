@@ -12,7 +12,7 @@ pub enum BondPotential {
     Harmonic {
         i: usize,
         j: usize,
-        k: f64,
+        k_force: f64,
         r0: f64,
     },
     Morse {
@@ -141,7 +141,7 @@ mod tests {
         let h = BondPotential::Harmonic {
             i: 0,
             j: 1,
-            k: 300.0,
+            k_force: 300.0,
             r0: 1.23,
         };
         let m = BondPotential::Morse {
@@ -152,16 +152,22 @@ mod tests {
             alpha: 2.0,
         };
         match h {
-            BondPotential::Harmonic { i, j, k, r0 } => {
+            BondPotential::Harmonic { i, j, k_force, r0 } => {
                 assert_eq!(i, 0);
                 assert_eq!(j, 1);
-                assert!(k > 0.0);
+                assert!(k_force > 0.0);
                 assert!(r0 > 0.0);
             }
             _ => panic!("expected Harmonic variant"),
         }
         match m {
-            BondPotential::Morse { i, j, r0, d0, alpha } => {
+            BondPotential::Morse {
+                i,
+                j,
+                r0,
+                d0,
+                alpha,
+            } => {
                 assert_eq!(i, 1);
                 assert_eq!(j, 2);
                 assert!(d0 > 0.0);
@@ -192,14 +198,18 @@ mod tests {
             theta0: 120.0,
         };
         match a1 {
-            AnglePotential::CosineHarmonic { k_force, theta0, .. } => {
+            AnglePotential::CosineHarmonic {
+                k_force, theta0, ..
+            } => {
                 assert_eq!(k_force, 50.0);
                 assert_eq!(theta0, 109.5);
             }
             _ => panic!("expected CosineHarmonic"),
         }
         match a2 {
-            AnglePotential::ThetaHarmonic { k_force, theta0, .. } => {
+            AnglePotential::ThetaHarmonic {
+                k_force, theta0, ..
+            } => {
                 assert_eq!(k_force, 40.0);
                 assert_eq!(theta0, 120.0);
             }
@@ -245,7 +255,9 @@ mod tests {
             _ => panic!("expected Planar"),
         }
         match imp2 {
-            ImproperPotential::Umbrella { center, p1, p2, p3, .. } => {
+            ImproperPotential::Umbrella {
+                center, p1, p2, p3, ..
+            } => {
                 assert_eq!(center, 1);
                 assert_eq!(p1, 2);
                 assert_eq!(p2, 3);
@@ -318,7 +330,7 @@ mod tests {
                 charge: -0.2,
                 mass: 16.0,
                 type_idx: 1,
-            }
+            },
         ];
         let pots = Potentials::default();
         let fs = ForgedSystem {
