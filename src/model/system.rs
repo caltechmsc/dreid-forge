@@ -12,9 +12,17 @@ pub struct Bond {
 impl Bond {
     pub fn new(idx1: usize, idx2: usize, order: BondOrder) -> Self {
         if idx1 <= idx2 {
-            Self { i: idx1, j: idx2, order }
+            Self {
+                i: idx1,
+                j: idx2,
+                order,
+            }
         } else {
-            Self { i: idx2, j: idx1, order }
+            Self {
+                i: idx2,
+                j: idx1,
+                order,
+            }
         }
     }
 }
@@ -58,8 +66,8 @@ mod tests {
     use super::*;
     use crate::model::atom::Atom;
     use crate::model::metadata::BioMetadata;
-    use crate::model::types::Element;
     use crate::model::types::BondOrder;
+    use crate::model::types::Element;
     use std::collections::HashSet;
 
     #[test]
@@ -102,11 +110,7 @@ mod tests {
         assert_eq!(s.bond_count(), 1);
 
         assert!(!s.is_periodic());
-        s.box_vectors = Some([
-            [1.0, 0.0, 0.0],
-            [0.0, 2.0, 0.0],
-            [0.0, 0.0, 3.0],
-        ]);
+        s.box_vectors = Some([[1.0, 0.0, 0.0], [0.0, 2.0, 0.0], [0.0, 0.0, 3.0]]);
         assert!(s.is_periodic());
 
         assert!(!s.has_bio_metadata());

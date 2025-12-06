@@ -613,7 +613,10 @@ mod tests {
         assert_eq!(BondOrder::from_str("triple").unwrap(), BondOrder::Triple);
         assert_eq!(BondOrder::from_str("3").unwrap(), BondOrder::Triple);
         assert_eq!(BondOrder::from_str("AR").unwrap(), BondOrder::Aromatic);
-        assert_eq!(BondOrder::from_str("aromatic").unwrap(), BondOrder::Aromatic);
+        assert_eq!(
+            BondOrder::from_str("aromatic").unwrap(),
+            BondOrder::Aromatic
+        );
     }
 
     #[test]

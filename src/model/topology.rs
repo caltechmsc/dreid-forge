@@ -124,7 +124,11 @@ mod tests {
 
     #[test]
     fn atom_param_fields_and_clone() {
-        let p = AtomParam { charge: -0.34, mass: 12.011, type_index: 2 };
+        let p = AtomParam {
+            charge: -0.34,
+            mass: 12.011,
+            type_index: 2,
+        };
         assert!(p.charge < 0.0);
         assert_eq!(p.mass, 12.011);
         assert_eq!(p.type_index, 2);
@@ -134,8 +138,19 @@ mod tests {
 
     #[test]
     fn bond_potential_variants_and_debug() {
-        let h = BondPotential::Harmonic { i: 0, j: 1, k: 300.0, r0: 1.23 };
-        let m = BondPotential::Morse { i: 1, j: 2, r0: 1.5, d0: 4.0, alpha: 2.0 };
+        let h = BondPotential::Harmonic {
+            i: 0,
+            j: 1,
+            k: 300.0,
+            r0: 1.23,
+        };
+        let m = BondPotential::Morse {
+            i: 1,
+            j: 2,
+            r0: 1.5,
+            d0: 4.0,
+            alpha: 2.0,
+        };
         match h {
             BondPotential::Harmonic { i, j, k, r0 } => {
                 assert_eq!(i, 0);
@@ -146,7 +161,13 @@ mod tests {
             _ => panic!("expected Harmonic variant"),
         }
         match m {
-            BondPotential::Morse { i, j, r0, d0, alpha } => {
+            BondPotential::Morse {
+                i,
+                j,
+                r0,
+                d0,
+                alpha,
+            } => {
                 assert_eq!(i, 1);
                 assert_eq!(j, 2);
                 assert!(d0 > 0.0);
@@ -162,17 +183,33 @@ mod tests {
 
     #[test]
     fn angle_potential_variants() {
-        let a1 = AnglePotential::CosineHarmonic { i: 0, j: 1, k: 2, k_force: 50.0, theta0: 109.5 };
-        let a2 = AnglePotential::ThetaHarmonic { i: 2, j: 1, k: 0, k_force: 40.0, theta0: 120.0 };
+        let a1 = AnglePotential::CosineHarmonic {
+            i: 0,
+            j: 1,
+            k: 2,
+            k_force: 50.0,
+            theta0: 109.5,
+        };
+        let a2 = AnglePotential::ThetaHarmonic {
+            i: 2,
+            j: 1,
+            k: 0,
+            k_force: 40.0,
+            theta0: 120.0,
+        };
         match a1 {
-            AnglePotential::CosineHarmonic { k_force, theta0, .. } => {
+            AnglePotential::CosineHarmonic {
+                k_force, theta0, ..
+            } => {
                 assert_eq!(k_force, 50.0);
                 assert_eq!(theta0, 109.5);
             }
             _ => panic!("expected CosineHarmonic"),
         }
         match a2 {
-            AnglePotential::ThetaHarmonic { k_force, theta0, .. } => {
+            AnglePotential::ThetaHarmonic {
+                k_force, theta0, ..
+            } => {
                 assert_eq!(k_force, 40.0);
                 assert_eq!(theta0, 120.0);
             }
@@ -194,7 +231,14 @@ mod tests {
         assert_eq!(d.periodicity, 3);
         assert!(d.v_barrier > 0.0);
 
-        let imp1 = ImproperPotential::Planar { i: 0, j: 1, k: 2, l: 3, k_force: 10.0, chi0: 0.0 };
+        let imp1 = ImproperPotential::Planar {
+            i: 0,
+            j: 1,
+            k: 2,
+            l: 3,
+            k_force: 10.0,
+            chi0: 0.0,
+        };
         let imp2 = ImproperPotential::Umbrella {
             center: 1,
             p1: 2,
@@ -211,7 +255,9 @@ mod tests {
             _ => panic!("expected Planar"),
         }
         match imp2 {
-            ImproperPotential::Umbrella { center, p1, p2, p3, .. } => {
+            ImproperPotential::Umbrella {
+                center, p1, p2, p3, ..
+            } => {
                 assert_eq!(center, 1);
                 assert_eq!(p1, 2);
                 assert_eq!(p2, 3);
@@ -275,8 +321,16 @@ mod tests {
         let sys = System::new();
         let atom_types = vec!["C_3".to_string(), "O_2".to_string()];
         let atom_props = vec![
-            AtomParam { charge: -0.1, mass: 12.0, type_index: 0 },
-            AtomParam { charge: -0.2, mass: 16.0, type_index: 1 }
+            AtomParam {
+                charge: -0.1,
+                mass: 12.0,
+                type_index: 0,
+            },
+            AtomParam {
+                charge: -0.2,
+                mass: 16.0,
+                type_index: 1,
+            },
         ];
         let pots = Potentials::default();
         let fs = ForgedSystem {

@@ -13,7 +13,7 @@ impl AtomResidueInfo {
         residue_name: impl Into<String>,
         residue_id: i32,
         chain_id: char,
-        insertion_code: Option<char>
+        insertion_code: Option<char>,
     ) -> Self {
         Self {
             atom_name: atom_name.into(),
@@ -94,7 +94,9 @@ mod tests {
     #[test]
     fn debug_contains_expected_fields() {
         let info = AtomResidueInfo::new("C1", "LIG", -1, 'Z', Some('A'));
-        let bm = BioMetadata { atom_info: vec![info.clone()] };
+        let bm = BioMetadata {
+            atom_info: vec![info.clone()],
+        };
         let s_info = format!("{:?}", info);
         let s_bm = format!("{:?}", bm);
         assert!(s_info.contains("atom_name"));
