@@ -4,7 +4,7 @@ use super::system::System;
 pub struct AtomParam {
     pub charge: f64,
     pub mass: f64,
-    pub type_index: usize,
+    pub type_idx: usize,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -127,11 +127,11 @@ mod tests {
         let p = AtomParam {
             charge: -0.34,
             mass: 12.011,
-            type_index: 2,
+            type_idx: 2,
         };
         assert!(p.charge < 0.0);
         assert_eq!(p.mass, 12.011);
-        assert_eq!(p.type_index, 2);
+        assert_eq!(p.type_idx, 2);
         let q = p.clone();
         assert_eq!(p, q);
     }
@@ -161,13 +161,7 @@ mod tests {
             _ => panic!("expected Harmonic variant"),
         }
         match m {
-            BondPotential::Morse {
-                i,
-                j,
-                r0,
-                d0,
-                alpha,
-            } => {
+            BondPotential::Morse { i, j, r0, d0, alpha } => {
                 assert_eq!(i, 1);
                 assert_eq!(j, 2);
                 assert!(d0 > 0.0);
@@ -198,18 +192,14 @@ mod tests {
             theta0: 120.0,
         };
         match a1 {
-            AnglePotential::CosineHarmonic {
-                k_force, theta0, ..
-            } => {
+            AnglePotential::CosineHarmonic { k_force, theta0, .. } => {
                 assert_eq!(k_force, 50.0);
                 assert_eq!(theta0, 109.5);
             }
             _ => panic!("expected CosineHarmonic"),
         }
         match a2 {
-            AnglePotential::ThetaHarmonic {
-                k_force, theta0, ..
-            } => {
+            AnglePotential::ThetaHarmonic { k_force, theta0, .. } => {
                 assert_eq!(k_force, 40.0);
                 assert_eq!(theta0, 120.0);
             }
@@ -255,9 +245,7 @@ mod tests {
             _ => panic!("expected Planar"),
         }
         match imp2 {
-            ImproperPotential::Umbrella {
-                center, p1, p2, p3, ..
-            } => {
+            ImproperPotential::Umbrella { center, p1, p2, p3, .. } => {
                 assert_eq!(center, 1);
                 assert_eq!(p1, 2);
                 assert_eq!(p2, 3);
@@ -324,13 +312,13 @@ mod tests {
             AtomParam {
                 charge: -0.1,
                 mass: 12.0,
-                type_index: 0,
+                type_idx: 0,
             },
             AtomParam {
                 charge: -0.2,
                 mass: 16.0,
-                type_index: 1,
-            },
+                type_idx: 1,
+            }
         ];
         let pots = Potentials::default();
         let fs = ForgedSystem {
