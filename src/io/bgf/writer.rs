@@ -98,7 +98,7 @@ pub fn write<W: Write>(mut writer: W, forged: &ForgedSystem) -> Result<(), Error
 
         let resid_out = *resid_map
             .get(&(info.chain_id, info.residue_id, info.insertion_code))
-            .expect("residue id map must exist");
+            .ok_or_else(|| Error::Conversion("residue id map missing for atom".into()))?;
 
         let atoms_connected: usize = adjacency.get(&(serial + 1)).map(|s| s.len()).unwrap_or(0);
         let lone_pairs: usize = 0;
