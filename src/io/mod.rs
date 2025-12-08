@@ -4,7 +4,7 @@ use std::fmt;
 pub mod error;
 pub mod util;
 
-pub mod bgf;
+pub mod pdb;
 
 pub use bio_forge::Template;
 
@@ -93,8 +93,6 @@ impl Default for SolvateConfig {
 pub struct TopologyConfig {
     pub hetero_templates: Vec<Template>,
     pub disulfide_bond_cutoff: f64,
-    pub peptide_bond_cutoff: f64,
-    pub nucleic_bond_cutoff: f64,
 }
 
 impl Default for TopologyConfig {
@@ -102,8 +100,6 @@ impl Default for TopologyConfig {
         Self {
             hetero_templates: Vec::new(),
             disulfide_bond_cutoff: 2.2,
-            peptide_bond_cutoff: 1.5,
-            nucleic_bond_cutoff: 1.8,
         }
     }
 }
