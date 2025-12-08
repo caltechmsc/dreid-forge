@@ -370,6 +370,7 @@ fn convert_res_pos_to_bf(pos: ResiduePosition) -> Result<bf::ResiduePosition, Co
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::io::{Anion, Cation, CleanConfig, HisStrategy, ProtonationConfig, SolvateConfig};
     use crate::model::{
         atom::Atom,
         metadata::{
@@ -378,6 +379,7 @@ mod tests {
         system::{Bond, System},
         types::{BondOrder, Element},
     };
+    use std::collections::HashSet;
 
     #[test]
     fn roundtrip_system_to_and_from_bio_preserves_metadata_and_bonds() {
@@ -429,6 +431,75 @@ mod tests {
         assert_eq!(roundtrip.bonds, bonds);
         assert_eq!(roundtrip.box_vectors, box_vectors);
         assert_eq!(roundtrip.bio_metadata.as_ref(), Some(&metadata));
+    }
+
+    #[test]
+    fn converts_clean_config_fields() {
+        let mut remove_res = HashSet::new();
+        remove_res.insert("HOH".to_string());
+        let mut keep_res = HashSet::new();
+        keep_res.insert("LIG".to_string());
+
+        let cfg = CleanConfig {
+            remove_water: true,
+            remove_ions: false,
+            remove_hydrogens: true,
+            remove_hetero: false,
+            remove_residue_names: remove_res.clone(),
+            keep_residue_names: keep_res.clone(),
+        };
+
+        let bf_cfg = to_bf_clean_config(cfg);
+        assert!(bf_cfg.remove_water);
+        assert!(!bf_cfg.remove_ions);
+        assert!(bf_cfg.remove_hydrogens);
+        assert!(!bf_cfg.remove_hetero);
+        assert_eq!(bf_cfg.remove_residue_names, remove_res);
+        assert_eq!(bf_cfg.keep_residue_names, keep_res);
+    }
+
+    #[test]
+    fn converts_protonation_config_and_his_strategy() {
+        let cfg = ProtonationConfig {
+            target_ph: Some(7.4),
+            remove_existing_h: false,
+            his_strategy: HisStrategy::DirectHIE,
+        };
+
+        let bf_cfg = to_bf_hydro_config(cfg);
+        assert_eq!(bf_cfg.target_ph, Some(7.4));
+        assert!(!bf_cfg.remove_existing_h);
+        assert!(matches!(
+            bf_cfg.his_strategy,
+            bf::ops::HisStrategy::DirectHIE
+        ));
+    }
+
+    #[test]
+    fn converts_solvate_config_and_ions() {
+        let cfg = SolvateConfig {
+            margin: 5.0,
+            water_spacing: 2.8,
+            vdw_cutoff: 2.0,
+            remove_existing: false,
+            cations: vec![Cation::K, Cation::Zn],
+            anions: vec![Anion::Br],
+            target_charge: -1,
+            rng_seed: Some(99),
+        };
+
+        let bf_cfg = to_bf_solvate_config(cfg);
+        assert_eq!(bf_cfg.margin, 5.0);
+        assert_eq!(bf_cfg.water_spacing, 2.8);
+        assert_eq!(bf_cfg.vdw_cutoff, 2.0);
+        assert!(!bf_cfg.remove_existing);
+        assert_eq!(
+            bf_cfg.cations,
+            vec![bf::ops::Cation::K, bf::ops::Cation::Zn]
+        );
+        assert_eq!(bf_cfg.anions, vec![bf::ops::Anion::Br]);
+        assert_eq!(bf_cfg.target_charge, -1);
+        assert_eq!(bf_cfg.rng_seed, Some(99));
     }
 
     #[test]
