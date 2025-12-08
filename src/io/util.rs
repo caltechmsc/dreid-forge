@@ -296,3 +296,104 @@ fn convert_res_pos_to_bf(pos: ResiduePosition) -> Result<bf::ResiduePosition, Co
         ResiduePosition::ThreePrime => bf::ResiduePosition::ThreePrime,
     })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::model::{
+        atom::Atom,
+        metadata::{
+            AtomResidueInfo, BioMetadata, ResidueCategory, ResiduePosition, StandardResidue,
+        },
+        system::{Bond, System},
+        types::{BondOrder, Element},
+    };
+
+    #[test]
+    fn roundtrip_system_to_and_from_bio_preserves_metadata_and_bonds() {
+        let atoms = vec![
+            Atom::new(Element::C, [0.0, 0.0, 0.0]),
+            Atom::new(Element::O, [1.0, 0.0, 0.0]),
+            Atom::new(Element::N, [0.0, 1.0, 0.0]),
+        ];
+
+        let metadata = BioMetadata {
+            atom_info: vec![
+                AtomResidueInfo::new(
+                    "CA",
+                    "ALA",
+                    1,
+                    'A',
+                    None,
+                    Some(StandardResidue::ALA),
+                    ResidueCategory::Standard,
+                    ResiduePosition::Internal,
+                ),
+                AtomResidueInfo::new(
+                    "CB",
+                    "ALA",
+                    1,
+                    'A',
+                    None,
+                    Some(StandardResidue::ALA),
+                    ResidueCategory::Standard,
+                    ResiduePosition::Internal,
+                ),
+                AtomResidueInfo::new(
+                    "N",
+                    "GLY",
+                    2,
+                    'B',
+                    Some('B'),
+                    Some(StandardResidue::GLY),
+                    ResidueCategory::Standard,
+                    ResiduePosition::NTerminal,
+                ),
+            ],
+        };
+
+        let bonds = vec![
+            Bond::new(0, 1, BondOrder::Single),
+            Bond::new(1, 2, BondOrder::Double),
+        ];
+
+        let box_vectors = Some([[10.0_f64, 0.0, 0.0], [0.0, 10.0, 0.0], [0.0, 0.0, 10.0]]);
+
+        let system = System {
+            atoms: atoms.clone(),
+            bonds: bonds.clone(),
+            box_vectors,
+            bio_metadata: Some(metadata.clone()),
+        };
+
+        let bio_topo = to_bio_topology(&system).expect("convert system to bio");
+        let roundtrip = from_bio_topology(bio_topo).expect("convert bio back to system");
+
+        assert_eq!(roundtrip.atoms, atoms);
+        assert_eq!(roundtrip.bonds, bonds);
+        assert_eq!(roundtrip.box_vectors, box_vectors);
+        assert_eq!(roundtrip.bio_metadata.as_ref(), Some(&metadata));
+    }
+
+    #[test]
+    fn rejects_unknown_element_from_bio() {
+        let mut residue = bf::Residue::new(1, None, "UNK", None, bf::ResidueCategory::Hetero);
+        residue.position = bf::ResiduePosition::None;
+        residue.add_atom(bf::Atom::new(
+            "X",
+            bf::Element::Unknown,
+            bf::Point::new(0.0, 0.0, 0.0),
+        ));
+
+        let mut chain = bf::Chain::new("A");
+        chain.add_residue(residue);
+
+        let mut structure = bf::Structure::new();
+        structure.add_chain(chain);
+
+        let topo = bf::Topology::new(structure, Vec::new());
+
+        let err = from_bio_topology(topo).unwrap_err();
+        assert!(matches!(err, ConversionError::UnsupportedElement));
+    }
+}
