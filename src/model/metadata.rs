@@ -108,42 +108,69 @@ mod tests {
     use super::*;
 
     #[test]
-    fn atom_residue_info_new_and_fields() {
-        let info = AtomResidueInfo::new("CA", "ALA", 42, 'A', Some('x'));
+    fn atom_residue_info_new_and_all_fields() {
+        let info = AtomResidueInfo::new(
+            "CA",
+            "ALA",
+            42,
+            'A',
+            Some('x'),
+            Some(StandardResidue::ALA),
+            ResidueCategory::Standard,
+            ResiduePosition::Internal,
+        );
         assert_eq!(info.atom_name, "CA");
         assert_eq!(info.residue_name, "ALA");
         assert_eq!(info.residue_id, 42);
         assert_eq!(info.chain_id, 'A');
         assert_eq!(info.insertion_code, 'x');
+        assert_eq!(info.standard_name, Some(StandardResidue::ALA));
+        assert_eq!(info.category, ResidueCategory::Standard);
+        assert_eq!(info.position, ResiduePosition::Internal);
     }
 
     #[test]
-    fn atom_residue_info_default_insertion_code() {
-        let info = AtomResidueInfo::new("N", "GLY", 1, 'B', None);
+    fn atom_residue_info_defaults_and_clone() {
+        let info = AtomResidueInfo::new(
+            "N",
+            "GLY",
+            1,
+            'B',
+            None,
+            None,
+            ResidueCategory::Hetero,
+            ResiduePosition::None,
+        );
         assert_eq!(info.insertion_code, ' ');
+        let cloned = info.clone();
+        assert_eq!(info, cloned);
     }
 
     #[test]
-    fn atom_residue_info_clone_and_eq() {
-        let a = AtomResidueInfo::new("O", "HOH", 5, 'C', None);
-        let b = a.clone();
-        assert_eq!(a, b);
-    }
-
-    #[test]
-    fn bio_metadata_new_and_default() {
-        let bm = BioMetadata::new();
-        assert!(bm.atom_info.is_empty());
-        assert_eq!(bm, BioMetadata::default());
-    }
-
-    #[test]
-    fn bio_metadata_with_capacity_and_push() {
+    fn bio_metadata_new_and_capacity() {
         let mut bm = BioMetadata::with_capacity(4);
         assert!(bm.atom_info.capacity() >= 4);
 
-        let info1 = AtomResidueInfo::new("CA", "ALA", 1, 'A', None);
-        let info2 = AtomResidueInfo::new("CB", "ALA", 1, 'A', None);
+        let info1 = AtomResidueInfo::new(
+            "CA",
+            "ALA",
+            1,
+            'A',
+            None,
+            Some(StandardResidue::ALA),
+            ResidueCategory::Standard,
+            ResiduePosition::Internal,
+        );
+        let info2 = AtomResidueInfo::new(
+            "CB",
+            "ALA",
+            1,
+            'A',
+            None,
+            Some(StandardResidue::ALA),
+            ResidueCategory::Standard,
+            ResiduePosition::Internal,
+        );
         bm.atom_info.push(info1.clone());
         bm.atom_info.push(info2.clone());
 
@@ -154,7 +181,16 @@ mod tests {
 
     #[test]
     fn debug_contains_expected_fields() {
-        let info = AtomResidueInfo::new("C1", "LIG", -1, 'Z', Some('A'));
+        let info = AtomResidueInfo::new(
+            "C1",
+            "LIG",
+            -1,
+            'Z',
+            Some('A'),
+            None,
+            ResidueCategory::Hetero,
+            ResiduePosition::NTerminal,
+        );
         let bm = BioMetadata {
             atom_info: vec![info.clone()],
         };
@@ -165,6 +201,9 @@ mod tests {
         assert!(s_info.contains("residue_id"));
         assert!(s_info.contains("chain_id"));
         assert!(s_info.contains("insertion_code"));
+        assert!(s_info.contains("standard_name") || s_info.contains("StandardResidue"));
+        assert!(s_info.contains("category") || s_info.contains("ResidueCategory"));
+        assert!(s_info.contains("position") || s_info.contains("ResiduePosition"));
         assert!(s_bm.contains("AtomResidueInfo"));
         assert!(s_bm.contains("LIG"));
     }
