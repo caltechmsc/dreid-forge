@@ -8,6 +8,7 @@ use crate::model::{
     types::{BondOrder, Element},
 };
 use bio_forge as bf;
+use std::collections::HashSet;
 use std::str::FromStr;
 
 #[derive(Debug, thiserror::Error)]
@@ -634,5 +635,31 @@ mod tests {
 
         let err = from_bio_topology(topo).unwrap_err();
         assert!(matches!(err, ConversionError::UnsupportedElement));
+    }
+
+    #[test]
+    fn guesses_elements_from_common_tokens() {
+        assert_eq!(guess_element_symbol("C.3"), Some(Element::C));
+        assert_eq!(guess_element_symbol("cl"), Some(Element::Cl));
+        assert_eq!(guess_element_symbol("BR"), Some(Element::Br));
+        assert_eq!(guess_element_symbol("CA1"), Some(Element::Ca));
+        assert_eq!(guess_element_symbol("   n   "), Some(Element::N));
+    }
+
+    #[test]
+    fn converts_ctfile_bond_orders() {
+        assert_eq!(bond_order_from_ctfile(1), Some(BondOrder::Single));
+        assert_eq!(bond_order_from_ctfile(4), Some(BondOrder::Aromatic));
+        assert_eq!(bond_order_from_ctfile(7), None);
+        assert_eq!(bond_order_to_ctfile(BondOrder::Triple), 3);
+    }
+
+    #[test]
+    fn converts_mol2_bond_orders() {
+        assert_eq!(bond_order_from_mol2("1"), Some(BondOrder::Single));
+        assert_eq!(bond_order_from_mol2("ar"), Some(BondOrder::Aromatic));
+        assert_eq!(bond_order_from_mol2("am"), Some(BondOrder::Single));
+        assert_eq!(bond_order_from_mol2("xx"), None);
+        assert_eq!(bond_order_to_mol2(BondOrder::Double), "2");
     }
 }
