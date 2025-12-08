@@ -4,6 +4,10 @@ use bio_forge as bf;
 use std::io::Write;
 
 pub fn write<W: Write>(writer: W, system: &System) -> Result<(), Error> {
+    if system.bio_metadata.is_none() {
+        return Err(Error::MissingMetadata("mmCIF"));
+    }
+
     let topo = util::to_bio_topology(system)?;
     bf::io::write_mmcif_topology(writer, &topo).map_err(Error::from)
 }
@@ -179,7 +183,7 @@ mod tests {
             .write(&system)
             .expect_err("missing metadata should fail");
         match err {
-            Error::Conversion(msg) => assert!(msg.to_lowercase().contains("metadata")),
+            Error::MissingMetadata(fmt) => assert_eq!(fmt, "mmCIF"),
             other => panic!("unexpected error: {:?}", other),
         }
     }
