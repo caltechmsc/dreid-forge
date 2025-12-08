@@ -152,16 +152,12 @@ mod tests {
 
     #[test]
     fn atom_residue_info_new_and_all_fields() {
-        let info = AtomResidueInfo::new(
-            "CA",
-            "ALA",
-            42,
-            'A',
-            Some('x'),
-            Some(StandardResidue::ALA),
-            ResidueCategory::Standard,
-            ResiduePosition::Internal,
-        );
+        let info = AtomResidueInfo::builder("CA", "ALA", 42, 'A')
+            .insertion_code_opt(Some('x'))
+            .standard_name(Some(StandardResidue::ALA))
+            .category(ResidueCategory::Standard)
+            .position(ResiduePosition::Internal)
+            .build();
         assert_eq!(info.atom_name, "CA");
         assert_eq!(info.residue_name, "ALA");
         assert_eq!(info.residue_id, 42);
@@ -174,16 +170,10 @@ mod tests {
 
     #[test]
     fn atom_residue_info_defaults_and_clone() {
-        let info = AtomResidueInfo::new(
-            "N",
-            "GLY",
-            1,
-            'B',
-            None,
-            None,
-            ResidueCategory::Hetero,
-            ResiduePosition::None,
-        );
+        let info = AtomResidueInfo::builder("N", "GLY", 1, 'B')
+            .category(ResidueCategory::Hetero)
+            .position(ResiduePosition::None)
+            .build();
         assert_eq!(info.insertion_code, ' ');
         let cloned = info.clone();
         assert_eq!(info, cloned);
@@ -193,16 +183,11 @@ mod tests {
     fn atom_residue_info_accepts_into_inputs() {
         let atom_name = String::from("O1");
         let residue_name = "LIG";
-        let info = AtomResidueInfo::new(
-            atom_name,
-            residue_name,
-            7,
-            'Z',
-            Some('1'),
-            None,
-            ResidueCategory::Hetero,
-            ResiduePosition::CTerminal,
-        );
+        let info = AtomResidueInfo::builder(atom_name, residue_name, 7, 'Z')
+            .insertion_code_opt(Some('1'))
+            .category(ResidueCategory::Hetero)
+            .position(ResiduePosition::CTerminal)
+            .build();
         assert_eq!(info.atom_name, "O1");
         assert_eq!(info.residue_name, "LIG");
         assert_eq!(info.residue_id, 7);
@@ -218,26 +203,16 @@ mod tests {
         let mut bm = BioMetadata::with_capacity(4);
         assert!(bm.atom_info.capacity() >= 4);
 
-        let info1 = AtomResidueInfo::new(
-            "CA",
-            "ALA",
-            1,
-            'A',
-            None,
-            Some(StandardResidue::ALA),
-            ResidueCategory::Standard,
-            ResiduePosition::Internal,
-        );
-        let info2 = AtomResidueInfo::new(
-            "CB",
-            "ALA",
-            1,
-            'A',
-            None,
-            Some(StandardResidue::ALA),
-            ResidueCategory::Standard,
-            ResiduePosition::Internal,
-        );
+        let info1 = AtomResidueInfo::builder("CA", "ALA", 1, 'A')
+            .standard_name(Some(StandardResidue::ALA))
+            .category(ResidueCategory::Standard)
+            .position(ResiduePosition::Internal)
+            .build();
+        let info2 = AtomResidueInfo::builder("CB", "ALA", 1, 'A')
+            .standard_name(Some(StandardResidue::ALA))
+            .category(ResidueCategory::Standard)
+            .position(ResiduePosition::Internal)
+            .build();
         bm.atom_info.push(info1.clone());
         bm.atom_info.push(info2.clone());
 
@@ -248,16 +223,11 @@ mod tests {
 
     #[test]
     fn debug_contains_expected_fields() {
-        let info = AtomResidueInfo::new(
-            "C1",
-            "LIG",
-            -1,
-            'Z',
-            Some('A'),
-            None,
-            ResidueCategory::Hetero,
-            ResiduePosition::NTerminal,
-        );
+        let info = AtomResidueInfo::builder("C1", "LIG", -1, 'Z')
+            .insertion_code_opt(Some('A'))
+            .category(ResidueCategory::Hetero)
+            .position(ResiduePosition::NTerminal)
+            .build();
         let bm = BioMetadata {
             atom_info: vec![info.clone()],
         };
