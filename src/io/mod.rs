@@ -8,6 +8,7 @@ pub mod error;
 pub mod util;
 
 pub mod bgf;
+pub mod lammps;
 pub mod mmcif;
 pub mod mol2;
 pub mod pdb;
