@@ -10,6 +10,7 @@ pub mod util;
 pub mod mmcif;
 pub mod mol2;
 pub mod pdb;
+pub mod sdf;
 
 pub use bio_forge::Template;
 
