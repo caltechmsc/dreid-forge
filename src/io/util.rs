@@ -440,6 +440,45 @@ pub fn guess_element_symbol(token: &str) -> Option<Element> {
     None
 }
 
+pub fn bond_order_from_ctfile(value: i32) -> Option<BondOrder> {
+    match value {
+        1 => Some(BondOrder::Single),
+        2 => Some(BondOrder::Double),
+        3 => Some(BondOrder::Triple),
+        4 => Some(BondOrder::Aromatic),
+        _ => None,
+    }
+}
+
+pub fn bond_order_to_ctfile(order: BondOrder) -> i32 {
+    match order {
+        BondOrder::Single => 1,
+        BondOrder::Double => 2,
+        BondOrder::Triple => 3,
+        BondOrder::Aromatic => 4,
+    }
+}
+
+pub fn bond_order_from_mol2(token: &str) -> Option<BondOrder> {
+    match token.trim().to_ascii_lowercase().as_str() {
+        "1" => Some(BondOrder::Single),
+        "2" => Some(BondOrder::Double),
+        "3" => Some(BondOrder::Triple),
+        "ar" => Some(BondOrder::Aromatic),
+        "am" | "du" | "un" | "nc" => Some(BondOrder::Single),
+        _ => None,
+    }
+}
+
+pub fn bond_order_to_mol2(order: BondOrder) -> &'static str {
+    match order {
+        BondOrder::Single => "1",
+        BondOrder::Double => "2",
+        BondOrder::Triple => "3",
+        BondOrder::Aromatic => "ar",
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
