@@ -136,3 +136,49 @@ fn parse_bonds(lines: &[(usize, String)], atom_count: usize) -> Result<Vec<Bond>
     }
     Ok(bonds)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::model::{atom::Atom, types::Element};
+    use std::io::Cursor;
+
+    fn sample_sdf() -> String {
+        r#"Methanol
+        Program
+        Comment
+        4  3  0  0  0  0  0  0  0999 V2000
+            0.0000    0.0000    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+            1.0900    0.0000    0.0000 O   0  0  0  0  0  0  0  0  0  0  0  0
+        -0.5400    0.9350    0.0000 H   0  0  0  0  0  0  0  0  0  0  0  0
+        -0.5400   -0.9350    0.0000 H   0  0  0  0  0  0  0  0  0  0  0  0
+        1  2  1  0  0  0  0
+        1  3  1  0  0  0  0
+        1  4  1  0  0  0  0
+        M  END
+        $$$$
+        "#
+        .to_string()
+    }
+
+    #[test]
+    fn parses_first_block_only() {
+        let mut multi = sample_sdf();
+        multi.push_str(&sample_sdf());
+        let system = read(Cursor::new(multi)).expect("parse sdf");
+        assert_eq!(system.atom_count(), 4);
+        assert_eq!(system.bond_count(), 3);
+        assert_eq!(system.atoms[1], Atom::new(Element::O, [1.09, 0.0, 0.0]));
+    }
+
+    #[test]
+    fn errors_on_v3000() {
+        let mut sdf = sample_sdf();
+        sdf = sdf.replace("V2000", "V3000");
+        let err = read(Cursor::new(sdf)).expect_err("V3000 should be rejected");
+        match err {
+            Error::Parse { format, .. } => assert_eq!(format, Format::Sdf),
+            other => panic!("unexpected error: {other:?}"),
+        }
+    }
+}
