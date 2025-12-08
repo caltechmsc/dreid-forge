@@ -1,3 +1,6 @@
+use super::{
+    Anion, Cation, CleanConfig, HisStrategy, ProtonationConfig, SolvateConfig, TopologyConfig,
+};
 use crate::model::{
     atom::Atom,
     metadata::{AtomResidueInfo, BioMetadata, ResidueCategory, ResiduePosition, StandardResidue},
@@ -21,6 +24,77 @@ pub enum ConversionError {
     UnknownResidueCategory,
     #[error("unknown residue position")]
     UnknownResiduePosition,
+}
+
+pub fn to_bf_clean_config(config: CleanConfig) -> bf::ops::CleanConfig {
+    bf::ops::CleanConfig {
+        remove_water: config.remove_water,
+        remove_ions: config.remove_ions,
+        remove_hydrogens: config.remove_hydrogens,
+        remove_hetero: config.remove_hetero,
+        remove_residue_names: config.remove_residue_names,
+        keep_residue_names: config.keep_residue_names,
+    }
+}
+
+pub fn to_bf_hydro_config(config: ProtonationConfig) -> bf::ops::HydroConfig {
+    bf::ops::HydroConfig {
+        target_ph: config.target_ph,
+        remove_existing_h: config.remove_existing_h,
+        his_strategy: match config.his_strategy {
+            HisStrategy::DirectHID => bf::ops::HisStrategy::DirectHID,
+            HisStrategy::DirectHIE => bf::ops::HisStrategy::DirectHIE,
+            HisStrategy::Random => bf::ops::HisStrategy::Random,
+            HisStrategy::HbNetwork => bf::ops::HisStrategy::HbNetwork,
+        },
+    }
+}
+
+pub fn to_bf_solvate_config(config: SolvateConfig) -> bf::ops::SolvateConfig {
+    bf::ops::SolvateConfig {
+        margin: config.margin,
+        water_spacing: config.water_spacing,
+        vdw_cutoff: config.vdw_cutoff,
+        remove_existing: config.remove_existing,
+        cations: config.cations.into_iter().map(to_bf_cation).collect(),
+        anions: config.anions.into_iter().map(to_bf_anion).collect(),
+        target_charge: config.target_charge,
+        rng_seed: config.rng_seed,
+    }
+}
+
+pub fn to_bf_cation(cation: Cation) -> bf::ops::Cation {
+    match cation {
+        Cation::Na => bf::ops::Cation::Na,
+        Cation::K => bf::ops::Cation::K,
+        Cation::Mg => bf::ops::Cation::Mg,
+        Cation::Ca => bf::ops::Cation::Ca,
+        Cation::Li => bf::ops::Cation::Li,
+        Cation::Zn => bf::ops::Cation::Zn,
+    }
+}
+
+pub fn to_bf_anion(anion: Anion) -> bf::ops::Anion {
+    match anion {
+        Anion::Cl => bf::ops::Anion::Cl,
+        Anion::Br => bf::ops::Anion::Br,
+        Anion::I => bf::ops::Anion::I,
+        Anion::F => bf::ops::Anion::F,
+    }
+}
+
+pub fn build_topology(
+    structure: bf::Structure,
+    config: &TopologyConfig,
+) -> Result<bf::Topology, bf::ops::Error> {
+    let mut topology_builder =
+        bf::ops::TopologyBuilder::new().disulfide_cutoff(config.disulfide_bond_cutoff);
+
+    for tpl in &config.hetero_templates {
+        topology_builder = topology_builder.add_hetero_template(tpl.clone());
+    }
+
+    topology_builder.build(structure)
 }
 
 pub fn from_bio_topology(bio_topo: bf::Topology) -> Result<System, ConversionError> {
