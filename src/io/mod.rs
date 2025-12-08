@@ -7,6 +7,7 @@ use std::io::{BufRead, Write};
 pub mod error;
 pub mod util;
 
+pub mod bgf;
 pub mod mmcif;
 pub mod mol2;
 pub mod pdb;
