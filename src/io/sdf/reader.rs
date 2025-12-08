@@ -82,23 +82,44 @@ fn parse_counts(line: &str, line_no: usize) -> Result<(usize, usize), Error> {
 fn parse_atoms(lines: &[(usize, String)]) -> Result<Vec<Atom>, Error> {
     let mut atoms = Vec::with_capacity(lines.len());
     for (ln, raw) in lines {
-        let padded = format!("{raw:<40}");
-        let x = padded[0..10]
-            .trim()
-            .parse::<f64>()
-            .map_err(|_| Error::parse(Format::Sdf, *ln, "invalid x coordinate in atom line"))?;
-        let y = padded[10..20]
-            .trim()
-            .parse::<f64>()
-            .map_err(|_| Error::parse(Format::Sdf, *ln, "invalid y coordinate in atom line"))?;
-        let z = padded[20..30]
-            .trim()
-            .parse::<f64>()
-            .map_err(|_| Error::parse(Format::Sdf, *ln, "invalid z coordinate in atom line"))?;
-        let element_token = padded[31..34].trim();
-        let element = util::guess_element_symbol(element_token)
+        let fixed =
+            (|| -> Result<([f64; 3], String), Error> {
+                let padded = format!("{raw:<40}");
+                let x = padded[0..10].trim().parse::<f64>().map_err(|_| {
+                    Error::parse(Format::Sdf, *ln, "invalid x coordinate in atom line")
+                })?;
+                let y = padded[10..20].trim().parse::<f64>().map_err(|_| {
+                    Error::parse(Format::Sdf, *ln, "invalid y coordinate in atom line")
+                })?;
+                let z = padded[20..30].trim().parse::<f64>().map_err(|_| {
+                    Error::parse(Format::Sdf, *ln, "invalid z coordinate in atom line")
+                })?;
+                Ok(([x, y, z], padded[31..34].to_string()))
+            })();
+
+        let (coords, element_token) = match fixed {
+            Ok(val) => val,
+            Err(_) => {
+                let tokens: Vec<_> = raw.split_whitespace().collect();
+                if tokens.len() < 4 {
+                    return Err(Error::parse(Format::Sdf, *ln, "invalid atom line"));
+                }
+                let x = tokens[0].parse::<f64>().map_err(|_| {
+                    Error::parse(Format::Sdf, *ln, "invalid x coordinate in atom line")
+                })?;
+                let y = tokens[1].parse::<f64>().map_err(|_| {
+                    Error::parse(Format::Sdf, *ln, "invalid y coordinate in atom line")
+                })?;
+                let z = tokens[2].parse::<f64>().map_err(|_| {
+                    Error::parse(Format::Sdf, *ln, "invalid z coordinate in atom line")
+                })?;
+                ([x, y, z], tokens[3].to_string())
+            }
+        };
+
+        let element = util::guess_element_symbol(element_token.trim())
             .ok_or_else(|| Error::parse(Format::Sdf, *ln, "unable to infer element symbol"))?;
-        atoms.push(Atom::new(element, [x, y, z]));
+        atoms.push(Atom::new(element, coords));
     }
     Ok(atoms)
 }
