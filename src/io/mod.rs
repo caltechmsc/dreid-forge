@@ -4,17 +4,28 @@ use std::collections::HashSet;
 use std::fmt;
 use std::io::{BufRead, Write};
 
-pub mod error;
-pub mod util;
+mod error;
+mod util;
 
-pub mod bgf;
-pub mod lammps;
-pub mod mmcif;
-pub mod mol2;
-pub mod pdb;
-pub mod sdf;
+mod bgf;
+mod lammps;
+mod mmcif;
+mod mol2;
+mod pdb;
+mod sdf;
+
+pub use bgf::writer::write as write_bgf;
+
+pub use lammps::writer::{
+    LammpsConfig, SystemType, write_data_file as write_lammps_data,
+    write_package as write_lammps_package, write_settings_file as write_lammps_settings,
+};
 
 pub use bio_forge::Template;
+
+pub fn read_mol2_template<R: BufRead>(reader: R) -> Result<Template, Error> {
+    bio_forge::io::read_mol2_template(reader).map_err(Error::from)
+}
 
 #[derive(Debug, Clone, Default)]
 pub struct CleanConfig {
