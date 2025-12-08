@@ -400,26 +400,26 @@ pub fn guess_element_symbol(token: &str) -> Option<Element> {
         }
     }
 
-    if let Some(chunk) = trimmed.split(['.', '-', '_']).next() {
-        if !chunk.is_empty() {
-            push(chunk.to_string(), &mut candidates, &mut seen);
-        }
+    if let Some(chunk) = trimmed
+        .split(['.', '-', '_'])
+        .next()
+        .filter(|c| !c.is_empty())
+    {
+        push(chunk.to_string(), &mut candidates, &mut seen);
     }
 
     let mut chars = trimmed.chars();
     if let Some(first) = chars.next() {
-        if let Some(second) = chars.next() {
-            if second.is_ascii_alphabetic() {
-                push(
-                    format!(
-                        "{}{}",
-                        first.to_ascii_uppercase(),
-                        second.to_ascii_lowercase()
-                    ),
-                    &mut candidates,
-                    &mut seen,
-                );
-            }
+        if let Some(second) = chars.next().filter(|c| c.is_ascii_alphabetic()) {
+            push(
+                format!(
+                    "{}{}",
+                    first.to_ascii_uppercase(),
+                    second.to_ascii_lowercase()
+                ),
+                &mut candidates,
+                &mut seen,
+            );
         }
         push(
             first.to_ascii_uppercase().to_string(),
