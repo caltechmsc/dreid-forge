@@ -5,6 +5,7 @@ use crate::model::{
     types::{BondOrder, Element},
 };
 use bio_forge as bf;
+use std::str::FromStr;
 
 #[derive(Debug, thiserror::Error)]
 pub enum ConversionError {
@@ -90,8 +91,7 @@ pub fn to_bio_topology(system: &System) -> Result<bf::Topology, ConversionError>
 
     type ResidueKey = (char, i32, char);
     let mut residue_atom_indices: BTreeMap<ResidueKey, Vec<usize>> = BTreeMap::new();
-    for i in 0..system.atoms.len() {
-        let info = &metadata.atom_info[i];
+    for (i, info) in metadata.atom_info.iter().enumerate() {
         let key = (info.chain_id, info.residue_id, info.insertion_code);
         residue_atom_indices.entry(key).or_default().push(i);
     }
@@ -150,16 +150,15 @@ pub fn to_bio_topology(system: &System) -> Result<bf::Topology, ConversionError>
 }
 
 fn convert_element_from_bf(e: bf::Element) -> Result<Element, ConversionError> {
-    let z = e as u8;
-    if z == 0 {
-        Err(ConversionError::UnsupportedElement)
-    } else {
-        Ok(unsafe { std::mem::transmute(z) })
+    if matches!(e, bf::Element::Unknown) {
+        return Err(ConversionError::UnsupportedElement);
     }
+
+    Element::from_str(e.symbol()).map_err(|_| ConversionError::UnsupportedElement)
 }
 
 fn convert_element_to_bf(e: Element) -> Result<bf::Element, ConversionError> {
-    Ok(unsafe { std::mem::transmute(e.atomic_number()) })
+    bf::Element::from_str(e.symbol()).map_err(|_| ConversionError::UnsupportedElement)
 }
 
 fn convert_bond_order_from_bf(order: bf::BondOrder) -> Result<BondOrder, ConversionError> {
@@ -182,83 +181,77 @@ fn convert_bond_order_to_bf(order: BondOrder) -> Result<bf::BondOrder, Conversio
 fn convert_std_res_from_bf(
     res: Option<bf::StandardResidue>,
 ) -> Result<Option<StandardResidue>, ConversionError> {
-    Ok(match res {
-        None => None,
-        Some(v) => Some(match v {
-            bf::StandardResidue::ALA => StandardResidue::ALA,
-            bf::StandardResidue::ARG => StandardResidue::ARG,
-            bf::StandardResidue::ASN => StandardResidue::ASN,
-            bf::StandardResidue::ASP => StandardResidue::ASP,
-            bf::StandardResidue::CYS => StandardResidue::CYS,
-            bf::StandardResidue::GLN => StandardResidue::GLN,
-            bf::StandardResidue::GLU => StandardResidue::GLU,
-            bf::StandardResidue::GLY => StandardResidue::GLY,
-            bf::StandardResidue::HIS => StandardResidue::HIS,
-            bf::StandardResidue::ILE => StandardResidue::ILE,
-            bf::StandardResidue::LEU => StandardResidue::LEU,
-            bf::StandardResidue::LYS => StandardResidue::LYS,
-            bf::StandardResidue::MET => StandardResidue::MET,
-            bf::StandardResidue::PHE => StandardResidue::PHE,
-            bf::StandardResidue::PRO => StandardResidue::PRO,
-            bf::StandardResidue::SER => StandardResidue::SER,
-            bf::StandardResidue::THR => StandardResidue::THR,
-            bf::StandardResidue::TRP => StandardResidue::TRP,
-            bf::StandardResidue::TYR => StandardResidue::TYR,
-            bf::StandardResidue::VAL => StandardResidue::VAL,
-            bf::StandardResidue::A => StandardResidue::A,
-            bf::StandardResidue::C => StandardResidue::C,
-            bf::StandardResidue::G => StandardResidue::G,
-            bf::StandardResidue::U => StandardResidue::U,
-            bf::StandardResidue::I => StandardResidue::I,
-            bf::StandardResidue::DA => StandardResidue::DA,
-            bf::StandardResidue::DC => StandardResidue::DC,
-            bf::StandardResidue::DG => StandardResidue::DG,
-            bf::StandardResidue::DT => StandardResidue::DT,
-            bf::StandardResidue::DI => StandardResidue::DI,
-            bf::StandardResidue::HOH => StandardResidue::HOH,
-        }),
-    })
+    Ok(res.map(|v| match v {
+        bf::StandardResidue::ALA => StandardResidue::ALA,
+        bf::StandardResidue::ARG => StandardResidue::ARG,
+        bf::StandardResidue::ASN => StandardResidue::ASN,
+        bf::StandardResidue::ASP => StandardResidue::ASP,
+        bf::StandardResidue::CYS => StandardResidue::CYS,
+        bf::StandardResidue::GLN => StandardResidue::GLN,
+        bf::StandardResidue::GLU => StandardResidue::GLU,
+        bf::StandardResidue::GLY => StandardResidue::GLY,
+        bf::StandardResidue::HIS => StandardResidue::HIS,
+        bf::StandardResidue::ILE => StandardResidue::ILE,
+        bf::StandardResidue::LEU => StandardResidue::LEU,
+        bf::StandardResidue::LYS => StandardResidue::LYS,
+        bf::StandardResidue::MET => StandardResidue::MET,
+        bf::StandardResidue::PHE => StandardResidue::PHE,
+        bf::StandardResidue::PRO => StandardResidue::PRO,
+        bf::StandardResidue::SER => StandardResidue::SER,
+        bf::StandardResidue::THR => StandardResidue::THR,
+        bf::StandardResidue::TRP => StandardResidue::TRP,
+        bf::StandardResidue::TYR => StandardResidue::TYR,
+        bf::StandardResidue::VAL => StandardResidue::VAL,
+        bf::StandardResidue::A => StandardResidue::A,
+        bf::StandardResidue::C => StandardResidue::C,
+        bf::StandardResidue::G => StandardResidue::G,
+        bf::StandardResidue::U => StandardResidue::U,
+        bf::StandardResidue::I => StandardResidue::I,
+        bf::StandardResidue::DA => StandardResidue::DA,
+        bf::StandardResidue::DC => StandardResidue::DC,
+        bf::StandardResidue::DG => StandardResidue::DG,
+        bf::StandardResidue::DT => StandardResidue::DT,
+        bf::StandardResidue::DI => StandardResidue::DI,
+        bf::StandardResidue::HOH => StandardResidue::HOH,
+    }))
 }
 
 fn convert_std_res_to_bf(
     res: Option<StandardResidue>,
 ) -> Result<Option<bf::StandardResidue>, ConversionError> {
-    Ok(match res {
-        None => None,
-        Some(v) => Some(match v {
-            StandardResidue::ALA => bf::StandardResidue::ALA,
-            StandardResidue::ARG => bf::StandardResidue::ARG,
-            StandardResidue::ASN => bf::StandardResidue::ASN,
-            StandardResidue::ASP => bf::StandardResidue::ASP,
-            StandardResidue::CYS => bf::StandardResidue::CYS,
-            StandardResidue::GLN => bf::StandardResidue::GLN,
-            StandardResidue::GLU => bf::StandardResidue::GLU,
-            StandardResidue::GLY => bf::StandardResidue::GLY,
-            StandardResidue::HIS => bf::StandardResidue::HIS,
-            StandardResidue::ILE => bf::StandardResidue::ILE,
-            StandardResidue::LEU => bf::StandardResidue::LEU,
-            StandardResidue::LYS => bf::StandardResidue::LYS,
-            StandardResidue::MET => bf::StandardResidue::MET,
-            StandardResidue::PHE => bf::StandardResidue::PHE,
-            StandardResidue::PRO => bf::StandardResidue::PRO,
-            StandardResidue::SER => bf::StandardResidue::SER,
-            StandardResidue::THR => bf::StandardResidue::THR,
-            StandardResidue::TRP => bf::StandardResidue::TRP,
-            StandardResidue::TYR => bf::StandardResidue::TYR,
-            StandardResidue::VAL => bf::StandardResidue::VAL,
-            StandardResidue::A => bf::StandardResidue::A,
-            StandardResidue::C => bf::StandardResidue::C,
-            StandardResidue::G => bf::StandardResidue::G,
-            StandardResidue::U => bf::StandardResidue::U,
-            StandardResidue::I => bf::StandardResidue::I,
-            StandardResidue::DA => bf::StandardResidue::DA,
-            StandardResidue::DC => bf::StandardResidue::DC,
-            StandardResidue::DG => bf::StandardResidue::DG,
-            StandardResidue::DT => bf::StandardResidue::DT,
-            StandardResidue::DI => bf::StandardResidue::DI,
-            StandardResidue::HOH => bf::StandardResidue::HOH,
-        }),
-    })
+    Ok(res.map(|v| match v {
+        StandardResidue::ALA => bf::StandardResidue::ALA,
+        StandardResidue::ARG => bf::StandardResidue::ARG,
+        StandardResidue::ASN => bf::StandardResidue::ASN,
+        StandardResidue::ASP => bf::StandardResidue::ASP,
+        StandardResidue::CYS => bf::StandardResidue::CYS,
+        StandardResidue::GLN => bf::StandardResidue::GLN,
+        StandardResidue::GLU => bf::StandardResidue::GLU,
+        StandardResidue::GLY => bf::StandardResidue::GLY,
+        StandardResidue::HIS => bf::StandardResidue::HIS,
+        StandardResidue::ILE => bf::StandardResidue::ILE,
+        StandardResidue::LEU => bf::StandardResidue::LEU,
+        StandardResidue::LYS => bf::StandardResidue::LYS,
+        StandardResidue::MET => bf::StandardResidue::MET,
+        StandardResidue::PHE => bf::StandardResidue::PHE,
+        StandardResidue::PRO => bf::StandardResidue::PRO,
+        StandardResidue::SER => bf::StandardResidue::SER,
+        StandardResidue::THR => bf::StandardResidue::THR,
+        StandardResidue::TRP => bf::StandardResidue::TRP,
+        StandardResidue::TYR => bf::StandardResidue::TYR,
+        StandardResidue::VAL => bf::StandardResidue::VAL,
+        StandardResidue::A => bf::StandardResidue::A,
+        StandardResidue::C => bf::StandardResidue::C,
+        StandardResidue::G => bf::StandardResidue::G,
+        StandardResidue::U => bf::StandardResidue::U,
+        StandardResidue::I => bf::StandardResidue::I,
+        StandardResidue::DA => bf::StandardResidue::DA,
+        StandardResidue::DC => bf::StandardResidue::DC,
+        StandardResidue::DG => bf::StandardResidue::DG,
+        StandardResidue::DT => bf::StandardResidue::DT,
+        StandardResidue::DI => bf::StandardResidue::DI,
+        StandardResidue::HOH => bf::StandardResidue::HOH,
+    }))
 }
 
 fn convert_res_cat_from_bf(cat: bf::ResidueCategory) -> Result<ResidueCategory, ConversionError> {
