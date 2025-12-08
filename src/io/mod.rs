@@ -1,6 +1,7 @@
 use std::fmt;
 
 pub mod error;
+pub mod util;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Format {

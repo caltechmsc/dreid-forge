@@ -1,0 +1,298 @@
+use crate::model::{
+    atom::Atom,
+    metadata::{AtomResidueInfo, BioMetadata, ResidueCategory, ResiduePosition, StandardResidue},
+    system::{Bond, System},
+    types::{BondOrder, Element},
+};
+use bio_forge as bf;
+
+#[derive(Debug, thiserror::Error)]
+pub enum ConversionError {
+    #[error("encountered an 'Unknown' element from bio-forge which is not supported")]
+    UnsupportedElement,
+    #[error("encountered an unsupported bond order '{0}' during model conversion")]
+    UnsupportedBondOrder(String),
+    #[error("inconsistent data: system is missing required BioMetadata for this conversion")]
+    MissingBioMetadata,
+    #[error("unknown standard residue name")]
+    UnknownStandardResidue,
+    #[error("unknown residue category")]
+    UnknownResidueCategory,
+    #[error("unknown residue position")]
+    UnknownResiduePosition,
+}
+
+pub fn from_bio_topology(bio_topo: bf::Topology) -> Result<System, ConversionError> {
+    let bio_struct = bio_topo.structure();
+    let atom_count = bio_struct.atom_count();
+
+    let mut atoms = Vec::with_capacity(atom_count);
+    let mut metadata = BioMetadata::with_capacity(atom_count);
+
+    for (chain, residue, bio_atom) in bio_struct.iter_atoms_with_context() {
+        atoms.push(Atom {
+            element: convert_element_from_bf(bio_atom.element)?,
+            position: [bio_atom.pos.x, bio_atom.pos.y, bio_atom.pos.z],
+        });
+
+        metadata.atom_info.push(AtomResidueInfo::new(
+            bio_atom.name.clone(),
+            residue.name.clone(),
+            residue.id,
+            chain.id.chars().next().unwrap_or(' '),
+            residue.insertion_code,
+            convert_std_res_from_bf(residue.standard_name)?,
+            convert_res_cat_from_bf(residue.category)?,
+            convert_res_pos_from_bf(residue.position)?,
+        ));
+    }
+
+    let bonds = bio_topo
+        .bonds()
+        .iter()
+        .map(|bio_bond| {
+            Ok(Bond {
+                i: bio_bond.a1_idx,
+                j: bio_bond.a2_idx,
+                order: convert_bond_order_from_bf(bio_bond.order)?,
+            })
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+
+    Ok(System {
+        atoms,
+        bonds,
+        box_vectors: bio_struct.box_vectors,
+        bio_metadata: Some(metadata),
+    })
+}
+
+pub fn to_bio_topology(system: &System) -> Result<bf::Topology, ConversionError> {
+    use std::collections::BTreeMap;
+
+    let metadata = system
+        .bio_metadata
+        .as_ref()
+        .ok_or(ConversionError::MissingBioMetadata)?;
+
+    let bio_atoms: Vec<bf::Atom> = system
+        .atoms
+        .iter()
+        .zip(metadata.atom_info.iter())
+        .map(|(atom, info)| {
+            Ok(bf::Atom::new(
+                &info.atom_name,
+                convert_element_to_bf(atom.element)?,
+                bf::Point::new(atom.position[0], atom.position[1], atom.position[2]),
+            ))
+        })
+        .collect::<Result<_, _>>()?;
+
+    type ResidueKey = (char, i32, char);
+    let mut residue_atom_indices: BTreeMap<ResidueKey, Vec<usize>> = BTreeMap::new();
+    for i in 0..system.atoms.len() {
+        let info = &metadata.atom_info[i];
+        let key = (info.chain_id, info.residue_id, info.insertion_code);
+        residue_atom_indices.entry(key).or_default().push(i);
+    }
+
+    let mut residues: BTreeMap<ResidueKey, bf::Residue> = BTreeMap::new();
+    for (key, mut indices) in residue_atom_indices {
+        indices.sort_by(|&a, &b| {
+            let ia = &metadata.atom_info[a];
+            let ib = &metadata.atom_info[b];
+            ia.atom_name.cmp(&ib.atom_name).then_with(|| a.cmp(&b))
+        });
+
+        let first_info = &metadata.atom_info[indices[0]];
+        let mut residue = bf::Residue::new(
+            first_info.residue_id,
+            Some(first_info.insertion_code).filter(|&c| c != ' '),
+            &first_info.residue_name,
+            convert_std_res_to_bf(first_info.standard_name)?,
+            convert_res_cat_to_bf(first_info.category)?,
+        );
+        residue.position = convert_res_pos_to_bf(first_info.position)?;
+
+        for idx in indices {
+            residue.add_atom(bio_atoms[idx].clone());
+        }
+        residues.insert(key, residue);
+    }
+
+    let mut chains: BTreeMap<char, bf::Chain> = BTreeMap::new();
+    for ((chain_id, _, _), residue) in residues {
+        chains
+            .entry(chain_id)
+            .or_insert_with(|| bf::Chain::new(&chain_id.to_string()))
+            .add_residue(residue);
+    }
+
+    let mut bio_struct = bf::Structure::new();
+    bio_struct.box_vectors = system.box_vectors;
+    for (_, chain) in chains {
+        bio_struct.add_chain(chain);
+    }
+
+    let bio_bonds = system
+        .bonds
+        .iter()
+        .map(|bond| {
+            Ok(bf::Bond::new(
+                bond.i,
+                bond.j,
+                convert_bond_order_to_bf(bond.order)?,
+            ))
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+
+    Ok(bf::Topology::new(bio_struct, bio_bonds))
+}
+
+fn convert_element_from_bf(e: bf::Element) -> Result<Element, ConversionError> {
+    let z = e as u8;
+    if z == 0 {
+        Err(ConversionError::UnsupportedElement)
+    } else {
+        Ok(unsafe { std::mem::transmute(z) })
+    }
+}
+
+fn convert_element_to_bf(e: Element) -> Result<bf::Element, ConversionError> {
+    Ok(unsafe { std::mem::transmute(e.atomic_number()) })
+}
+
+fn convert_bond_order_from_bf(order: bf::BondOrder) -> Result<BondOrder, ConversionError> {
+    match order {
+        bf::BondOrder::Single => Ok(BondOrder::Single),
+        bf::BondOrder::Double => Ok(BondOrder::Double),
+        bf::BondOrder::Triple => Ok(BondOrder::Triple),
+        bf::BondOrder::Aromatic => Ok(BondOrder::Aromatic),
+    }
+}
+fn convert_bond_order_to_bf(order: BondOrder) -> Result<bf::BondOrder, ConversionError> {
+    match order {
+        BondOrder::Single => Ok(bf::BondOrder::Single),
+        BondOrder::Double => Ok(bf::BondOrder::Double),
+        BondOrder::Triple => Ok(bf::BondOrder::Triple),
+        BondOrder::Aromatic => Ok(bf::BondOrder::Aromatic),
+    }
+}
+
+fn convert_std_res_from_bf(
+    res: Option<bf::StandardResidue>,
+) -> Result<Option<StandardResidue>, ConversionError> {
+    Ok(match res {
+        None => None,
+        Some(v) => Some(match v {
+            bf::StandardResidue::ALA => StandardResidue::ALA,
+            bf::StandardResidue::ARG => StandardResidue::ARG,
+            bf::StandardResidue::ASN => StandardResidue::ASN,
+            bf::StandardResidue::ASP => StandardResidue::ASP,
+            bf::StandardResidue::CYS => StandardResidue::CYS,
+            bf::StandardResidue::GLN => StandardResidue::GLN,
+            bf::StandardResidue::GLU => StandardResidue::GLU,
+            bf::StandardResidue::GLY => StandardResidue::GLY,
+            bf::StandardResidue::HIS => StandardResidue::HIS,
+            bf::StandardResidue::ILE => StandardResidue::ILE,
+            bf::StandardResidue::LEU => StandardResidue::LEU,
+            bf::StandardResidue::LYS => StandardResidue::LYS,
+            bf::StandardResidue::MET => StandardResidue::MET,
+            bf::StandardResidue::PHE => StandardResidue::PHE,
+            bf::StandardResidue::PRO => StandardResidue::PRO,
+            bf::StandardResidue::SER => StandardResidue::SER,
+            bf::StandardResidue::THR => StandardResidue::THR,
+            bf::StandardResidue::TRP => StandardResidue::TRP,
+            bf::StandardResidue::TYR => StandardResidue::TYR,
+            bf::StandardResidue::VAL => StandardResidue::VAL,
+            bf::StandardResidue::A => StandardResidue::A,
+            bf::StandardResidue::C => StandardResidue::C,
+            bf::StandardResidue::G => StandardResidue::G,
+            bf::StandardResidue::U => StandardResidue::U,
+            bf::StandardResidue::I => StandardResidue::I,
+            bf::StandardResidue::DA => StandardResidue::DA,
+            bf::StandardResidue::DC => StandardResidue::DC,
+            bf::StandardResidue::DG => StandardResidue::DG,
+            bf::StandardResidue::DT => StandardResidue::DT,
+            bf::StandardResidue::DI => StandardResidue::DI,
+            bf::StandardResidue::HOH => StandardResidue::HOH,
+        }),
+    })
+}
+
+fn convert_std_res_to_bf(
+    res: Option<StandardResidue>,
+) -> Result<Option<bf::StandardResidue>, ConversionError> {
+    Ok(match res {
+        None => None,
+        Some(v) => Some(match v {
+            StandardResidue::ALA => bf::StandardResidue::ALA,
+            StandardResidue::ARG => bf::StandardResidue::ARG,
+            StandardResidue::ASN => bf::StandardResidue::ASN,
+            StandardResidue::ASP => bf::StandardResidue::ASP,
+            StandardResidue::CYS => bf::StandardResidue::CYS,
+            StandardResidue::GLN => bf::StandardResidue::GLN,
+            StandardResidue::GLU => bf::StandardResidue::GLU,
+            StandardResidue::GLY => bf::StandardResidue::GLY,
+            StandardResidue::HIS => bf::StandardResidue::HIS,
+            StandardResidue::ILE => bf::StandardResidue::ILE,
+            StandardResidue::LEU => bf::StandardResidue::LEU,
+            StandardResidue::LYS => bf::StandardResidue::LYS,
+            StandardResidue::MET => bf::StandardResidue::MET,
+            StandardResidue::PHE => bf::StandardResidue::PHE,
+            StandardResidue::PRO => bf::StandardResidue::PRO,
+            StandardResidue::SER => bf::StandardResidue::SER,
+            StandardResidue::THR => bf::StandardResidue::THR,
+            StandardResidue::TRP => bf::StandardResidue::TRP,
+            StandardResidue::TYR => bf::StandardResidue::TYR,
+            StandardResidue::VAL => bf::StandardResidue::VAL,
+            StandardResidue::A => bf::StandardResidue::A,
+            StandardResidue::C => bf::StandardResidue::C,
+            StandardResidue::G => bf::StandardResidue::G,
+            StandardResidue::U => bf::StandardResidue::U,
+            StandardResidue::I => bf::StandardResidue::I,
+            StandardResidue::DA => bf::StandardResidue::DA,
+            StandardResidue::DC => bf::StandardResidue::DC,
+            StandardResidue::DG => bf::StandardResidue::DG,
+            StandardResidue::DT => bf::StandardResidue::DT,
+            StandardResidue::DI => bf::StandardResidue::DI,
+            StandardResidue::HOH => bf::StandardResidue::HOH,
+        }),
+    })
+}
+
+fn convert_res_cat_from_bf(cat: bf::ResidueCategory) -> Result<ResidueCategory, ConversionError> {
+    Ok(match cat {
+        bf::ResidueCategory::Standard => ResidueCategory::Standard,
+        bf::ResidueCategory::Hetero => ResidueCategory::Hetero,
+        bf::ResidueCategory::Ion => ResidueCategory::Ion,
+    })
+}
+fn convert_res_cat_to_bf(cat: ResidueCategory) -> Result<bf::ResidueCategory, ConversionError> {
+    Ok(match cat {
+        ResidueCategory::Standard => bf::ResidueCategory::Standard,
+        ResidueCategory::Hetero => bf::ResidueCategory::Hetero,
+        ResidueCategory::Ion => bf::ResidueCategory::Ion,
+    })
+}
+
+fn convert_res_pos_from_bf(pos: bf::ResiduePosition) -> Result<ResiduePosition, ConversionError> {
+    Ok(match pos {
+        bf::ResiduePosition::None => ResiduePosition::None,
+        bf::ResiduePosition::Internal => ResiduePosition::Internal,
+        bf::ResiduePosition::NTerminal => ResiduePosition::NTerminal,
+        bf::ResiduePosition::CTerminal => ResiduePosition::CTerminal,
+        bf::ResiduePosition::FivePrime => ResiduePosition::FivePrime,
+        bf::ResiduePosition::ThreePrime => ResiduePosition::ThreePrime,
+    })
+}
+fn convert_res_pos_to_bf(pos: ResiduePosition) -> Result<bf::ResiduePosition, ConversionError> {
+    Ok(match pos {
+        ResiduePosition::None => bf::ResiduePosition::None,
+        ResiduePosition::Internal => bf::ResiduePosition::Internal,
+        ResiduePosition::NTerminal => bf::ResiduePosition::NTerminal,
+        ResiduePosition::CTerminal => bf::ResiduePosition::CTerminal,
+        ResiduePosition::FivePrime => bf::ResiduePosition::FivePrime,
+        ResiduePosition::ThreePrime => bf::ResiduePosition::ThreePrime,
+    })
+}
