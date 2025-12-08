@@ -315,36 +315,22 @@ mod tests {
 
         let metadata = BioMetadata {
             atom_info: vec![
-                AtomResidueInfo::new(
-                    "CA",
-                    "ALA",
-                    1,
-                    'A',
-                    None,
-                    Some(StandardResidue::ALA),
-                    ResidueCategory::Standard,
-                    ResiduePosition::Internal,
-                ),
-                AtomResidueInfo::new(
-                    "CB",
-                    "ALA",
-                    1,
-                    'A',
-                    None,
-                    Some(StandardResidue::ALA),
-                    ResidueCategory::Standard,
-                    ResiduePosition::Internal,
-                ),
-                AtomResidueInfo::new(
-                    "N",
-                    "GLY",
-                    2,
-                    'B',
-                    Some('B'),
-                    Some(StandardResidue::GLY),
-                    ResidueCategory::Standard,
-                    ResiduePosition::NTerminal,
-                ),
+                AtomResidueInfo::builder("CA", "ALA", 1, 'A')
+                    .standard_name(Some(StandardResidue::ALA))
+                    .category(ResidueCategory::Standard)
+                    .position(ResiduePosition::Internal)
+                    .build(),
+                AtomResidueInfo::builder("CB", "ALA", 1, 'A')
+                    .standard_name(Some(StandardResidue::ALA))
+                    .category(ResidueCategory::Standard)
+                    .position(ResiduePosition::Internal)
+                    .build(),
+                AtomResidueInfo::builder("N", "GLY", 2, 'B')
+                    .insertion_code_opt(Some('B'))
+                    .standard_name(Some(StandardResidue::GLY))
+                    .category(ResidueCategory::Standard)
+                    .position(ResiduePosition::NTerminal)
+                    .build(),
             ],
         };
 
