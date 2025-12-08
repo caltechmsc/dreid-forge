@@ -63,25 +63,68 @@ pub struct AtomResidueInfo {
 }
 
 impl AtomResidueInfo {
-    pub fn new(
+    pub fn builder(
         atom_name: impl Into<String>,
         residue_name: impl Into<String>,
         residue_id: i32,
         chain_id: char,
-        insertion_code: Option<char>,
-        standard_name: Option<StandardResidue>,
-        category: ResidueCategory,
-        position: ResiduePosition,
-    ) -> Self {
-        Self {
+    ) -> AtomResidueBuilder {
+        AtomResidueBuilder {
             atom_name: atom_name.into(),
             residue_name: residue_name.into(),
             residue_id,
             chain_id,
-            insertion_code: insertion_code.unwrap_or(' '),
-            standard_name,
-            category,
-            position,
+            insertion_code: None,
+            standard_name: None,
+            category: ResidueCategory::Standard,
+            position: ResiduePosition::None,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct AtomResidueBuilder {
+    atom_name: String,
+    residue_name: String,
+    residue_id: i32,
+    chain_id: char,
+    insertion_code: Option<char>,
+    standard_name: Option<StandardResidue>,
+    category: ResidueCategory,
+    position: ResiduePosition,
+}
+
+impl AtomResidueBuilder {
+    pub fn insertion_code_opt(mut self, code: Option<char>) -> Self {
+        self.insertion_code = code;
+        self
+    }
+
+    pub fn standard_name(mut self, name: Option<StandardResidue>) -> Self {
+        self.standard_name = name;
+        self
+    }
+
+    pub fn category(mut self, category: ResidueCategory) -> Self {
+        self.category = category;
+        self
+    }
+
+    pub fn position(mut self, position: ResiduePosition) -> Self {
+        self.position = position;
+        self
+    }
+
+    pub fn build(self) -> AtomResidueInfo {
+        AtomResidueInfo {
+            atom_name: self.atom_name,
+            residue_name: self.residue_name,
+            residue_id: self.residue_id,
+            chain_id: self.chain_id,
+            insertion_code: self.insertion_code.unwrap_or(' '),
+            standard_name: self.standard_name,
+            category: self.category,
+            position: self.position,
         }
     }
 }
