@@ -1,3 +1,55 @@
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum StandardResidue {
+    ALA,
+    ARG,
+    ASN,
+    ASP,
+    CYS,
+    GLN,
+    GLU,
+    GLY,
+    HIS,
+    ILE,
+    LEU,
+    LYS,
+    MET,
+    PHE,
+    PRO,
+    SER,
+    THR,
+    TRP,
+    TYR,
+    VAL,
+    A,
+    C,
+    G,
+    U,
+    I,
+    DA,
+    DC,
+    DG,
+    DT,
+    DI,
+    HOH,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum ResidueCategory {
+    Standard,
+    Hetero,
+    Ion,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum ResiduePosition {
+    None,
+    Internal,
+    NTerminal,
+    CTerminal,
+    FivePrime,
+    ThreePrime,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AtomResidueInfo {
     pub atom_name: String,
@@ -5,6 +57,9 @@ pub struct AtomResidueInfo {
     pub residue_id: i32,
     pub chain_id: char,
     pub insertion_code: char,
+    pub standard_name: Option<StandardResidue>,
+    pub category: ResidueCategory,
+    pub position: ResiduePosition,
 }
 
 impl AtomResidueInfo {
@@ -14,6 +69,9 @@ impl AtomResidueInfo {
         residue_id: i32,
         chain_id: char,
         insertion_code: Option<char>,
+        standard_name: Option<StandardResidue>,
+        category: ResidueCategory,
+        position: ResiduePosition,
     ) -> Self {
         Self {
             atom_name: atom_name.into(),
@@ -21,6 +79,9 @@ impl AtomResidueInfo {
             residue_id,
             chain_id,
             insertion_code: insertion_code.unwrap_or(' '),
+            standard_name,
+            category,
+            position,
         }
     }
 }
