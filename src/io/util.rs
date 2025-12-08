@@ -36,16 +36,19 @@ pub fn from_bio_topology(bio_topo: bf::Topology) -> Result<System, ConversionErr
             position: [bio_atom.pos.x, bio_atom.pos.y, bio_atom.pos.z],
         });
 
-        metadata.atom_info.push(AtomResidueInfo::new(
+        let info = AtomResidueInfo::builder(
             bio_atom.name.clone(),
             residue.name.clone(),
             residue.id,
             chain.id.chars().next().unwrap_or(' '),
-            residue.insertion_code,
-            convert_std_res_from_bf(residue.standard_name)?,
-            convert_res_cat_from_bf(residue.category)?,
-            convert_res_pos_from_bf(residue.position)?,
-        ));
+        )
+        .insertion_code_opt(residue.insertion_code)
+        .standard_name(convert_std_res_from_bf(residue.standard_name)?)
+        .category(convert_res_cat_from_bf(residue.category)?)
+        .position(convert_res_pos_from_bf(residue.position)?)
+        .build();
+
+        metadata.atom_info.push(info);
     }
 
     let bonds = bio_topo
