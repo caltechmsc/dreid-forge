@@ -1,5 +1,4 @@
 use crate::model::system::System;
-use error::Error;
 use std::collections::HashSet;
 use std::fmt;
 use std::io::{BufRead, Write};
@@ -13,6 +12,8 @@ mod mmcif;
 mod mol2;
 mod pdb;
 mod sdf;
+
+pub use error::Error;
 
 pub use bgf::writer::write as write_bgf;
 
