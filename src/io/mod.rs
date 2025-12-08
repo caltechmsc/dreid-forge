@@ -8,6 +8,7 @@ pub mod error;
 pub mod util;
 
 pub mod mmcif;
+pub mod mol2;
 pub mod pdb;
 
 pub use bio_forge::Template;
