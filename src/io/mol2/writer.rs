@@ -52,3 +52,46 @@ pub fn write<W: Write>(mut writer: W, system: &System) -> Result<(), Error> {
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::io::mol2::reader;
+    use crate::model::{
+        atom::Atom,
+        system::Bond,
+        types::{BondOrder, Element},
+    };
+    use std::io::Cursor;
+
+    #[test]
+    fn writes_and_reads_roundtrip() {
+        let system = System {
+            atoms: vec![
+                Atom::new(Element::C, [0.0, 0.0, 0.0]),
+                Atom::new(Element::O, [1.2, 0.0, 0.0]),
+                Atom::new(Element::N, [0.0, 1.1, 0.0]),
+            ],
+            bonds: vec![
+                Bond::new(0, 1, BondOrder::Double),
+                Bond::new(0, 2, BondOrder::Single),
+            ],
+            box_vectors: None,
+            bio_metadata: None,
+        };
+
+        let mut buf = Vec::new();
+        write(&mut buf, &system).expect("write mol2");
+
+        let parsed = reader::read(Cursor::new(buf)).expect("read mol2");
+        assert_eq!(parsed.atom_count(), system.atom_count());
+        assert_eq!(parsed.bond_count(), system.bond_count());
+        for (a, b) in system.atoms.iter().zip(parsed.atoms.iter()) {
+            assert_eq!(a.element, b.element);
+            for k in 0..3 {
+                assert!((a.position[k] - b.position[k]).abs() < 1e-4);
+            }
+        }
+        assert_eq!(parsed.bonds, system.bonds);
+    }
+}
