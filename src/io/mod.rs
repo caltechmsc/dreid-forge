@@ -2,11 +2,12 @@ use crate::model::system::System;
 use error::Error;
 use std::collections::HashSet;
 use std::fmt;
-use std::io::BufRead;
+use std::io::{BufRead, Write};
 
 pub mod error;
 pub mod util;
 
+pub mod mmcif;
 pub mod pdb;
 
 pub use bio_forge::Template;
@@ -176,6 +177,25 @@ impl<R: BufRead> BioReader<R> {
             Format::Pdb => pdb::reader::read(self),
             Format::Mmcif => mmcif::reader::read(self),
             _ => Err(Error::UnsupportedReadFormat(self.format)),
+        }
+    }
+}
+
+pub struct BioWriter<W: Write> {
+    writer: W,
+    format: Format,
+}
+
+impl<W: Write> BioWriter<W> {
+    pub fn new(writer: W, format: Format) -> Self {
+        Self { writer, format }
+    }
+
+    pub fn write(self, system: &System) -> Result<(), Error> {
+        match self.format {
+            Format::Pdb => pdb::writer::write(self.writer, system),
+            Format::Mmcif => mmcif::writer::write(self.writer, system),
+            _ => Err(Error::UnsupportedWriteFormat(self.format)),
         }
     }
 }
