@@ -761,9 +761,6 @@ fn build_molecules(bonds: &[Bond], atom_count: usize) -> Vec<usize> {
     let mut next_id = 1usize;
     let mut mol_ids = vec![0usize; atom_count];
     for (i, slot) in mol_ids.iter_mut().enumerate() {
-        if i >= atom_count {
-            break;
-        }
         let r = find(&mut parent, i);
         let id = *root_to_id.entry(r).or_insert_with(|| {
             let v = next_id;
