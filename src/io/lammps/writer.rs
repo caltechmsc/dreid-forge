@@ -1013,3 +1013,279 @@ impl TypeMapping {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::model::{
+        atom::Atom,
+        topology::{
+            AnglePotential, AtomParam, BondPotential, DihedralPotential, HBondPotential,
+            ImproperPotential, Potentials,
+        },
+        types::{BondOrder, Element},
+    };
+
+    fn complex_forged() -> ForgedSystem {
+        let atoms = vec![
+            Atom::new(Element::C, [0.0, 0.0, 0.0]),
+            Atom::new(Element::O, [1.2, 0.0, 0.1]),
+            Atom::new(Element::H, [2.1, -0.2, 0.0]),
+            Atom::new(Element::N, [0.5, 1.0, -0.3]),
+            Atom::new(Element::H, [4.5, 4.5, 4.5]),
+        ];
+
+        let bonds = vec![
+            Bond::new(0, 1, BondOrder::Single),
+            Bond::new(1, 2, BondOrder::Single),
+            Bond::new(0, 3, BondOrder::Single),
+        ];
+
+        let atom_properties = vec![
+            AtomParam {
+                charge: -0.1,
+                mass: 12.0,
+                type_idx: 0,
+            },
+            AtomParam {
+                charge: -0.2,
+                mass: 16.0,
+                type_idx: 1,
+            },
+            AtomParam {
+                charge: 0.3,
+                mass: 1.0,
+                type_idx: 2,
+            },
+            AtomParam {
+                charge: -0.05,
+                mass: 14.0,
+                type_idx: 3,
+            },
+            AtomParam {
+                charge: 0.1,
+                mass: 1.0,
+                type_idx: 2,
+            },
+        ];
+
+        let potentials = Potentials {
+            bonds: vec![
+                BondPotential::Harmonic {
+                    i: 0,
+                    j: 1,
+                    k_force: 700.0,
+                    r0: 1.23,
+                },
+                BondPotential::Morse {
+                    i: 1,
+                    j: 2,
+                    r0: 1.5,
+                    d0: 4.0,
+                    alpha: 2.0,
+                },
+                BondPotential::Harmonic {
+                    i: 0,
+                    j: 3,
+                    k_force: 700.0,
+                    r0: 1.23,
+                },
+            ],
+            angles: vec![
+                AnglePotential::CosineHarmonic {
+                    i: 0,
+                    j: 1,
+                    k: 2,
+                    k_force: 50.0,
+                    theta0: 109.5,
+                },
+                AnglePotential::ThetaHarmonic {
+                    i: 3,
+                    j: 0,
+                    k: 1,
+                    k_force: 40.0,
+                    theta0: 120.0,
+                },
+            ],
+            dihedrals: vec![DihedralPotential {
+                i: 2,
+                j: 1,
+                k: 0,
+                l: 3,
+                v_barrier: 2.5,
+                periodicity: 3,
+                phase_offset: 180.0,
+            }],
+            impropers: vec![
+                ImproperPotential::Planar {
+                    i: 0,
+                    j: 1,
+                    k: 2,
+                    l: 3,
+                    k_force: 10.0,
+                    chi0: 0.0,
+                },
+                ImproperPotential::Umbrella {
+                    center: 1,
+                    p1: 0,
+                    p2: 2,
+                    p3: 3,
+                    k_force: 5.0,
+                    psi0: 180.0,
+                },
+            ],
+            vdw_pairs: vec![
+                VdwPairPotential::LennardJones {
+                    type1_idx: 0,
+                    type2_idx: 1,
+                    sigma: 3.5,
+                    epsilon: 0.2,
+                },
+                VdwPairPotential::Exponential6 {
+                    type1_idx: 1,
+                    type2_idx: 3,
+                    a: 1000.0,
+                    b: 50.0,
+                    c: 2.0,
+                },
+            ],
+            h_bonds: vec![HBondPotential {
+                donor_idx: 1,
+                hydrogen_idx: 2,
+                acceptor_idx: 3,
+                d0: 1.5,
+                r0: 2.8,
+            }],
+        };
+
+        ForgedSystem {
+            system: crate::model::system::System {
+                atoms,
+                bonds,
+                box_vectors: Some([[5.0, 0.0, 0.0], [1.0, 6.0, 0.0], [0.5, 1.5, 7.0]]),
+                bio_metadata: None,
+            },
+            atom_types: vec!["C_3".into(), "O_2".into(), "H_".into(), "N_3".into()],
+            atom_properties,
+            potentials,
+        }
+    }
+
+    fn write_outputs(forged: &ForgedSystem, cfg: &LammpsConfig) -> (String, String) {
+        let mut data_buf = Vec::new();
+        let mut settings_buf = Vec::new();
+        write_data_file(&mut data_buf, forged, cfg).expect("write data");
+        write_settings_file(&mut settings_buf, forged, cfg).expect("write settings");
+        (
+            String::from_utf8(data_buf).unwrap(),
+            String::from_utf8(settings_buf).unwrap(),
+        )
+    }
+
+    #[test]
+    fn data_file_covers_counts_coeffs_atoms_and_tilt() {
+        let forged = complex_forged();
+        let cfg = LammpsConfig::default();
+        let (data_out, _) = write_outputs(&forged, &cfg);
+
+        for expected in [
+            "5 atoms",
+            "3 bonds",
+            "2 angles",
+            "1 dihedrals",
+            "2 impropers",
+            "4 atom types",
+            "2 bond types",
+            "2 angle types",
+            "1 dihedral types",
+            "2 improper types",
+        ] {
+            assert!(data_out.contains(expected), "missing line: {expected}");
+        }
+
+        assert!(data_out.contains("0.000000 5.000000 xlo xhi"));
+        assert!(data_out.contains("0.000000 6.000000 ylo yhi"));
+        assert!(data_out.contains("0.000000 7.000000 zlo zhi"));
+        assert!(data_out.contains("1.000000 0.500000 1.500000 xy xz yz"));
+
+        assert!(data_out.contains("Bond Coeffs"));
+        assert!(data_out.contains("1 harmonic 700.000000 1.230000"));
+        assert!(data_out.contains("2 morse 4.000000 2.000000 1.500000"));
+        assert!(data_out.contains("Angle Coeffs"));
+        assert!(data_out.contains("1 cosine/squared 50.000000 109.500000"));
+        assert!(data_out.contains("2 harmonic 40.000000 120.000000"));
+        assert!(data_out.contains("Dihedral Coeffs"));
+        assert!(data_out.contains("1 charmm 2.500000 3 180.000000 0.0"));
+        assert!(data_out.contains("Improper Coeffs"));
+        assert!(data_out.contains("1 cvff 10.000000 -1.0 2 0.000000"));
+        assert!(data_out.contains("2 umbrella 5.000000 180.000000"));
+
+        let lines: Vec<&str> = data_out.lines().collect();
+        let atoms_start = lines
+            .iter()
+            .position(|l| l.starts_with("Atoms #"))
+            .expect("Atoms section header present");
+        let atom_lines: Vec<&str> = lines
+            .iter()
+            .skip(atoms_start + 1)
+            .skip_while(|l| l.trim().is_empty())
+            .take_while(|l| !l.trim().is_empty())
+            .copied()
+            .collect();
+        let atom5 = atom_lines
+            .iter()
+            .find(|l| l.trim_start().starts_with("5 "))
+            .copied()
+            .expect("atom 5 line present");
+        let parts: Vec<&str> = atom5.split_whitespace().collect();
+        assert_eq!(parts[0], "5");
+        assert_eq!(parts[1], "2", "atom 5 molecule id");
+        assert_eq!(parts[2], "3", "atom 5 type id");
+
+        assert!(data_out.contains("1    1      1      2"));
+        assert!(data_out.contains("2    2      2      3"));
+        assert!(data_out.contains("3    1      1      4"));
+        assert!(data_out.contains("Angles"));
+        assert!(data_out.contains("1    1      1      2      3"));
+        assert!(data_out.contains("2    2      4      1      2"));
+    }
+
+    #[test]
+    fn settings_file_covers_styles_pair_and_hbond() {
+        let forged = complex_forged();
+        let cfg = LammpsConfig::default();
+        let (_, settings_out) = write_outputs(&forged, &cfg);
+
+        assert!(settings_out.contains("bond_style     hybrid harmonic morse"));
+        assert!(settings_out.contains("angle_style    hybrid cosine/squared harmonic"));
+        assert!(settings_out.contains("dihedral_style charmm"));
+        assert!(settings_out.contains("improper_style hybrid cvff umbrella"));
+
+        assert!(settings_out.contains("pair_style      hybrid/overlay lj/cut/coul/long 12.000 buck/coul/long 12.000 hbond/dreiding/lj 4 10.000 12.000 90.000"));
+        assert!(settings_out.contains("kspace_style    pppm 1.0e-4"));
+
+        assert!(settings_out.contains("pair_coeff   1   2 lj/cut/coul/long 0.200000 3.500000"));
+        assert!(
+            settings_out
+                .contains("pair_coeff   2   4 buck/coul/long 1000.000000 50.000000 2.000000")
+        );
+        assert!(settings_out.contains("pair_coeff   3   4 hbond/dreiding/lj 1.500000 2.800000"));
+    }
+
+    #[test]
+    fn nonperiodic_uses_cutoff_only_and_no_kspace() {
+        let forged = complex_forged();
+        let mut cfg = LammpsConfig::default();
+        cfg.system_type = SystemType::NonPeriodic;
+        let (_, settings_out) = write_outputs(&forged, &cfg);
+
+        assert!(settings_out.contains("pair_style      hybrid/overlay lj/cut/coul/cut 12.000 buck/coul/cut 12.000 hbond/dreiding/lj 4 10.000 12.000 90.000"));
+        assert!(!settings_out.contains("kspace_style"));
+        assert!(settings_out.contains("pair_coeff   1   2 lj/cut/coul/cut 0.200000 3.500000"));
+        assert!(
+            settings_out
+                .contains("pair_coeff   2   4 buck/coul/cut 1000.000000 50.000000 2.000000")
+        );
+        assert!(settings_out.contains("pair_coeff   3   4 hbond/dreiding/lj 1.500000 2.800000"));
+    }
+}
