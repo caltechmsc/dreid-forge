@@ -185,3 +185,74 @@ fn parse_bonds(
 
     Ok(bonds)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::model::{atom::Atom, types::Element};
+    use std::io::Cursor;
+
+    fn sample_mol2() -> String {
+        r#"@<TRIPOS>MOLECULE
+        benzene
+        12 12 0 0 0
+        SMALL
+        NO_CHARGES
+        ****
+
+        @<TRIPOS>ATOM
+                1 C1         -0.7600    1.1691   -0.0005 C.ar    1  BENZENE       0.000
+                2 C2          0.6329    1.2447   -0.0012 C.ar    1  BENZENE       0.000
+                3 C3          1.3947    0.0765    0.0004 C.ar    1  BENZENE       0.000
+                4 C4          0.7641   -1.1677    0.0027 C.ar    1  BENZENE       0.000
+                5 C5         -0.6288   -1.2432    0.0001 C.ar    1  BENZENE       0.000
+                6 C6         -1.3907   -0.0751   -0.0015 C.ar    1  BENZENE       0.000
+                7 H7         -1.3536    2.0792    0.0005 H       1  BENZENE       0.000
+                8 H8          1.1243    2.2140   -0.0028 H       1  BENZENE       0.000
+                9 H9          2.4799    0.1355   -0.0000 H       1  BENZENE       0.000
+               10 H10         1.3576   -2.0778    0.0063 H       1  BENZENE       0.000
+               11 H11        -1.1202   -2.2126   -0.0005 H       1  BENZENE       0.000
+               12 H12        -2.4759   -0.1340   -0.0035 H       1  BENZENE       0.000
+        @<TRIPOS>BOND
+                1     1     2   ar
+                2     2     3   ar
+                3     3     4   ar
+                4     4     5   ar
+                5     5     6   ar
+                6     1     6   ar
+                7     1     7    1
+                8     2     8    1
+                9     3     9    1
+               10     4    10    1
+               11     5    11    1
+               12     6    12    1
+        "#
+        .to_string()
+    }
+
+    #[test]
+    fn parses_atoms_and_bonds() {
+        let system = read(Cursor::new(sample_mol2())).expect("parse mol2");
+        assert_eq!(system.atom_count(), 12);
+        assert_eq!(system.bond_count(), 12);
+        assert_eq!(
+            system.atoms[0],
+            Atom::new(Element::C, [-0.7600, 1.1691, -0.0005])
+        );
+        assert_eq!(system.bonds[0].i, 0);
+        assert_eq!(system.bonds[0].j, 1);
+        assert_eq!(system.bonds[0].order, BondOrder::Aromatic);
+        assert_eq!(system.bonds[6].order, BondOrder::Single);
+    }
+
+    #[test]
+    fn errors_on_unknown_bond_type() {
+        let mut bad = sample_mol2();
+        bad = bad.replace("ar", "xx");
+        let err = read(Cursor::new(bad)).expect_err("bond type should fail");
+        match err {
+            Error::Parse { format, .. } => assert_eq!(format, Format::Mol2),
+            other => panic!("unexpected error: {other:?}"),
+        }
+    }
+}
