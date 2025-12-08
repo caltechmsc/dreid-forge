@@ -152,6 +152,25 @@ impl<R: BufRead> ChemReader<R> {
     }
 }
 
+pub struct ChemWriter<W: Write> {
+    writer: W,
+    format: Format,
+}
+
+impl<W: Write> ChemWriter<W> {
+    pub fn new(writer: W, format: Format) -> Self {
+        Self { writer, format }
+    }
+
+    pub fn write(self, system: &System) -> Result<(), Error> {
+        match self.format {
+            Format::Mol2 => mol2::writer::write(self.writer, system),
+            Format::Sdf => sdf::writer::write(self.writer, system),
+            _ => Err(Error::UnsupportedWriteFormat(self.format)),
+        }
+    }
+}
+
 pub struct BioReader<R: BufRead> {
     reader: R,
     format: Format,
