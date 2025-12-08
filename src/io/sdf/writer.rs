@@ -8,7 +8,7 @@ pub fn write<W: Write>(mut writer: W, system: &System) -> Result<(), Error> {
 
     writeln!(writer, "SDF Export")?;
     writeln!(writer, "dreid-forge")?;
-    writeln!(writer, "")?;
+    writeln!(writer)?;
     writeln!(
         writer,
         "{:>3}{:>3}  0  0  0  0  0  0  0  0  0999 V2000",
