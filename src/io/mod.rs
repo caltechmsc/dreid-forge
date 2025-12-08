@@ -133,6 +133,25 @@ impl fmt::Display for Format {
     }
 }
 
+pub struct ChemReader<R: BufRead> {
+    reader: R,
+    format: Format,
+}
+
+impl<R: BufRead> ChemReader<R> {
+    pub fn new(reader: R, format: Format) -> Self {
+        Self { reader, format }
+    }
+
+    pub fn read(self) -> Result<System, Error> {
+        match self.format {
+            Format::Mol2 => mol2::reader::read(self.reader),
+            Format::Sdf => sdf::reader::read(self.reader),
+            _ => Err(Error::UnsupportedReadFormat(self.format)),
+        }
+    }
+}
+
 pub struct BioReader<R: BufRead> {
     reader: R,
     format: Format,
