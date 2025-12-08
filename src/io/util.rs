@@ -367,6 +367,79 @@ fn convert_res_pos_to_bf(pos: ResiduePosition) -> Result<bf::ResiduePosition, Co
     })
 }
 
+pub fn guess_element_symbol(token: &str) -> Option<Element> {
+    if token.trim().is_empty() {
+        return None;
+    }
+
+    let mut candidates = Vec::new();
+    let mut seen = HashSet::new();
+    let push = |s: String, candidates: &mut Vec<String>, seen: &mut HashSet<String>| {
+        if seen.insert(s.clone()) {
+            candidates.push(s);
+        }
+    };
+    let trimmed = token.trim();
+    push(trimmed.to_string(), &mut candidates, &mut seen);
+
+    let alpha_prefix: String = trimmed
+        .chars()
+        .take_while(|c| c.is_ascii_alphabetic())
+        .collect();
+    if !alpha_prefix.is_empty() {
+        push(alpha_prefix.clone(), &mut candidates, &mut seen);
+        let mut chars = alpha_prefix.chars();
+        if let Some(first) = chars.next() {
+            let mut canon = String::new();
+            canon.push(first.to_ascii_uppercase());
+            for c in chars {
+                canon.push(c.to_ascii_lowercase());
+            }
+            push(canon, &mut candidates, &mut seen);
+        }
+    }
+
+    if let Some(chunk) = trimmed
+        .split(|c: char| c == '.' || c == '-' || c == '_')
+        .next()
+    {
+        if !chunk.is_empty() {
+            push(chunk.to_string(), &mut candidates, &mut seen);
+        }
+    }
+
+    let mut chars = trimmed.chars();
+    if let Some(first) = chars.next() {
+        if let Some(second) = chars.next() {
+            if second.is_ascii_alphabetic() {
+                push(
+                    format!(
+                        "{}{}",
+                        first.to_ascii_uppercase(),
+                        second.to_ascii_lowercase()
+                    ),
+                    &mut candidates,
+                    &mut seen,
+                );
+            }
+        }
+        push(
+            first.to_ascii_uppercase().to_string(),
+            &mut candidates,
+            &mut seen,
+        );
+    }
+
+    push(trimmed.to_ascii_uppercase(), &mut candidates, &mut seen);
+
+    for cand in candidates {
+        if let Ok(el) = Element::from_str(&cand) {
+            return Some(el);
+        }
+    }
+    None
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
