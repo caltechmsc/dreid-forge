@@ -47,10 +47,8 @@ pub fn write<W: Write>(mut writer: W, forged: &ForgedSystem) -> Result<(), Error
         resid_map.entry(key).or_insert_with(|| {
             let last = last_resid_per_chain.get(&info.chain_id).copied();
             let mut assigned = info.residue_id;
-            if let Some(prev) = last {
-                if assigned <= prev {
-                    assigned = prev + 1;
-                }
+            if let Some(prev) = last.filter(|p| assigned <= *p) {
+                assigned = prev + 1;
             }
             last_resid_per_chain.insert(info.chain_id, assigned);
             assigned
