@@ -174,6 +174,7 @@ impl<R: BufRead> BioReader<R> {
     pub fn read(self) -> Result<System, Error> {
         match self.format {
             Format::Pdb => pdb::reader::read(self),
+            Format::Mmcif => mmcif::reader::read(self),
             _ => Err(Error::UnsupportedReadFormat(self.format)),
         }
     }
