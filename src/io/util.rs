@@ -400,10 +400,7 @@ pub fn guess_element_symbol(token: &str) -> Option<Element> {
         }
     }
 
-    if let Some(chunk) = trimmed
-        .split(|c: char| c == '.' || c == '-' || c == '_')
-        .next()
-    {
+    if let Some(chunk) = trimmed.split(['.', '-', '_']).next() {
         if !chunk.is_empty() {
             push(chunk.to_string(), &mut candidates, &mut seen);
         }
