@@ -1,5 +1,8 @@
+use crate::model::system::System;
+use error::Error;
 use std::collections::HashSet;
 use std::fmt;
+use std::io::BufRead;
 
 pub mod error;
 pub mod util;
@@ -123,6 +126,55 @@ impl fmt::Display for Format {
             Format::Mol2 => write!(f, "MOL2"),
             Format::Bgf => write!(f, "BGF"),
             Format::Lammps => write!(f, "LAMMPS"),
+        }
+    }
+}
+
+pub struct BioReader<R: BufRead> {
+    reader: R,
+    format: Format,
+    clean_config: Option<CleanConfig>,
+    protonation_config: ProtonationConfig,
+    solvate_config: Option<SolvateConfig>,
+    topology_config: TopologyConfig,
+}
+
+impl<R: BufRead> BioReader<R> {
+    pub fn new(reader: R, format: Format) -> Self {
+        Self {
+            reader,
+            format,
+            clean_config: None,
+            protonation_config: ProtonationConfig::default(),
+            solvate_config: None,
+            topology_config: TopologyConfig::default(),
+        }
+    }
+
+    pub fn clean(mut self, config: CleanConfig) -> Self {
+        self.clean_config = Some(config);
+        self
+    }
+
+    pub fn protonate(mut self, config: ProtonationConfig) -> Self {
+        self.protonation_config = config;
+        self
+    }
+
+    pub fn solvate(mut self, config: SolvateConfig) -> Self {
+        self.solvate_config = Some(config);
+        self
+    }
+
+    pub fn topology(mut self, config: TopologyConfig) -> Self {
+        self.topology_config = config;
+        self
+    }
+
+    pub fn read(self) -> Result<System, Error> {
+        match self.format {
+            Format::Pdb => pdb::reader::read(self),
+            _ => Err(Error::UnsupportedReadFormat(self.format)),
         }
     }
 }
