@@ -147,6 +147,30 @@ mod tests {
     }
 
     #[test]
+    fn atom_residue_info_accepts_into_inputs() {
+        let atom_name = String::from("O1");
+        let residue_name = "LIG";
+        let info = AtomResidueInfo::new(
+            atom_name,
+            residue_name,
+            7,
+            'Z',
+            Some('1'),
+            None,
+            ResidueCategory::Hetero,
+            ResiduePosition::CTerminal,
+        );
+        assert_eq!(info.atom_name, "O1");
+        assert_eq!(info.residue_name, "LIG");
+        assert_eq!(info.residue_id, 7);
+        assert_eq!(info.chain_id, 'Z');
+        assert_eq!(info.insertion_code, '1');
+        assert_eq!(info.standard_name, None);
+        assert_eq!(info.category, ResidueCategory::Hetero);
+        assert_eq!(info.position, ResiduePosition::CTerminal);
+    }
+
+    #[test]
     fn bio_metadata_new_and_capacity() {
         let mut bm = BioMetadata::with_capacity(4);
         assert!(bm.atom_info.capacity() >= 4);
