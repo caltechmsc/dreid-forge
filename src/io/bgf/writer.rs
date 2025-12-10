@@ -6,7 +6,7 @@ use std::io::Write;
 
 const DEFAULT_HEADERS: [&str; 2] = ["BIOGRF  332", "FORCEFIELD DREIDING"];
 const FORMAT_ATOM: &str =
-    "FORMAT ATOM   (a6,1x,i5,1x,a5,1x,a3,1x,a1,1x,a5,3f10.5,1x,a5,i3,i2,1x,f8.5)";
+    "FORMAT ATOM   (a6,1x,i5,1x,a5,1x,a3,1x,a1,1x,a5,3f10.5,1x,a5,i3,i2,1x,f8.5,f10.5)";
 const FORMAT_CONECT: &str = "FORMAT CONECT (a6,12i6)";
 
 pub fn write<W: Write>(mut writer: W, forged: &ForgedSystem) -> Result<(), Error> {
@@ -103,11 +103,11 @@ pub fn write<W: Write>(mut writer: W, forged: &ForgedSystem) -> Result<(), Error
 
         writeln!(
             writer,
-            "{:<6}{:>5} {:<5} {:>3} {:1} {:>5}{:>10.5}{:>10.5}{:>10.5} {:<5}{:>3}{:>2}{:>8.5}",
-            record,
+            "{:<6} {:>5} {:<5} {:<3} {:1} {:>5}{:>10.5}{:>10.5}{:>10.5} {:<5}{:>3}{:>2} {:>8.5}{:>10.5}",
+            fit_left(record, 6),
             serial + 1,
             fit_left(&info.atom_name, 5),
-            fit_right(&info.residue_name, 3),
+            fit_left(&info.residue_name, 3),
             info.chain_id,
             resid_out,
             atom.position[0],
@@ -117,6 +117,7 @@ pub fn write<W: Write>(mut writer: W, forged: &ForgedSystem) -> Result<(), Error
             atoms_connected,
             lone_pairs,
             props.charge,
+            atom.element.atomic_mass(),
         )?;
     }
 
@@ -150,14 +151,6 @@ fn fit_left(text: &str, width: usize) -> String {
         s.truncate(width);
     }
     format!("{:<width$}", s, width = width)
-}
-
-fn fit_right(text: &str, width: usize) -> String {
-    let mut s = text.trim().to_string();
-    if s.len() > width {
-        s.truncate(width);
-    }
-    format!("{:>width$}", s, width = width)
 }
 
 #[cfg(test)]
