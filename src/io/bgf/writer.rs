@@ -269,29 +269,110 @@ mod tests {
             .filter(|l| l.starts_with("ATOM") || l.starts_with("HETATM"))
             .collect();
         assert_eq!(atom_lines.len(), forged.system.atom_count());
-
-        let fields: Vec<Vec<_>> = atom_lines
-            .iter()
-            .map(|l| l.split_whitespace().collect())
-            .collect();
-        assert_eq!(fields[0][0], "ATOM");
-        assert_eq!(fields[0][2], "CA");
-        assert_eq!(fields[0][3], "GLY");
-        assert_eq!(fields[0][4], "A");
-
-        assert_eq!(fields[1][2], "N");
-        assert_eq!(fields[1][3], "GLY");
-        assert_eq!(fields[1][4], "A");
-
-        assert_eq!(fields[2][0], "HETATM");
-        assert_eq!(fields[2][2], "C1");
-        assert_eq!(fields[2][3], "LIG");
-        assert_eq!(fields[2][4], "B");
-
-        for (i, line) in atom_lines.iter().enumerate() {
-            let serial: usize = line[6..12].trim().parse().unwrap();
-            assert_eq!(serial, i + 1);
-        }
+        assert_columns(
+            atom_lines[0],
+            &[
+                (0..6, format!("{:<6}", "ATOM")),
+                (6..7, " ".into()),
+                (7..12, format!("{:>5}", 1)),
+                (12..13, " ".into()),
+                (13..18, format!("{:<5}", "CA")),
+                (18..19, " ".into()),
+                (19..22, format!("{:<3}", "GLY")),
+                (22..23, " ".into()),
+                (23..24, "A".into()),
+                (24..25, " ".into()),
+                (25..30, format!("{:>5}", 1)),
+                (30..40, format!("{:>10.5}", 1.0)),
+                (40..50, format!("{:>10.5}", 0.0)),
+                (50..60, format!("{:>10.5}", 0.0)),
+                (60..61, " ".into()),
+                (61..66, format!("{:<5}", "C_3")),
+                (66..69, format!("{:>3}", 2)),
+                (69..71, format!("{:>2}", 0)),
+                (71..72, " ".into()),
+                (72..80, format!("{:>8.5}", 0.1)),
+                (80..90, format!("{:>10.5}", Element::C.atomic_mass())),
+            ],
+        );
+        assert_columns(
+            atom_lines[1],
+            &[
+                (0..6, format!("{:<6}", "ATOM")),
+                (6..7, " ".into()),
+                (7..12, format!("{:>5}", 2)),
+                (12..13, " ".into()),
+                (13..18, format!("{:<5}", "N")),
+                (18..19, " ".into()),
+                (19..22, format!("{:<3}", "GLY")),
+                (22..23, " ".into()),
+                (23..24, "A".into()),
+                (24..25, " ".into()),
+                (25..30, format!("{:>5}", 1)),
+                (30..40, format!("{:>10.5}", 0.0)),
+                (40..50, format!("{:>10.5}", 0.0)),
+                (50..60, format!("{:>10.5}", 0.0)),
+                (60..61, " ".into()),
+                (61..66, format!("{:<5}", "N_R")),
+                (66..69, format!("{:>3}", 1)),
+                (69..71, format!("{:>2}", 0)),
+                (71..72, " ".into()),
+                (72..80, format!("{:>8.5}", -0.3)),
+                (80..90, format!("{:>10.5}", Element::N.atomic_mass())),
+            ],
+        );
+        assert_columns(
+            atom_lines[2],
+            &[
+                (0..6, format!("{:<6}", "HETATM")),
+                (6..7, " ".into()),
+                (7..12, format!("{:>5}", 3)),
+                (12..13, " ".into()),
+                (13..18, format!("{:<5}", "C1")),
+                (18..19, " ".into()),
+                (19..22, format!("{:<3}", "LIG")),
+                (22..23, " ".into()),
+                (23..24, "B".into()),
+                (24..25, " ".into()),
+                (25..30, format!("{:>5}", 2)),
+                (30..40, format!("{:>10.5}", 3.0)),
+                (40..50, format!("{:>10.5}", 0.0)),
+                (50..60, format!("{:>10.5}", 0.0)),
+                (60..61, " ".into()),
+                (61..66, format!("{:<5}", "C_3")),
+                (66..69, format!("{:>3}", 1)),
+                (69..71, format!("{:>2}", 0)),
+                (71..72, " ".into()),
+                (72..80, format!("{:>8.5}", 0.0)),
+                (80..90, format!("{:>10.5}", Element::C.atomic_mass())),
+            ],
+        );
+        assert_columns(
+            atom_lines[3],
+            &[
+                (0..6, format!("{:<6}", "HETATM")),
+                (6..7, " ".into()),
+                (7..12, format!("{:>5}", 4)),
+                (12..13, " ".into()),
+                (13..18, format!("{:<5}", "O1")),
+                (18..19, " ".into()),
+                (19..22, format!("{:<3}", "LIG")),
+                (22..23, " ".into()),
+                (23..24, "B".into()),
+                (24..25, " ".into()),
+                (25..30, format!("{:>5}", 2)),
+                (30..40, format!("{:>10.5}", 2.0)),
+                (40..50, format!("{:>10.5}", 0.0)),
+                (50..60, format!("{:>10.5}", 0.0)),
+                (60..61, " ".into()),
+                (61..66, format!("{:<5}", "O_2")),
+                (66..69, format!("{:>3}", 2)),
+                (69..71, format!("{:>2}", 0)),
+                (71..72, " ".into()),
+                (72..80, format!("{:>8.5}", -0.2)),
+                (80..90, format!("{:>10.5}", Element::O.atomic_mass())),
+            ],
+        );
 
         let conect_lines: Vec<_> = lines.iter().filter(|l| l.starts_with("CONECT")).collect();
         assert!(!conect_lines.is_empty());
@@ -417,11 +498,10 @@ mod tests {
             .lines()
             .filter(|l| l.starts_with("ATOM") || l.starts_with("HETATM"))
             .collect();
-        let res_ids: Vec<i32> = atoms_out
-            .iter()
-            .map(|l| l.split_whitespace().nth(5).unwrap().parse::<i32>().unwrap())
-            .collect();
-        assert_eq!(res_ids, vec![10, 11, 12]);
+        assert_eq!(atoms_out.len(), 3, "expected three atoms");
+        assert_columns(atoms_out[0], &[(25..30, format!("{:>5}", 10))]);
+        assert_columns(atoms_out[1], &[(25..30, format!("{:>5}", 11))]);
+        assert_columns(atoms_out[2], &[(25..30, format!("{:>5}", 12))]);
     }
 
     #[test]
@@ -461,9 +541,32 @@ mod tests {
             .lines()
             .find(|l| l.starts_with("ATOM") || l.starts_with("HETATM"))
             .unwrap();
-        assert!(
-            first.starts_with("HETATM"),
-            "water should be HETATM: {first}"
+        assert_eq!(first.len(), 90, "water atom line width");
+        assert_columns(
+            first,
+            &[
+                (0..6, format!("{:<6}", "HETATM")),
+                (6..7, " ".into()),
+                (7..12, format!("{:>5}", 1)),
+                (12..13, " ".into()),
+                (13..18, format!("{:<5}", "O")),
+                (18..19, " ".into()),
+                (19..22, format!("{:<3}", "HOH")),
+                (22..23, " ".into()),
+                (23..24, "A".into()),
+                (24..25, " ".into()),
+                (25..30, format!("{:>5}", 1)),
+                (30..40, format!("{:>10.5}", 0.0)),
+                (40..50, format!("{:>10.5}", 0.0)),
+                (50..60, format!("{:>10.5}", 0.0)),
+                (60..61, " ".into()),
+                (61..66, format!("{:<5}", "O_2")),
+                (66..69, format!("{:>3}", 0)),
+                (69..71, format!("{:>2}", 0)),
+                (71..72, " ".into()),
+                (72..80, format!("{:>8.5}", 0.0)),
+                (80..90, format!("{:>10.5}", Element::O.atomic_mass())),
+            ],
         );
     }
 
