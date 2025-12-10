@@ -164,6 +164,24 @@ mod tests {
         types::{BondOrder, Element},
     };
 
+    fn assert_columns(line: &str, expected: &[(std::ops::Range<usize>, String)]) {
+        for (range, expected_text) in expected {
+            assert!(
+                line.len() >= range.end,
+                "line too short for range {}..{}: '{}'",
+                range.start,
+                range.end,
+                line
+            );
+            let actual = &line[range.clone()];
+            assert_eq!(
+                actual, expected_text,
+                "columns {}..{} mismatch: expected '{}' got '{}'",
+                range.start, range.end, expected_text, actual
+            );
+        }
+    }
+
     fn sample_forged_system() -> ForgedSystem {
         let atoms = vec![
             Atom::new(Element::N, [0.0, 0.0, 0.0]),
@@ -283,6 +301,52 @@ mod tests {
             .collect::<Vec<_>>()
             .join(" ");
         assert!(conect_body.contains(" 1") && conect_body.contains(" 2"));
+    }
+
+    #[test]
+    fn atom_lines_are_fixed_width() {
+        let forged = sample_forged_system();
+        let mut buf = Vec::new();
+        write(&mut buf, &forged).expect("write bgf");
+        let out = String::from_utf8(buf).expect("utf8");
+
+        let first_atom_line = out
+            .lines()
+            .find(|l| l.starts_with("ATOM") || l.starts_with("HETATM"))
+            .expect("atom line present");
+
+        assert_eq!(
+            first_atom_line.len(),
+            90,
+            "atom line width should be 90 characters"
+        );
+
+        assert_columns(
+            first_atom_line,
+            &[
+                (0..6, format!("{:<6}", "ATOM")),
+                (6..7, " ".into()),
+                (7..12, format!("{:>5}", 1)),
+                (12..13, " ".into()),
+                (13..18, format!("{:<5}", "CA")),
+                (18..19, " ".into()),
+                (19..22, format!("{:<3}", "GLY")),
+                (22..23, " ".into()),
+                (23..24, "A".into()),
+                (24..25, " ".into()),
+                (25..30, format!("{:>5}", 1)),
+                (30..40, format!("{:>10.5}", 1.0)),
+                (40..50, format!("{:>10.5}", 0.0)),
+                (50..60, format!("{:>10.5}", 0.0)),
+                (60..61, " ".into()),
+                (61..66, format!("{:<5}", "C_3")),
+                (66..69, format!("{:>3}", 2)),
+                (69..71, format!("{:>2}", 0)),
+                (71..72, " ".into()),
+                (72..80, format!("{:>8.5}", 0.1)),
+                (80..90, format!("{:>10.5}", Element::C.atomic_mass())),
+            ],
+        );
     }
 
     #[test]
