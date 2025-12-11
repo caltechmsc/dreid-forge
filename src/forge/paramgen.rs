@@ -207,3 +207,23 @@ fn generate_dihedral_potentials(
 
     Ok(dihedrals)
 }
+
+fn generate_improper_potentials(
+    intermediate: &IntermediateSystem,
+    params: &ForceFieldParams,
+) -> Result<Vec<ImproperPotential>, Error> {
+    let impropers = intermediate
+        .impropers
+        .iter()
+        .map(|imp| ImproperPotential::Planar {
+            i: imp.p1,
+            j: imp.center,
+            k: imp.p2,
+            l: imp.p3,
+            k_force: params.global.inversion_k,
+            chi0: 0.0,
+        })
+        .collect();
+
+    Ok(impropers)
+}
