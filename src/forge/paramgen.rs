@@ -227,3 +227,56 @@ fn generate_improper_potentials(
 
     Ok(impropers)
 }
+
+fn generate_vdw_potentials(
+    atom_types: &[String],
+    params: &ForceFieldParams,
+    config: &ForgeConfig,
+) -> Result<Vec<VdwPairPotential>, Error> {
+    let mut vdw_pairs = Vec::new();
+
+    for (idx1, type1) in atom_types.iter().enumerate() {
+        for (idx2, type2) in atom_types.iter().enumerate().skip(idx1) {
+            let params1 = params
+                .atoms
+                .get(type1)
+                .ok_or_else(|| Error::missing_parameter(type1, "vdW parameters"))?;
+            let params2 = params
+                .atoms
+                .get(type2)
+                .ok_or_else(|| Error::missing_parameter(type2, "vdW parameters"))?;
+
+            let r0_combined = 0.5 * (params1.vdw_r0 + params2.vdw_r0);
+            let d0_combined = (params1.vdw_d0 * params2.vdw_d0).sqrt();
+
+            vdw_pairs.push(match config.vdw_potential {
+                VdwPotentialType::LennardJones => {
+                    let sigma = r0_combined / 2.0_f64.powf(1.0 / 6.0);
+                    VdwPairPotential::LennardJones {
+                        type1_idx: idx1,
+                        type2_idx: idx2,
+                        sigma,
+                        epsilon: d0_combined,
+                    }
+                }
+                VdwPotentialType::Exponential6 => {
+                    let zeta = 0.5 * (params1.vdw_zeta + params2.vdw_zeta);
+
+                    let a = d0_combined * 6.0 * (zeta / (zeta - 6.0)).exp() / (zeta - 6.0);
+                    let b = zeta / r0_combined;
+                    let c = d0_combined * zeta * r0_combined.powi(6) / (zeta - 6.0);
+
+                    VdwPairPotential::Exponential6 {
+                        type1_idx: idx1,
+                        type2_idx: idx2,
+                        a,
+                        b,
+                        c,
+                    }
+                }
+            });
+        }
+    }
+
+    Ok(vdw_pairs)
+}
