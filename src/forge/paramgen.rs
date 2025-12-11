@@ -14,6 +14,45 @@ use std::collections::{HashMap, HashSet};
 
 const H_BOND_DONOR_HYDROGEN_TYPE: &str = "H_HB";
 
+pub fn generate_parameters(
+    system: &System,
+    intermediate: &IntermediateSystem,
+    params: &ForceFieldParams,
+    config: &ForgeConfig,
+) -> Result<ForgedSystem, Error> {
+    let (atom_types, type_indices) = collect_atom_types(intermediate);
+
+    let atom_properties = generate_atom_properties(intermediate, &type_indices)?;
+
+    let bonds = generate_bond_potentials(intermediate, params, config)?;
+
+    let angles = generate_angle_potentials(intermediate, params, config)?;
+
+    let dihedrals = generate_dihedral_potentials(intermediate, params)?;
+
+    let impropers = generate_improper_potentials(intermediate, params)?;
+
+    let vdw_pairs = generate_vdw_potentials(&atom_types, params, config)?;
+
+    let h_bonds = generate_hbond_potentials(intermediate, params, config)?;
+
+    let potentials = Potentials {
+        bonds,
+        angles,
+        dihedrals,
+        impropers,
+        vdw_pairs,
+        h_bonds,
+    };
+
+    Ok(ForgedSystem {
+        system: system.clone(),
+        atom_types,
+        atom_properties,
+        potentials,
+    })
+}
+
 fn collect_atom_types(intermediate: &IntermediateSystem) -> (Vec<String>, HashMap<String, usize>) {
     let mut types_set = HashSet::new();
     for atom in &intermediate.atoms {
