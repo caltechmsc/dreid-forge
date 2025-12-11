@@ -108,3 +108,188 @@ fn bond_order_to_graph_order(order: BondOrder) -> GraphBondOrder {
         BondOrder::Aromatic => GraphBondOrder::Aromatic,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::forge::intermediate::{IntermediateSystem, PhysicalBondOrder};
+    use crate::model::atom::Atom;
+    use crate::model::system::{Bond, System};
+    use crate::model::types::Element;
+
+    fn make_water() -> System {
+        let mut sys = System::new();
+        sys.atoms.push(Atom::new(Element::O, [0.0, 0.0, 0.0]));
+        sys.atoms.push(Atom::new(Element::H, [0.96, 0.0, 0.0]));
+        sys.atoms.push(Atom::new(Element::H, [-0.24, 0.93, 0.0]));
+        sys.bonds.push(Bond::new(0, 1, BondOrder::Single));
+        sys.bonds.push(Bond::new(0, 2, BondOrder::Single));
+        sys
+    }
+
+    fn make_benzene() -> System {
+        let mut sys = System::new();
+        for i in 0..6 {
+            let angle = (i as f64) * std::f64::consts::PI / 3.0;
+            let x = 1.4 * angle.cos();
+            let y = 1.4 * angle.sin();
+            sys.atoms.push(Atom::new(Element::C, [x, y, 0.0]));
+        }
+        for i in 0..6 {
+            let angle = (i as f64) * std::f64::consts::PI / 3.0;
+            let x = 2.5 * angle.cos();
+            let y = 2.5 * angle.sin();
+            sys.atoms.push(Atom::new(Element::H, [x, y, 0.0]));
+        }
+        for i in 0..6 {
+            let j = (i + 1) % 6;
+            sys.bonds.push(Bond::new(i, j, BondOrder::Aromatic));
+        }
+        for i in 0..6 {
+            sys.bonds.push(Bond::new(i, i + 6, BondOrder::Single));
+        }
+        sys
+    }
+
+    fn make_ethane() -> System {
+        let mut sys = System::new();
+        sys.atoms.push(Atom::new(Element::C, [0.0, 0.0, 0.0]));
+        sys.atoms.push(Atom::new(Element::C, [1.54, 0.0, 0.0]));
+        sys.atoms.push(Atom::new(Element::H, [-0.36, 1.03, 0.0]));
+        sys.atoms.push(Atom::new(Element::H, [-0.36, -0.51, -0.89]));
+        sys.atoms.push(Atom::new(Element::H, [-0.36, -0.51, 0.89]));
+        sys.atoms.push(Atom::new(Element::H, [1.90, 1.03, 0.0]));
+        sys.atoms.push(Atom::new(Element::H, [1.90, -0.51, -0.89]));
+        sys.atoms.push(Atom::new(Element::H, [1.90, -0.51, 0.89]));
+        sys.bonds.push(Bond::new(0, 1, BondOrder::Single));
+        sys.bonds.push(Bond::new(0, 2, BondOrder::Single));
+        sys.bonds.push(Bond::new(0, 3, BondOrder::Single));
+        sys.bonds.push(Bond::new(0, 4, BondOrder::Single));
+        sys.bonds.push(Bond::new(1, 5, BondOrder::Single));
+        sys.bonds.push(Bond::new(1, 6, BondOrder::Single));
+        sys.bonds.push(Bond::new(1, 7, BondOrder::Single));
+        sys
+    }
+
+    #[test]
+    fn types_water_atoms_correctly() {
+        let water = make_water();
+        let mut int = IntermediateSystem::from_system(&water).unwrap();
+        assign_atom_types(&mut int, None).unwrap();
+
+        assert_eq!(int.atoms[0].atom_type, "O_3");
+        assert_eq!(int.atoms[1].atom_type, "H_HB");
+        assert_eq!(int.atoms[2].atom_type, "H_HB");
+    }
+
+    #[test]
+    fn populates_water_topology() {
+        let water = make_water();
+        let mut int = IntermediateSystem::from_system(&water).unwrap();
+        assign_atom_types(&mut int, None).unwrap();
+
+        assert_eq!(int.angles.len(), 1);
+        assert!(int.dihedrals.is_empty());
+        assert!(int.impropers.is_empty());
+    }
+
+    #[test]
+    fn types_ethane_atoms_correctly() {
+        let ethane = make_ethane();
+        let mut int = IntermediateSystem::from_system(&ethane).unwrap();
+        assign_atom_types(&mut int, None).unwrap();
+
+        assert_eq!(int.atoms[0].atom_type, "C_3");
+        assert_eq!(int.atoms[1].atom_type, "C_3");
+        for i in 2..8 {
+            assert_eq!(int.atoms[i].atom_type, "H_");
+        }
+    }
+
+    #[test]
+    fn populates_ethane_topology() {
+        let ethane = make_ethane();
+        let mut int = IntermediateSystem::from_system(&ethane).unwrap();
+        assign_atom_types(&mut int, None).unwrap();
+
+        assert!(!int.angles.is_empty());
+        assert_eq!(int.dihedrals.len(), 9);
+        assert!(int.impropers.is_empty());
+    }
+
+    #[test]
+    fn types_benzene_carbons_as_resonant() {
+        let benzene = make_benzene();
+        let mut int = IntermediateSystem::from_system(&benzene).unwrap();
+        assign_atom_types(&mut int, None).unwrap();
+
+        for i in 0..6 {
+            assert_eq!(int.atoms[i].atom_type, "C_R");
+        }
+        for i in 6..12 {
+            assert_eq!(int.atoms[i].atom_type, "H_");
+        }
+    }
+
+    #[test]
+    fn sets_aromatic_bonds_to_resonant() {
+        let benzene = make_benzene();
+        let mut int = IntermediateSystem::from_system(&benzene).unwrap();
+        assign_atom_types(&mut int, None).unwrap();
+
+        for bond in &int.bonds {
+            if bond.i < 6 && bond.j < 6 {
+                assert_eq!(bond.physical_order, Some(PhysicalBondOrder::Resonant));
+            }
+        }
+    }
+
+    #[test]
+    fn generates_impropers_for_planar_centers() {
+        let benzene = make_benzene();
+        let mut int = IntermediateSystem::from_system(&benzene).unwrap();
+        assign_atom_types(&mut int, None).unwrap();
+
+        assert_eq!(int.impropers.len(), 6);
+    }
+
+    #[test]
+    fn errors_on_invalid_custom_rules() {
+        let water = make_water();
+        let mut int = IntermediateSystem::from_system(&water).unwrap();
+
+        let invalid_rules = "not valid [[[ toml rules";
+        let result = assign_atom_types(&mut int, Some(invalid_rules));
+        assert!(matches!(result, Err(Error::RuleParse(_))));
+    }
+
+    #[test]
+    fn element_conversion_common_elements() {
+        assert_eq!(convert_element(Element::C).unwrap(), TyperElement::C);
+        assert_eq!(convert_element(Element::N).unwrap(), TyperElement::N);
+        assert_eq!(convert_element(Element::O).unwrap(), TyperElement::O);
+        assert_eq!(convert_element(Element::H).unwrap(), TyperElement::H);
+        assert_eq!(convert_element(Element::S).unwrap(), TyperElement::S);
+        assert_eq!(convert_element(Element::P).unwrap(), TyperElement::P);
+    }
+
+    #[test]
+    fn bond_order_conversion_all_variants() {
+        assert_eq!(
+            bond_order_to_graph_order(BondOrder::Single),
+            GraphBondOrder::Single
+        );
+        assert_eq!(
+            bond_order_to_graph_order(BondOrder::Double),
+            GraphBondOrder::Double
+        );
+        assert_eq!(
+            bond_order_to_graph_order(BondOrder::Triple),
+            GraphBondOrder::Triple
+        );
+        assert_eq!(
+            bond_order_to_graph_order(BondOrder::Aromatic),
+            GraphBondOrder::Aromatic
+        );
+    }
+}
