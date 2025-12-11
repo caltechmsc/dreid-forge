@@ -202,3 +202,159 @@ pub fn is_oxygen_column(element: crate::model::types::Element) -> bool {
     use crate::model::types::Element;
     matches!(element, Element::O | Element::S | Element::Se | Element::Te)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::model::types::Element;
+
+    #[test]
+    fn default_parameters_load_common_types() {
+        let params = get_default_parameters();
+        assert!(params.atoms.contains_key("C_3"));
+        assert!(params.atoms.contains_key("C_2"));
+        assert!(params.atoms.contains_key("C_R"));
+        assert!(params.atoms.contains_key("O_3"));
+        assert!(params.atoms.contains_key("N_3"));
+        assert!(params.atoms.contains_key("H_"));
+        assert!(params.atoms.contains_key("H_HB"));
+    }
+
+    #[test]
+    fn custom_parameters_parse_valid_toml() {
+        let custom = r#"
+            [global]
+            bond_k = 800.0
+
+            [atoms.C_3]
+            bond_radius = 0.77
+            bond_angle = 109.47
+            vdw_r0 = 3.90
+            vdw_d0 = 0.095
+        "#;
+        let params = load_parameters(Some(custom)).unwrap();
+        assert_eq!(params.global.bond_k, 800.0);
+        assert!(params.atoms.contains_key("C_3"));
+    }
+
+    #[test]
+    fn errors_on_invalid_custom_toml() {
+        let invalid = "not valid [[[toml";
+        let result = load_parameters(Some(invalid));
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn global_params_default_values() {
+        let global = GlobalParams::default();
+        assert_eq!(global.bond_k, 700.0);
+        assert_eq!(global.bond_d, 70.0);
+        assert_eq!(global.angle_k, 100.0);
+        assert_eq!(global.inversion_k, 40.0);
+        assert_eq!(global.bond_delta, 0.01);
+    }
+
+    #[test]
+    fn hydrogen_bond_params_default_values() {
+        let hb = HydrogenBondParams::default();
+        assert_eq!(hb.r0, 2.75);
+        assert_eq!(hb.d0_no_charge, 9.0);
+        assert_eq!(hb.d0_explicit, 4.0);
+    }
+
+    #[test]
+    fn torsion_sp3_sp3_standard() {
+        let params = get_torsion_params(
+            Hybridization::SP3,
+            Hybridization::SP3,
+            false,
+            false,
+            Hybridization::SP3,
+        );
+        let p = params.expect("should have torsion params");
+        assert_eq!(p.periodicity, 3);
+        assert_eq!(p.v_barrier, 2.0);
+        assert_eq!(p.phase_offset, 180.0);
+    }
+
+    #[test]
+    fn torsion_sp2_sp2_double_bond() {
+        let params = get_torsion_params(
+            Hybridization::SP2,
+            Hybridization::SP2,
+            false,
+            false,
+            Hybridization::SP3,
+        );
+        let p = params.expect("should have torsion params");
+        assert_eq!(p.periodicity, 2);
+        assert_eq!(p.v_barrier, 45.0);
+        assert_eq!(p.phase_offset, 180.0);
+    }
+
+    #[test]
+    fn torsion_resonant_resonant() {
+        let params = get_torsion_params(
+            Hybridization::Resonant,
+            Hybridization::Resonant,
+            false,
+            false,
+            Hybridization::Resonant,
+        );
+        let p = params.expect("should have torsion params");
+        assert_eq!(p.periodicity, 2);
+        assert_eq!(p.v_barrier, 25.0);
+    }
+
+    #[test]
+    fn torsion_sp2_resonant_mixed() {
+        let params = get_torsion_params(
+            Hybridization::SP2,
+            Hybridization::Resonant,
+            false,
+            false,
+            Hybridization::SP3,
+        );
+        let p = params.expect("should have torsion params");
+        assert_eq!(p.v_barrier, 5.0);
+        assert_eq!(p.periodicity, 2);
+    }
+
+    #[test]
+    fn torsion_oxygen_column_sp3_sp3() {
+        let params = get_torsion_params(
+            Hybridization::SP3,
+            Hybridization::SP3,
+            true,
+            true,
+            Hybridization::SP3,
+        );
+        let p = params.expect("should have torsion params");
+        assert_eq!(p.periodicity, 2);
+        assert_eq!(p.phase_offset, 90.0);
+    }
+
+    #[test]
+    fn torsion_none_for_sp1() {
+        assert!(
+            get_torsion_params(
+                Hybridization::SP,
+                Hybridization::SP3,
+                false,
+                false,
+                Hybridization::SP3
+            )
+            .is_none()
+        );
+    }
+
+    #[test]
+    fn oxygen_column_detection() {
+        assert!(is_oxygen_column(Element::O));
+        assert!(is_oxygen_column(Element::S));
+        assert!(is_oxygen_column(Element::Se));
+        assert!(is_oxygen_column(Element::Te));
+        assert!(!is_oxygen_column(Element::C));
+        assert!(!is_oxygen_column(Element::N));
+    }
+}
