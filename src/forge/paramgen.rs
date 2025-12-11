@@ -280,3 +280,46 @@ fn generate_vdw_potentials(
 
     Ok(vdw_pairs)
 }
+
+fn generate_hbond_potentials(
+    intermediate: &IntermediateSystem,
+    params: &ForceFieldParams,
+    config: &ForgeConfig,
+) -> Result<Vec<HBondPotential>, Error> {
+    let mut h_bonds = Vec::new();
+
+    let d0 = match &config.charge_method {
+        ChargeMethod::None => params.hydrogen_bond.d0_no_charge,
+        ChargeMethod::Qeq(_) => params.hydrogen_bond.d0_explicit,
+    };
+    let r0 = params.hydrogen_bond.r0;
+
+    for (h_idx, h_atom) in intermediate.atoms.iter().enumerate() {
+        if h_atom.atom_type != H_BOND_DONOR_HYDROGEN_TYPE {
+            continue;
+        }
+
+        if h_atom.neighbors.is_empty() {
+            continue;
+        }
+        let donor_idx = h_atom.neighbors[0];
+
+        for (acc_idx, acc_atom) in intermediate.atoms.iter().enumerate() {
+            if is_hbond_acceptor(acc_atom.element) {
+                h_bonds.push(HBondPotential {
+                    donor_idx,
+                    hydrogen_idx: h_idx,
+                    acceptor_idx: acc_idx,
+                    d0,
+                    r0,
+                });
+            }
+        }
+    }
+
+    Ok(h_bonds)
+}
+
+fn is_hbond_acceptor(element: Element) -> bool {
+    matches!(element, Element::N | Element::O | Element::F)
+}
