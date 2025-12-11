@@ -31,3 +31,24 @@ fn collect_atom_types(intermediate: &IntermediateSystem) -> (Vec<String>, HashMa
 
     (atom_types, type_indices)
 }
+
+fn generate_atom_properties(
+    intermediate: &IntermediateSystem,
+    type_indices: &HashMap<String, usize>,
+) -> Result<Vec<AtomParam>, Error> {
+    intermediate
+        .atoms
+        .iter()
+        .map(|atom| {
+            let type_idx = *type_indices.get(&atom.atom_type).ok_or_else(|| {
+                Error::Conversion(format!("missing type index for '{}'", atom.atom_type))
+            })?;
+
+            Ok(AtomParam {
+                charge: atom.charge,
+                mass: atom.element.atomic_mass(),
+                type_idx,
+            })
+        })
+        .collect()
+}
