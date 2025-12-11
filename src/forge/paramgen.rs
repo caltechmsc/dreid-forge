@@ -52,3 +52,59 @@ fn generate_atom_properties(
         })
         .collect()
 }
+
+fn generate_bond_potentials(
+    intermediate: &IntermediateSystem,
+    params: &ForceFieldParams,
+    config: &ForgeConfig,
+) -> Result<Vec<BondPotential>, Error> {
+    intermediate
+        .bonds
+        .iter()
+        .map(|bond| {
+            let type_i = &intermediate.atoms[bond.i].atom_type;
+            let type_j = &intermediate.atoms[bond.j].atom_type;
+
+            let params_i = params
+                .atoms
+                .get(type_i)
+                .ok_or_else(|| Error::missing_parameter(type_i, "bond radius"))?;
+            let params_j = params
+                .atoms
+                .get(type_j)
+                .ok_or_else(|| Error::missing_parameter(type_j, "bond radius"))?;
+
+            let r0 = params_i.bond_radius + params_j.bond_radius - params.global.bond_delta;
+
+            let physical_order = bond.physical_order.ok_or_else(|| {
+                Error::Conversion(format!(
+                    "bond {}-{} has no physical order assigned",
+                    bond.i, bond.j
+                ))
+            })?;
+
+            let order_mult = physical_order.multiplier();
+            let k_force = params.global.bond_k * order_mult;
+            let d0 = params.global.bond_d * order_mult;
+
+            Ok(match config.bond_potential {
+                BondPotentialType::Harmonic => BondPotential::Harmonic {
+                    i: bond.i,
+                    j: bond.j,
+                    k_force,
+                    r0,
+                },
+                BondPotentialType::Morse => {
+                    let alpha = (k_force / (2.0 * d0)).sqrt();
+                    BondPotential::Morse {
+                        i: bond.i,
+                        j: bond.j,
+                        r0,
+                        d0,
+                        alpha,
+                    }
+                }
+            })
+        })
+        .collect()
+}
