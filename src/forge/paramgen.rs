@@ -161,3 +161,49 @@ fn generate_angle_potentials(
         })
         .collect()
 }
+
+fn generate_dihedral_potentials(
+    intermediate: &IntermediateSystem,
+    _params: &ForceFieldParams,
+) -> Result<Vec<DihedralPotential>, Error> {
+    let mut dihedrals = Vec::new();
+
+    let mut bond_torsion_counts: HashMap<(usize, usize), usize> = HashMap::new();
+    for dih in &intermediate.dihedrals {
+        let key = (dih.j.min(dih.k), dih.j.max(dih.k));
+        *bond_torsion_counts.entry(key).or_insert(0) += 1;
+    }
+
+    for dih in &intermediate.dihedrals {
+        let atom_i = &intermediate.atoms[dih.i];
+        let atom_j = &intermediate.atoms[dih.j];
+        let atom_k = &intermediate.atoms[dih.k];
+
+        let j_is_o_column = is_oxygen_column(atom_j.element);
+        let k_is_o_column = is_oxygen_column(atom_k.element);
+
+        if let Some(torsion) = get_torsion_params(
+            atom_j.hybridization,
+            atom_k.hybridization,
+            j_is_o_column,
+            k_is_o_column,
+            atom_i.hybridization,
+        ) {
+            let key = (dih.j.min(dih.k), dih.j.max(dih.k));
+            let count = *bond_torsion_counts.get(&key).unwrap_or(&1) as f64;
+            let v_normalized = torsion.v_barrier / count;
+
+            dihedrals.push(DihedralPotential {
+                i: dih.i,
+                j: dih.j,
+                k: dih.k,
+                l: dih.l,
+                v_barrier: v_normalized,
+                periodicity: torsion.periodicity,
+                phase_offset: torsion.phase_offset,
+            });
+        }
+    }
+
+    Ok(dihedrals)
+}
