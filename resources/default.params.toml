@@ -1,0 +1,147 @@
+# ==============================================================================
+#  Official DREIDING Force Field Parameters
+#  Version: 1.0.0
+#  Authors: Tony Kan, William A. Goddard III
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# §1. Global Force Constants
+#    These are universal parameters used across all atom types.
+# ------------------------------------------------------------------------------
+
+[global]
+bond_k = 700.0
+bond_d = 70.0
+angle_k = 100.0
+inversion_k = 40.0
+bond_delta = 0.01
+
+# ------------------------------------------------------------------------------
+# §2. Hydrogen Bond Parameters
+#    Parameters for explicit hydrogen bonding terms (Eq. 38 in the paper).
+# ------------------------------------------------------------------------------
+
+[hydrogen_bond]
+r0 = 2.75
+d0_no_charge = 9.0
+d0_explicit = 4.0
+
+# ------------------------------------------------------------------------------
+# §3. Atom Type Parameters
+#    Per-type geometric and non-bonded parameters.
+#
+#    bond_radius : Single bond radius R°_I [Å] (Table I)
+#    bond_angle  : Equilibrium angle θ°_J [degrees] (Table I)
+#    vdw_r0      : van der Waals equilibrium distance [Å] (Table IV)
+#    vdw_d0      : van der Waals well depth [kcal/mol] (Table IV)
+#    vdw_zeta    : Exponential-6 ζ parameter (default = 12.0)
+# ------------------------------------------------------------------------------
+
+[atoms]
+
+# --- Hydrogen ---
+"H_" = { bond_radius = 0.330, bond_angle = 180.0, vdw_r0 = 3.195, vdw_d0 = 0.0152 }
+"H_HB" = { bond_radius = 0.330, bond_angle = 180.0, vdw_r0 = 3.195, vdw_d0 = 0.0152 }
+"H_b" = { bond_radius = 0.510, bond_angle = 90.0, vdw_r0 = 3.195, vdw_d0 = 0.0152 }
+
+# --- Boron ---
+"B_3" = { bond_radius = 0.880, bond_angle = 109.471, vdw_r0 = 4.02, vdw_d0 = 0.095 }
+"B_2" = { bond_radius = 0.790, bond_angle = 120.0, vdw_r0 = 4.02, vdw_d0 = 0.095 }
+
+# --- Carbon ---
+"C_3" = { bond_radius = 0.770, bond_angle = 109.471, vdw_r0 = 3.8983, vdw_d0 = 0.0951 }
+"C_R" = { bond_radius = 0.700, bond_angle = 120.0, vdw_r0 = 3.8983, vdw_d0 = 0.0951 }
+"C_2" = { bond_radius = 0.670, bond_angle = 120.0, vdw_r0 = 3.8983, vdw_d0 = 0.0951 }
+"C_1" = { bond_radius = 0.602, bond_angle = 180.0, vdw_r0 = 3.8983, vdw_d0 = 0.0951 }
+
+# --- Nitrogen ---
+"N_3" = { bond_radius = 0.702, bond_angle = 106.7, vdw_r0 = 3.6621, vdw_d0 = 0.0774 }
+"N_R" = { bond_radius = 0.650, bond_angle = 120.0, vdw_r0 = 3.6621, vdw_d0 = 0.0774 }
+"N_2" = { bond_radius = 0.615, bond_angle = 120.0, vdw_r0 = 3.6621, vdw_d0 = 0.0774 }
+"N_1" = { bond_radius = 0.556, bond_angle = 180.0, vdw_r0 = 3.6621, vdw_d0 = 0.0774 }
+
+# --- Oxygen ---
+"O_3" = { bond_radius = 0.660, bond_angle = 104.51, vdw_r0 = 3.4046, vdw_d0 = 0.0957 }
+"O_R" = { bond_radius = 0.660, bond_angle = 120.0, vdw_r0 = 3.4046, vdw_d0 = 0.0957 }
+"O_2" = { bond_radius = 0.560, bond_angle = 120.0, vdw_r0 = 3.4046, vdw_d0 = 0.0957 }
+"O_1" = { bond_radius = 0.528, bond_angle = 180.0, vdw_r0 = 3.4046, vdw_d0 = 0.0957 }
+
+# --- Fluorine ---
+"F_" = { bond_radius = 0.611, bond_angle = 180.0, vdw_r0 = 3.4720, vdw_d0 = 0.0725 }
+
+# --- Aluminum ---
+"Al3" = { bond_radius = 1.047, bond_angle = 109.471, vdw_r0 = 4.39, vdw_d0 = 0.31 }
+
+# --- Silicon ---
+"Si3" = { bond_radius = 0.937, bond_angle = 109.471, vdw_r0 = 4.27, vdw_d0 = 0.31 }
+
+# --- Phosphorus ---
+"P_3" = { bond_radius = 0.890, bond_angle = 93.3, vdw_r0 = 4.15, vdw_d0 = 0.32 }
+
+# --- Sulfur ---
+"S_3" = { bond_radius = 1.040, bond_angle = 92.1, vdw_r0 = 4.0300, vdw_d0 = 0.3440 }
+"S_R" = { bond_radius = 0.950, bond_angle = 120.0, vdw_r0 = 4.0300, vdw_d0 = 0.3440 }
+"S_2" = { bond_radius = 0.900, bond_angle = 120.0, vdw_r0 = 4.0300, vdw_d0 = 0.3440 }
+
+# --- Chlorine ---
+"Cl" = { bond_radius = 0.997, bond_angle = 180.0, vdw_r0 = 3.9503, vdw_d0 = 0.2833 }
+
+# --- Gallium ---
+"Ga3" = { bond_radius = 1.210, bond_angle = 109.471, vdw_r0 = 4.39, vdw_d0 = 0.40 }
+
+# --- Germanium ---
+"Ge3" = { bond_radius = 1.210, bond_angle = 109.471, vdw_r0 = 4.28, vdw_d0 = 0.40 }
+
+# --- Arsenic ---
+"As3" = { bond_radius = 1.210, bond_angle = 92.1, vdw_r0 = 4.23, vdw_d0 = 0.41 }
+
+# --- Selenium ---
+"Se3" = { bond_radius = 1.210, bond_angle = 90.6, vdw_r0 = 4.21, vdw_d0 = 0.43 }
+
+# --- Bromine ---
+"Br" = { bond_radius = 1.167, bond_angle = 180.0, vdw_r0 = 4.1890, vdw_d0 = 0.3700 }
+
+# --- Indium ---
+"In3" = { bond_radius = 1.390, bond_angle = 109.471, vdw_r0 = 4.59, vdw_d0 = 0.55 }
+
+# --- Tin ---
+"Sn3" = { bond_radius = 1.373, bond_angle = 109.471, vdw_r0 = 4.47, vdw_d0 = 0.55 }
+
+# --- Antimony ---
+"Sb3" = { bond_radius = 1.432, bond_angle = 91.6, vdw_r0 = 4.42, vdw_d0 = 0.55 }
+
+# --- Tellurium ---
+"Te3" = { bond_radius = 1.280, bond_angle = 90.3, vdw_r0 = 4.40, vdw_d0 = 0.57 }
+
+# --- Iodine ---
+"I_" = { bond_radius = 1.360, bond_angle = 180.0, vdw_r0 = 4.5000, vdw_d0 = 0.5100 }
+
+# --- Alkali Metals ---
+"Li" = { bond_radius = 1.530, bond_angle = 180.0, vdw_r0 = 2.45, vdw_d0 = 0.025 }
+"Na" = { bond_radius = 1.860, bond_angle = 90.0, vdw_r0 = 2.98, vdw_d0 = 0.030 }
+"K" = { bond_radius = 2.270, bond_angle = 90.0, vdw_r0 = 3.81, vdw_d0 = 0.035 }
+"Rb" = { bond_radius = 2.470, bond_angle = 90.0, vdw_r0 = 4.00, vdw_d0 = 0.040 }
+"Cs" = { bond_radius = 2.650, bond_angle = 90.0, vdw_r0 = 4.30, vdw_d0 = 0.045 }
+
+# --- Alkaline Earth Metals ---
+"Mg" = { bond_radius = 1.600, bond_angle = 109.471, vdw_r0 = 2.93, vdw_d0 = 0.111 }
+"Ca" = { bond_radius = 1.940, bond_angle = 90.0, vdw_r0 = 3.47, vdw_d0 = 0.238 }
+"Sr" = { bond_radius = 2.150, bond_angle = 90.0, vdw_r0 = 3.76, vdw_d0 = 0.235 }
+"Ba" = { bond_radius = 2.170, bond_angle = 90.0, vdw_r0 = 3.97, vdw_d0 = 0.364 }
+
+# --- Transition Metals ---
+"Ti" = { bond_radius = 1.470, bond_angle = 90.0, vdw_r0 = 3.18, vdw_d0 = 0.017 }
+"Mn" = { bond_radius = 1.390, bond_angle = 90.0, vdw_r0 = 2.96, vdw_d0 = 0.013 }
+"Fe" = { bond_radius = 1.285, bond_angle = 90.0, vdw_r0 = 2.91, vdw_d0 = 0.013 }
+"Co" = { bond_radius = 1.260, bond_angle = 90.0, vdw_r0 = 2.87, vdw_d0 = 0.014 }
+"Ni" = { bond_radius = 1.240, bond_angle = 90.0, vdw_r0 = 2.83, vdw_d0 = 0.015 }
+"Cu" = { bond_radius = 1.320, bond_angle = 90.0, vdw_r0 = 3.50, vdw_d0 = 0.005 }
+"Zn" = { bond_radius = 1.330, bond_angle = 109.471, vdw_r0 = 2.76, vdw_d0 = 0.124 }
+"Ru" = { bond_radius = 1.460, bond_angle = 90.0, vdw_r0 = 3.05, vdw_d0 = 0.056 }
+"Tc" = { bond_radius = 1.470, bond_angle = 90.0, vdw_r0 = 3.02, vdw_d0 = 0.048 }
+"Pd" = { bond_radius = 1.390, bond_angle = 90.0, vdw_r0 = 3.21, vdw_d0 = 0.048 }
+"Ag" = { bond_radius = 1.450, bond_angle = 180.0, vdw_r0 = 3.15, vdw_d0 = 0.036 }
+"Cd" = { bond_radius = 1.550, bond_angle = 109.471, vdw_r0 = 2.85, vdw_d0 = 0.228 }
+"Pt" = { bond_radius = 1.380, bond_angle = 90.0, vdw_r0 = 3.05, vdw_d0 = 0.080 }
+"Au" = { bond_radius = 1.360, bond_angle = 180.0, vdw_r0 = 3.29, vdw_d0 = 0.039 }
+"Hg" = { bond_radius = 1.550, bond_angle = 180.0, vdw_r0 = 3.00, vdw_d0 = 0.385 }
