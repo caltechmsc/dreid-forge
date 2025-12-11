@@ -108,3 +108,56 @@ fn generate_bond_potentials(
         })
         .collect()
 }
+
+fn generate_angle_potentials(
+    intermediate: &IntermediateSystem,
+    params: &ForceFieldParams,
+    config: &ForgeConfig,
+) -> Result<Vec<AnglePotential>, Error> {
+    intermediate
+        .angles
+        .iter()
+        .map(|angle| {
+            let type_j = &intermediate.atoms[angle.j].atom_type;
+            let params_j = params
+                .atoms
+                .get(type_j)
+                .ok_or_else(|| Error::missing_parameter(type_j, "bond angle"))?;
+
+            let theta0_deg = params_j.bond_angle;
+            let theta0_rad = theta0_deg.to_radians();
+            let k_force = params.global.angle_k;
+
+            Ok(match config.angle_potential {
+                AnglePotentialType::ThetaHarmonic => AnglePotential::ThetaHarmonic {
+                    i: angle.i,
+                    j: angle.j,
+                    k: angle.k,
+                    k_force,
+                    theta0: theta0_rad,
+                },
+                AnglePotentialType::CosineHarmonic => {
+                    if (theta0_deg - 180.0).abs() < 1e-6 {
+                        AnglePotential::CosineHarmonic {
+                            i: angle.i,
+                            j: angle.j,
+                            k: angle.k,
+                            k_force,
+                            theta0: theta0_rad,
+                        }
+                    } else {
+                        let sin_theta0 = theta0_rad.sin();
+                        let c_force = k_force / (sin_theta0 * sin_theta0);
+                        AnglePotential::CosineHarmonic {
+                            i: angle.i,
+                            j: angle.j,
+                            k: angle.k,
+                            k_force: c_force,
+                            theta0: theta0_rad,
+                        }
+                    }
+                }
+            })
+        })
+        .collect()
+}
