@@ -163,7 +163,7 @@ pub fn write_settings_file<W: Write>(
         }
         if has_hbond {
             pair_styles.push(format!(
-                "hbond/dreiding/lj 4 {:.3} {:.3} {:.3}",
+                "hbond/dreiding/lj 2 {:.3} {:.3} {:.3}",
                 config.hbond_cutoff_inner, config.hbond_cutoff_outer, config.hbond_angle_cutoff
             ));
         }
