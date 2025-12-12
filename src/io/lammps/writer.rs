@@ -96,7 +96,6 @@ pub fn write_data_file<W: Write>(
     writeln!(writer)?;
 
     write_masses(writer, forged)?;
-    write_pair_coeffs(writer, forged)?;
     write_bond_coeffs(writer, &mapping)?;
     write_angle_coeffs(writer, &mapping)?;
     write_dihedral_coeffs(writer, &mapping)?;
@@ -330,48 +329,6 @@ fn write_masses<W: Write>(writer: &mut W, forged: &ForgedSystem) -> Result<(), E
             .copied()
             .ok_or_else(|| Error::Conversion(format!("missing mass for atom type {idx}")))?;
         writeln!(writer, "{:>4} {:>12.6}  # {}", idx + 1, mass, name)?;
-    }
-    writeln!(writer)?;
-    Ok(())
-}
-
-fn write_pair_coeffs<W: Write>(writer: &mut W, forged: &ForgedSystem) -> Result<(), Error> {
-    if forged.potentials.vdw_pairs.is_empty() {
-        return Ok(());
-    }
-    writeln!(writer, "Pair Coeffs")?;
-    writeln!(writer)?;
-    for p in &forged.potentials.vdw_pairs {
-        match p {
-            VdwPairPotential::LennardJones {
-                type1_idx,
-                type2_idx,
-                sigma,
-                epsilon,
-            } => writeln!(
-                writer,
-                "{:>4} {:>4} {:.6} {:.6}",
-                type1_idx + 1,
-                type2_idx + 1,
-                epsilon,
-                sigma
-            )?,
-            VdwPairPotential::Exponential6 {
-                type1_idx,
-                type2_idx,
-                a,
-                b,
-                c,
-            } => writeln!(
-                writer,
-                "{:>4} {:>4} {:.6} {:.6} {:.6}",
-                type1_idx + 1,
-                type2_idx + 1,
-                a,
-                b,
-                c
-            )?,
-        }
     }
     writeln!(writer)?;
     Ok(())
