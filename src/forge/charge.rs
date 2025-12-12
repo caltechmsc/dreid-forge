@@ -1,8 +1,27 @@
+//! Partial charge calculation for molecular systems.
+//!
+//! This module handles the assignment of partial atomic charges
+//! using the charge equilibration (QEq) method. Charges are computed
+//! based on atomic electronegativities and the molecular geometry.
+
 use super::config::{ChargeMethod, QeqConfig};
 use super::error::Error;
 use super::intermediate::IntermediateSystem;
 use cheq::{QEqSolver, get_default_parameters};
 
+/// Assigns partial charges to atoms based on the configured method.
+///
+/// Modifies the `charge` field of each atom in the intermediate system
+/// according to the specified charge method.
+///
+/// # Arguments
+///
+/// * `system` — Mutable reference to the intermediate system
+/// * `method` — Charge calculation method to use
+///
+/// # Errors
+///
+/// Returns [`Error::ChargeCalculation`] if QEq solver fails to converge.
 pub fn assign_charges(system: &mut IntermediateSystem, method: &ChargeMethod) -> Result<(), Error> {
     match method {
         ChargeMethod::None => Ok(()),
@@ -10,6 +29,10 @@ pub fn assign_charges(system: &mut IntermediateSystem, method: &ChargeMethod) ->
     }
 }
 
+/// Assigns charges using the QEq (charge equilibration) method.
+///
+/// Uses the `cheq` library to compute electronegativity-equalized
+/// partial charges based on atomic positions.
 fn assign_qeq_charges(system: &mut IntermediateSystem, config: &QeqConfig) -> Result<(), Error> {
     let params = get_default_parameters();
     let solver = QEqSolver::new(params).with_options(config.solver_options);

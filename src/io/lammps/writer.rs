@@ -1,3 +1,10 @@
+//! LAMMPS data and settings file writer.
+//!
+//! Generates LAMMPS-compatible input files from parameterized molecular
+//! systems. Supports both periodic and non-periodic boundary conditions,
+//! with appropriate electrostatics handling (PPPM for periodic, direct
+//! summation for non-periodic).
+
 use crate::io::error::Error;
 use crate::model::system::Bond;
 use crate::model::topology::{
@@ -6,19 +13,55 @@ use crate::model::topology::{
 use std::collections::{HashMap, HashSet};
 use std::io::Write;
 
+/// Configuration for LAMMPS output generation.
+///
+/// Controls cutoffs, boundary conditions, and box sizing for the
+/// generated simulation input files.
+///
+/// # Examples
+///
+/// ```
+/// use dreid_forge::io::{LammpsConfig, SystemType};
+///
+/// // Periodic system with standard cutoffs
+/// let config = LammpsConfig {
+///     system_type: SystemType::Periodic,
+///     nonbonded_cutoff: 12.0,
+///     ..Default::default()
+/// };
+///
+/// // Non-periodic (gas phase) system
+/// let gas_config = LammpsConfig {
+///     system_type: SystemType::NonPeriodic,
+///     aabb_margin: 10.0,
+///     ..Default::default()
+/// };
+/// ```
 #[derive(Debug, Clone)]
 pub struct LammpsConfig {
+    /// Cutoff distance for non-bonded interactions (Å).
     pub nonbonded_cutoff: f64,
+    /// Inner cutoff for hydrogen bond potential (Å).
     pub hbond_cutoff_inner: f64,
+    /// Outer cutoff for hydrogen bond potential (Å).
     pub hbond_cutoff_outer: f64,
+    /// Angular cutoff for hydrogen bond geometry (degrees).
     pub hbond_angle_cutoff: f64,
+    /// Margin added to bounding box for non-periodic systems (Å).
     pub aabb_margin: f64,
+    /// Boundary condition type (periodic or non-periodic).
     pub system_type: SystemType,
 }
 
+/// Boundary condition type for LAMMPS simulations.
+///
+/// Determines how electrostatics are handled and what pair styles
+/// are used for long-range interactions.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SystemType {
+    /// Periodic boundary conditions with PPPM electrostatics.
     Periodic,
+    /// Non-periodic (shrink-wrapped) boundaries with direct Coulomb.
     NonPeriodic,
 }
 
@@ -35,6 +78,39 @@ impl Default for LammpsConfig {
     }
 }
 
+/// Writes both LAMMPS data and settings files.
+///
+/// This is the primary entry point for generating complete LAMMPS
+/// simulation input. Writes a data file (topology + coordinates)
+/// and a settings file (force field parameters) that can be used
+/// together in a LAMMPS input script.
+///
+/// # Arguments
+///
+/// * `data_writer` — Output for the data file (`.data` or `.lammps`)
+/// * `settings_writer` — Output for the settings file (`.in.settings`)
+/// * `forged` — Parameterized system from [`forge`](crate::forge)
+/// * `config` — Output configuration options
+///
+/// # Errors
+///
+/// Returns [`Error`] if the system has validation issues or if
+/// I/O operations fail.
+///
+/// # Examples
+///
+/// ```no_run
+/// use dreid_forge::io::{write_lammps_package, LammpsConfig};
+/// use dreid_forge::ForgedSystem;
+/// use std::fs::File;
+///
+/// let forged: ForgedSystem = todo!(); // from forge()
+/// let mut data = File::create("system.data")?;
+/// let mut settings = File::create("system.in.settings")?;
+///
+/// write_lammps_package(&mut data, &mut settings, &forged, &LammpsConfig::default())?;
+/// # Ok::<(), dreid_forge::io::Error>(())
+/// ```
 pub fn write_package<W1: Write, W2: Write>(
     mut data_writer: W1,
     mut settings_writer: W2,
@@ -46,6 +122,21 @@ pub fn write_package<W1: Write, W2: Write>(
     Ok(())
 }
 
+/// Writes a LAMMPS data file.
+///
+/// Generates a topology file containing atom coordinates, types,
+/// charges, molecular connectivity, and simulation box dimensions.
+/// This file is read by LAMMPS using the `read_data` command.
+///
+/// # Arguments
+///
+/// * `writer` — Output destination for the data file
+/// * `forged` — Parameterized system from [`forge`](crate::forge)
+/// * `config` — Output configuration options
+///
+/// # Errors
+///
+/// Returns [`Error`] if validation fails or I/O operations fail.
 pub fn write_data_file<W: Write>(
     writer: &mut W,
     forged: &ForgedSystem,
@@ -109,6 +200,21 @@ pub fn write_data_file<W: Write>(
     Ok(())
 }
 
+/// Writes a LAMMPS settings file.
+///
+/// Generates force field parameter commands including style
+/// definitions and coefficient specifications. This file is
+/// typically included in a LAMMPS input script using `include`.
+///
+/// # Arguments
+///
+/// * `writer` — Output destination for the settings file
+/// * `forged` — Parameterized system from [`forge`](crate::forge)
+/// * `config` — Output configuration options
+///
+/// # Errors
+///
+/// Returns [`Error`] if validation fails or I/O operations fail.
 pub fn write_settings_file<W: Write>(
     writer: &mut W,
     forged: &ForgedSystem,
@@ -1210,8 +1316,10 @@ mod tests {
     #[test]
     fn nonperiodic_uses_cutoff_only_and_no_kspace() {
         let forged = complex_forged();
-        let mut cfg = LammpsConfig::default();
-        cfg.system_type = SystemType::NonPeriodic;
+        let cfg = LammpsConfig {
+            system_type: SystemType::NonPeriodic,
+            ..Default::default()
+        };
         let (_, settings_out) = write_outputs(&forged, &cfg);
 
         assert!(settings_out.contains("pair_style      hybrid/overlay lj/cut/coul/cut 12.000 buck/coul/cut 12.000 hbond/dreiding/lj 2 10.000 12.000 90.000"));

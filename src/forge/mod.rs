@@ -1,3 +1,10 @@
+//! DREIDING force field parameterization engine.
+//!
+//! This module provides the core functionality for assigning DREIDING force field
+//! parameters to molecular systems. The parameterization pipeline includes atom
+//! typing, partial charge calculation, and generation of all bonded/non-bonded
+//! potential energy function parameters.
+
 mod charge;
 mod config;
 mod error;
@@ -15,6 +22,48 @@ pub use error::Error;
 use crate::model::system::System;
 use crate::model::topology::ForgedSystem;
 
+/// Parameterizes a molecular system with DREIDING force field parameters.
+///
+/// This is the main entry point for force field parameterization. It takes
+/// a molecular [`System`] with atoms and bonds, and produces a [`ForgedSystem`]
+/// containing all parameters needed for molecular dynamics simulation.
+///
+/// # Arguments
+///
+/// * `system` — The molecular system to parameterize (must have at least one atom)
+/// * `config` — Configuration controlling potential types and charge method
+///
+/// # Returns
+///
+/// A [`ForgedSystem`] containing:
+/// - Original system structure
+/// - Assigned atom type names
+/// - Per-atom charges and masses
+/// - All potential energy function parameters
+///
+/// # Errors
+///
+/// Returns [`Error`] if:
+/// - The system is empty (no atoms)
+/// - Atom typing fails (unsupported element or bonding pattern)
+/// - Force field parameters are missing for an atom type
+/// - Charge calculation fails
+///
+/// # Examples
+///
+/// ```
+/// use dreid_forge::{System, Atom, Bond, Element, BondOrder};
+/// use dreid_forge::{forge, ForgeConfig, ForgeError};
+///
+/// let mut system = System::new();
+/// system.atoms.push(Atom::new(Element::C, [0.0, 0.0, 0.0]));
+/// system.atoms.push(Atom::new(Element::C, [1.54, 0.0, 0.0]));
+/// system.bonds.push(Bond::new(0, 1, BondOrder::Single));
+///
+/// let forged = forge(&system, &ForgeConfig::default())?;
+/// assert!(!forged.potentials.bonds.is_empty());
+/// # Ok::<(), ForgeError>(())
+/// ```
 pub fn forge(system: &System, config: &ForgeConfig) -> Result<ForgedSystem, Error> {
     let ff_params = params::load_parameters(config.params.as_deref())?;
 

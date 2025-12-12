@@ -1,3 +1,8 @@
+//! BGF file writer implementation.
+//!
+//! Generates Biograf format files with full DREIDING force field
+//! annotations including atom types, charges, and connectivity.
+
 use crate::io::error::Error;
 use crate::model::metadata::{ResidueCategory, StandardResidue};
 use crate::model::topology::ForgedSystem;
@@ -9,6 +14,37 @@ const FORMAT_ATOM: &str =
     "FORMAT ATOM   (a6,1x,i5,1x,a5,1x,a3,1x,a1,1x,a5,3f10.5,1x,a5,i3,i2,1x,f8.5,f10.5)";
 const FORMAT_CONECT: &str = "FORMAT CONECT (a6,12i6)";
 
+/// Writes a parameterized system to BGF format.
+///
+/// Generates a complete Biograf file with DREIDING force field
+/// atom types, partial charges, coordinates, and bond connectivity.
+/// The output includes proper ATOM/HETATM classification based on
+/// residue category.
+///
+/// # Arguments
+///
+/// * `writer` — Output destination implementing [`Write`]
+/// * `forged` — Parameterized system from [`forge`](crate::forge)
+///
+/// # Errors
+///
+/// Returns [`Error`] if:
+/// * The system lacks biological metadata (`bio_metadata` is `None`)
+/// * Metadata and atom counts are inconsistent
+/// * An I/O error occurs during writing
+///
+/// # Examples
+///
+/// ```no_run
+/// use dreid_forge::io::write_bgf;
+/// use dreid_forge::ForgedSystem;
+/// use std::fs::File;
+///
+/// let forged: ForgedSystem = todo!(); // from forge()
+/// let file = File::create("output.bgf")?;
+/// write_bgf(file, &forged)?;
+/// # Ok::<(), dreid_forge::io::Error>(())
+/// ```
 pub fn write<W: Write>(mut writer: W, forged: &ForgedSystem) -> Result<(), Error> {
     let system = &forged.system;
     let metadata = system
