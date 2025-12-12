@@ -106,7 +106,6 @@ pub fn write_data_file<W: Write>(
     write_angles(writer, forged, &mapping)?;
     write_dihedrals(writer, forged, &mapping)?;
     write_impropers(writer, forged, &mapping)?;
-    write_hbonds(writer, forged)?;
 
     Ok(())
 }
@@ -696,28 +695,6 @@ fn write_impropers<W: Write>(
         )?;
     }
     writeln!(writer)?;
-    Ok(())
-}
-
-fn write_hbonds<W: Write>(writer: &mut W, forged: &ForgedSystem) -> Result<(), Error> {
-    if forged.potentials.h_bonds.is_empty() {
-        return Ok(());
-    }
-    writeln!(
-        writer,
-        "# Explicit hydrogen bonds (optional helper section)"
-    )?;
-    for hb in &forged.potentials.h_bonds {
-        writeln!(
-            writer,
-            "; HBOND donor={} hydrogen={} acceptor={} d0={:.6} r0={:.6}",
-            hb.donor_idx + 1,
-            hb.hydrogen_idx + 1,
-            hb.acceptor_idx + 1,
-            hb.d0,
-            hb.r0
-        )?;
-    }
     Ok(())
 }
 
