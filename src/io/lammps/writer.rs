@@ -223,17 +223,26 @@ pub fn write_settings_file<W: Write>(
     if has_hbond {
         writeln!(writer)?;
         writeln!(writer, "# Hydrogen bond coefficients")?;
-        let mut seen = HashSet::new();
         for hb in &potentials.h_bonds {
-            let h_type = forged.atom_properties[hb.hydrogen_idx].type_idx + 1;
-            let a_type = forged.atom_properties[hb.acceptor_idx].type_idx + 1;
-            if seen.insert((h_type, a_type)) {
-                writeln!(
-                    writer,
-                    "pair_coeff {:>3} {:>3} hbond/dreiding/lj {:.6} {:.6}",
-                    h_type, a_type, hb.d0, hb.r0
-                )?;
-            }
+            let (i, j, donor_flag) = if hb.donor_type_idx <= hb.acceptor_type_idx {
+                (hb.donor_type_idx, hb.acceptor_type_idx, "i")
+            } else {
+                (hb.acceptor_type_idx, hb.donor_type_idx, "j")
+            };
+            let epsilon = hb.d0;
+            let sigma = hb.r0 / 1.0954_f64.sqrt();
+            let n = 2; // Improved: cos^2(θ) (Original Dreiding uses cos^4(θ))
+            writeln!(
+                writer,
+                "pair_coeff {:>3} {:>3} hbond/dreiding/lj {} {} {:.6} {:.6} {}",
+                i + 1,
+                j + 1,
+                hb.hydrogen_type_idx + 1,
+                donor_flag,
+                epsilon,
+                sigma,
+                n
+            )?;
         }
     }
 
