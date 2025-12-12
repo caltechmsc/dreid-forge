@@ -1316,8 +1316,10 @@ mod tests {
     #[test]
     fn nonperiodic_uses_cutoff_only_and_no_kspace() {
         let forged = complex_forged();
-        let mut cfg = LammpsConfig::default();
-        cfg.system_type = SystemType::NonPeriodic;
+        let cfg = LammpsConfig {
+            system_type: SystemType::NonPeriodic,
+            ..Default::default()
+        };
         let (_, settings_out) = write_outputs(&forged, &cfg);
 
         assert!(settings_out.contains("pair_style      hybrid/overlay lj/cut/coul/cut 12.000 buck/coul/cut 12.000 hbond/dreiding/lj 2 10.000 12.000 90.000"));
