@@ -1,3 +1,10 @@
+//! Internal utilities for data model conversion.
+//!
+//! This module provides conversion functions between dreid-forge's
+//! internal data model and bio-forge's data structures. These are
+//! used internally by readers and writers and are not part of the
+//! public API.
+
 use super::{
     Anion, Cation, CleanConfig, HisStrategy, ProtonationConfig, SolvateConfig, TopologyConfig,
 };
@@ -11,22 +18,34 @@ use bio_forge as bf;
 use std::collections::HashSet;
 use std::str::FromStr;
 
+/// Errors that occur during data model conversion.
+///
+/// These errors indicate incompatibilities between the dreid-forge
+/// and bio-forge data models, such as unsupported elements or
+/// missing required metadata.
 #[derive(Debug, thiserror::Error)]
 pub enum ConversionError {
+    /// Encountered bio-forge's `Unknown` element variant.
     #[error("encountered an 'Unknown' element from bio-forge which is not supported")]
     UnsupportedElement,
+    /// Encountered a bond order not representable in this model.
     #[error("encountered an unsupported bond order '{0}' during model conversion")]
     UnsupportedBondOrder(String),
+    /// System lacks required biological metadata.
     #[error("inconsistent data: system is missing required BioMetadata for this conversion")]
     MissingBioMetadata,
+    /// Residue name not recognized as a standard residue.
     #[error("unknown standard residue name")]
     UnknownStandardResidue,
+    /// Residue category not recognized.
     #[error("unknown residue category")]
     UnknownResidueCategory,
+    /// Residue position not recognized.
     #[error("unknown residue position")]
     UnknownResiduePosition,
 }
 
+/// Converts a dreid-forge [`CleanConfig`] to bio-forge's format.
 pub fn to_bf_clean_config(config: CleanConfig) -> bf::ops::CleanConfig {
     bf::ops::CleanConfig {
         remove_water: config.remove_water,
@@ -38,6 +57,7 @@ pub fn to_bf_clean_config(config: CleanConfig) -> bf::ops::CleanConfig {
     }
 }
 
+/// Converts a dreid-forge [`ProtonationConfig`] to bio-forge's format.
 pub fn to_bf_hydro_config(config: ProtonationConfig) -> bf::ops::HydroConfig {
     bf::ops::HydroConfig {
         target_ph: config.target_ph,
@@ -51,6 +71,7 @@ pub fn to_bf_hydro_config(config: ProtonationConfig) -> bf::ops::HydroConfig {
     }
 }
 
+/// Converts a dreid-forge [`SolvateConfig`] to bio-forge's format.
 pub fn to_bf_solvate_config(config: SolvateConfig) -> bf::ops::SolvateConfig {
     bf::ops::SolvateConfig {
         margin: config.margin,
@@ -64,6 +85,7 @@ pub fn to_bf_solvate_config(config: SolvateConfig) -> bf::ops::SolvateConfig {
     }
 }
 
+/// Converts a dreid-forge [`Cation`] to bio-forge's format.
 pub fn to_bf_cation(cation: Cation) -> bf::ops::Cation {
     match cation {
         Cation::Na => bf::ops::Cation::Na,
@@ -75,6 +97,7 @@ pub fn to_bf_cation(cation: Cation) -> bf::ops::Cation {
     }
 }
 
+/// Converts a dreid-forge [`Anion`] to bio-forge's format.
 pub fn to_bf_anion(anion: Anion) -> bf::ops::Anion {
     match anion {
         Anion::Cl => bf::ops::Anion::Cl,
@@ -84,6 +107,8 @@ pub fn to_bf_anion(anion: Anion) -> bf::ops::Anion {
     }
 }
 
+/// Builds a bio-forge [`Topology`](bf::Topology) from a
+/// [`Structure`](bf::Structure) and a dreid-forge [`TopologyConfig`].
 pub fn build_topology(
     structure: bf::Structure,
     config: &TopologyConfig,
@@ -98,6 +123,7 @@ pub fn build_topology(
     topology_builder.build(structure)
 }
 
+/// Converts a bio-forge [`Topology`](bf::Topology) to a dreid-forge [`System`].
 pub fn from_bio_topology(bio_topo: bf::Topology) -> Result<System, ConversionError> {
     let bio_struct = bio_topo.structure();
     let atom_count = bio_struct.atom_count();
@@ -146,6 +172,7 @@ pub fn from_bio_topology(bio_topo: bf::Topology) -> Result<System, ConversionErr
     })
 }
 
+/// Converts a dreid-forge [`System`] to a bio-forge [`Topology`](bf::Topology).
 pub fn to_bio_topology(system: &System) -> Result<bf::Topology, ConversionError> {
     use std::collections::BTreeMap;
 
@@ -227,6 +254,7 @@ pub fn to_bio_topology(system: &System) -> Result<bf::Topology, ConversionError>
     Ok(bf::Topology::new(bio_struct, bio_bonds))
 }
 
+/// Converts a bio-forge [`Element`] to a dreid-forge [`Element`].
 fn convert_element_from_bf(e: bf::Element) -> Result<Element, ConversionError> {
     if matches!(e, bf::Element::Unknown) {
         return Err(ConversionError::UnsupportedElement);
@@ -235,10 +263,12 @@ fn convert_element_from_bf(e: bf::Element) -> Result<Element, ConversionError> {
     Element::from_str(e.symbol()).map_err(|_| ConversionError::UnsupportedElement)
 }
 
+/// Converts a dreid-forge [`Element`] to a bio-forge [`Element`].
 fn convert_element_to_bf(e: Element) -> Result<bf::Element, ConversionError> {
     bf::Element::from_str(e.symbol()).map_err(|_| ConversionError::UnsupportedElement)
 }
 
+/// Converts a bio-forge [`BondOrder`] to a dreid-forge [`BondOrder`].
 fn convert_bond_order_from_bf(order: bf::BondOrder) -> Result<BondOrder, ConversionError> {
     match order {
         bf::BondOrder::Single => Ok(BondOrder::Single),
@@ -247,6 +277,7 @@ fn convert_bond_order_from_bf(order: bf::BondOrder) -> Result<BondOrder, Convers
         bf::BondOrder::Aromatic => Ok(BondOrder::Aromatic),
     }
 }
+/// Converts a dreid-forge [`BondOrder`] to a bio-forge [`BondOrder`].
 fn convert_bond_order_to_bf(order: BondOrder) -> Result<bf::BondOrder, ConversionError> {
     match order {
         BondOrder::Single => Ok(bf::BondOrder::Single),
@@ -256,6 +287,7 @@ fn convert_bond_order_to_bf(order: BondOrder) -> Result<bf::BondOrder, Conversio
     }
 }
 
+/// Converts an optional bio-forge [`StandardResidue`] to a dreid-forge [`StandardResidue`].
 fn convert_std_res_from_bf(
     res: Option<bf::StandardResidue>,
 ) -> Result<Option<StandardResidue>, ConversionError> {
@@ -294,6 +326,7 @@ fn convert_std_res_from_bf(
     }))
 }
 
+/// Converts an optional dreid-forge [`StandardResidue`] to a bio-forge [`StandardResidue`].
 fn convert_std_res_to_bf(
     res: Option<StandardResidue>,
 ) -> Result<Option<bf::StandardResidue>, ConversionError> {
@@ -332,6 +365,7 @@ fn convert_std_res_to_bf(
     }))
 }
 
+/// Converts a bio-forge [`ResidueCategory`] to a dreid-forge [`ResidueCategory`].
 fn convert_res_cat_from_bf(cat: bf::ResidueCategory) -> Result<ResidueCategory, ConversionError> {
     Ok(match cat {
         bf::ResidueCategory::Standard => ResidueCategory::Standard,
@@ -339,6 +373,7 @@ fn convert_res_cat_from_bf(cat: bf::ResidueCategory) -> Result<ResidueCategory, 
         bf::ResidueCategory::Ion => ResidueCategory::Ion,
     })
 }
+/// Converts a dreid-forge [`ResidueCategory`] to a bio-forge [`ResidueCategory`].
 fn convert_res_cat_to_bf(cat: ResidueCategory) -> Result<bf::ResidueCategory, ConversionError> {
     Ok(match cat {
         ResidueCategory::Standard => bf::ResidueCategory::Standard,
@@ -347,6 +382,7 @@ fn convert_res_cat_to_bf(cat: ResidueCategory) -> Result<bf::ResidueCategory, Co
     })
 }
 
+/// Converts a bio-forge [`ResiduePosition`] to a dreid-forge [`ResiduePosition`].
 fn convert_res_pos_from_bf(pos: bf::ResiduePosition) -> Result<ResiduePosition, ConversionError> {
     Ok(match pos {
         bf::ResiduePosition::None => ResiduePosition::None,
@@ -357,6 +393,7 @@ fn convert_res_pos_from_bf(pos: bf::ResiduePosition) -> Result<ResiduePosition, 
         bf::ResiduePosition::ThreePrime => ResiduePosition::ThreePrime,
     })
 }
+/// Converts a dreid-forge [`ResiduePosition`] to a bio-forge [`ResiduePosition`].
 fn convert_res_pos_to_bf(pos: ResiduePosition) -> Result<bf::ResiduePosition, ConversionError> {
     Ok(match pos {
         ResiduePosition::None => bf::ResiduePosition::None,
@@ -368,6 +405,7 @@ fn convert_res_pos_to_bf(pos: ResiduePosition) -> Result<bf::ResiduePosition, Co
     })
 }
 
+/// Attempts to guess the chemical element from a string token.
 pub fn guess_element_symbol(token: &str) -> Option<Element> {
     if token.trim().is_empty() {
         return None;
@@ -438,6 +476,7 @@ pub fn guess_element_symbol(token: &str) -> Option<Element> {
     None
 }
 
+/// Converts a CT file bond order integer to a dreid-forge [`BondOrder`].
 pub fn bond_order_from_ctfile(value: i32) -> Option<BondOrder> {
     match value {
         1 => Some(BondOrder::Single),
@@ -448,6 +487,7 @@ pub fn bond_order_from_ctfile(value: i32) -> Option<BondOrder> {
     }
 }
 
+/// Converts a dreid-forge [`BondOrder`] to a CT file bond order integer.
 pub fn bond_order_to_ctfile(order: BondOrder) -> i32 {
     match order {
         BondOrder::Single => 1,
@@ -457,6 +497,7 @@ pub fn bond_order_to_ctfile(order: BondOrder) -> i32 {
     }
 }
 
+/// Converts a MOL2 file bond order token to a dreid-forge [`BondOrder`].
 pub fn bond_order_from_mol2(token: &str) -> Option<BondOrder> {
     match token.trim().to_ascii_lowercase().as_str() {
         "1" => Some(BondOrder::Single),
@@ -468,6 +509,7 @@ pub fn bond_order_from_mol2(token: &str) -> Option<BondOrder> {
     }
 }
 
+/// Converts a dreid-forge [`BondOrder`] to a MOL2 file bond order token.
 pub fn bond_order_to_mol2(order: BondOrder) -> &'static str {
     match order {
         BondOrder::Single => "1",
