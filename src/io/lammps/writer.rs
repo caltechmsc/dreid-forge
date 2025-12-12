@@ -96,7 +96,6 @@ pub fn write_data_file<W: Write>(
     writeln!(writer)?;
 
     write_masses(writer, forged)?;
-    write_pair_coeffs(writer, forged)?;
     write_bond_coeffs(writer, &mapping)?;
     write_angle_coeffs(writer, &mapping)?;
     write_dihedral_coeffs(writer, &mapping)?;
@@ -106,7 +105,6 @@ pub fn write_data_file<W: Write>(
     write_angles(writer, forged, &mapping)?;
     write_dihedrals(writer, forged, &mapping)?;
     write_impropers(writer, forged, &mapping)?;
-    write_hbonds(writer, forged)?;
 
     Ok(())
 }
@@ -163,7 +161,7 @@ pub fn write_settings_file<W: Write>(
         }
         if has_hbond {
             pair_styles.push(format!(
-                "hbond/dreiding/lj 4 {:.3} {:.3} {:.3}",
+                "hbond/dreiding/lj 2 {:.3} {:.3} {:.3}",
                 config.hbond_cutoff_inner, config.hbond_cutoff_outer, config.hbond_angle_cutoff
             ));
         }
@@ -225,17 +223,26 @@ pub fn write_settings_file<W: Write>(
     if has_hbond {
         writeln!(writer)?;
         writeln!(writer, "# Hydrogen bond coefficients")?;
-        let mut seen = HashSet::new();
         for hb in &potentials.h_bonds {
-            let h_type = forged.atom_properties[hb.hydrogen_idx].type_idx + 1;
-            let a_type = forged.atom_properties[hb.acceptor_idx].type_idx + 1;
-            if seen.insert((h_type, a_type)) {
-                writeln!(
-                    writer,
-                    "pair_coeff {:>3} {:>3} hbond/dreiding/lj {:.6} {:.6}",
-                    h_type, a_type, hb.d0, hb.r0
-                )?;
-            }
+            let (i, j, donor_flag) = if hb.donor_type_idx <= hb.acceptor_type_idx {
+                (hb.donor_type_idx, hb.acceptor_type_idx, "i")
+            } else {
+                (hb.acceptor_type_idx, hb.donor_type_idx, "j")
+            };
+            let epsilon = hb.d0;
+            let sigma = hb.r0 / 1.0954_f64.sqrt();
+            let n = 2; // Improved: cos^2(θ) (Original Dreiding uses cos^4(θ))
+            writeln!(
+                writer,
+                "pair_coeff {:>3} {:>3} hbond/dreiding/lj {} {} {:.6} {:.6} {}",
+                i + 1,
+                j + 1,
+                hb.hydrogen_type_idx + 1,
+                donor_flag,
+                epsilon,
+                sigma,
+                n
+            )?;
         }
     }
 
@@ -299,10 +306,7 @@ fn collect_improper_styles(p: &Potentials) -> Vec<&'static str> {
     let mut set = HashSet::new();
     for imp in &p.impropers {
         match imp {
-            ImproperPotential::Planar { .. } => {
-                set.insert("cvff");
-            }
-            ImproperPotential::Umbrella { .. } => {
+            ImproperPotential::Planar { .. } | ImproperPotential::Umbrella { .. } => {
                 set.insert("umbrella");
             }
         }
@@ -331,48 +335,6 @@ fn write_masses<W: Write>(writer: &mut W, forged: &ForgedSystem) -> Result<(), E
             .copied()
             .ok_or_else(|| Error::Conversion(format!("missing mass for atom type {idx}")))?;
         writeln!(writer, "{:>4} {:>12.6}  # {}", idx + 1, mass, name)?;
-    }
-    writeln!(writer)?;
-    Ok(())
-}
-
-fn write_pair_coeffs<W: Write>(writer: &mut W, forged: &ForgedSystem) -> Result<(), Error> {
-    if forged.potentials.vdw_pairs.is_empty() {
-        return Ok(());
-    }
-    writeln!(writer, "Pair Coeffs")?;
-    writeln!(writer)?;
-    for p in &forged.potentials.vdw_pairs {
-        match p {
-            VdwPairPotential::LennardJones {
-                type1_idx,
-                type2_idx,
-                sigma,
-                epsilon,
-            } => writeln!(
-                writer,
-                "{:>4} {:>4} {:.6} {:.6}",
-                type1_idx + 1,
-                type2_idx + 1,
-                epsilon,
-                sigma
-            )?,
-            VdwPairPotential::Exponential6 {
-                type1_idx,
-                type2_idx,
-                a,
-                b,
-                c,
-            } => writeln!(
-                writer,
-                "{:>4} {:>4} {:.6} {:.6} {:.6}",
-                type1_idx + 1,
-                type2_idx + 1,
-                a,
-                b,
-                c
-            )?,
-        }
     }
     writeln!(writer)?;
     Ok(())
@@ -456,11 +418,7 @@ fn write_improper_coeffs<W: Write>(writer: &mut W, mapping: &TypeMapping) -> Res
     for (id, key) in &mapping.improper_types {
         match key {
             ImproperKey::Planar { k_force, chi0 } => {
-                writeln!(
-                    writer,
-                    "{:>4} cvff {:.6} -1.0 2 {:.6}",
-                    id, k_force.0, chi0.0
-                )?;
+                writeln!(writer, "{:>4} umbrella {:.6} {:.6}", id, k_force.0, chi0.0)?;
             }
             ImproperKey::Umbrella { k_force, psi0 } => {
                 writeln!(writer, "{:>4} umbrella {:.6} {:.6}", id, k_force.0, psi0.0)?;
@@ -696,28 +654,6 @@ fn write_impropers<W: Write>(
         )?;
     }
     writeln!(writer)?;
-    Ok(())
-}
-
-fn write_hbonds<W: Write>(writer: &mut W, forged: &ForgedSystem) -> Result<(), Error> {
-    if forged.potentials.h_bonds.is_empty() {
-        return Ok(());
-    }
-    writeln!(
-        writer,
-        "# Explicit hydrogen bonds (optional helper section)"
-    )?;
-    for hb in &forged.potentials.h_bonds {
-        writeln!(
-            writer,
-            "; HBOND donor={} hydrogen={} acceptor={} d0={:.6} r0={:.6}",
-            hb.donor_idx + 1,
-            hb.hydrogen_idx + 1,
-            hb.acceptor_idx + 1,
-            hb.d0,
-            hb.r0
-        )?;
-    }
     Ok(())
 }
 
@@ -1147,11 +1083,11 @@ mod tests {
                 },
             ],
             h_bonds: vec![HBondPotential {
-                donor_idx: 1,
-                hydrogen_idx: 2,
-                acceptor_idx: 3,
-                d0: 1.5,
-                r0: 2.8,
+                donor_type_idx: 1,
+                hydrogen_type_idx: 2,
+                acceptor_type_idx: 3,
+                d0: 9.5,
+                r0: 2.75,
             }],
         };
 
@@ -1214,7 +1150,7 @@ mod tests {
         assert!(data_out.contains("Dihedral Coeffs"));
         assert!(data_out.contains("1 charmm 2.500000 3 180.000000 0.0"));
         assert!(data_out.contains("Improper Coeffs"));
-        assert!(data_out.contains("1 cvff 10.000000 -1.0 2 0.000000"));
+        assert!(data_out.contains("1 umbrella 10.000000 0.000000"));
         assert!(data_out.contains("2 umbrella 5.000000 180.000000"));
 
         let lines: Vec<&str> = data_out.lines().collect();
@@ -1256,9 +1192,9 @@ mod tests {
         assert!(settings_out.contains("bond_style     hybrid harmonic morse"));
         assert!(settings_out.contains("angle_style    hybrid cosine/squared harmonic"));
         assert!(settings_out.contains("dihedral_style charmm"));
-        assert!(settings_out.contains("improper_style hybrid cvff umbrella"));
+        assert!(settings_out.contains("improper_style umbrella"));
 
-        assert!(settings_out.contains("pair_style      hybrid/overlay lj/cut/coul/long 12.000 buck/coul/long 12.000 hbond/dreiding/lj 4 10.000 12.000 90.000"));
+        assert!(settings_out.contains("pair_style      hybrid/overlay lj/cut/coul/long 12.000 buck/coul/long 12.000 hbond/dreiding/lj 2 10.000 12.000 90.000"));
         assert!(settings_out.contains("kspace_style    pppm 1.0e-4"));
 
         assert!(settings_out.contains("pair_coeff   1   2 lj/cut/coul/long 0.200000 3.500000"));
@@ -1266,7 +1202,9 @@ mod tests {
             settings_out
                 .contains("pair_coeff   2   4 buck/coul/long 1000.000000 50.000000 2.000000")
         );
-        assert!(settings_out.contains("pair_coeff   3   4 hbond/dreiding/lj 1.500000 2.800000"));
+        assert!(
+            settings_out.contains("pair_coeff   2   4 hbond/dreiding/lj 3 i 9.500000 2.627522 2")
+        );
     }
 
     #[test]
@@ -1276,13 +1214,15 @@ mod tests {
         cfg.system_type = SystemType::NonPeriodic;
         let (_, settings_out) = write_outputs(&forged, &cfg);
 
-        assert!(settings_out.contains("pair_style      hybrid/overlay lj/cut/coul/cut 12.000 buck/coul/cut 12.000 hbond/dreiding/lj 4 10.000 12.000 90.000"));
+        assert!(settings_out.contains("pair_style      hybrid/overlay lj/cut/coul/cut 12.000 buck/coul/cut 12.000 hbond/dreiding/lj 2 10.000 12.000 90.000"));
         assert!(!settings_out.contains("kspace_style"));
         assert!(settings_out.contains("pair_coeff   1   2 lj/cut/coul/cut 0.200000 3.500000"));
         assert!(
             settings_out
                 .contains("pair_coeff   2   4 buck/coul/cut 1000.000000 50.000000 2.000000")
         );
-        assert!(settings_out.contains("pair_coeff   3   4 hbond/dreiding/lj 1.500000 2.800000"));
+        assert!(
+            settings_out.contains("pair_coeff   2   4 hbond/dreiding/lj 3 i 9.500000 2.627522 2")
+        );
     }
 }
