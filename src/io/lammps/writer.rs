@@ -306,10 +306,7 @@ fn collect_improper_styles(p: &Potentials) -> Vec<&'static str> {
     let mut set = HashSet::new();
     for imp in &p.impropers {
         match imp {
-            ImproperPotential::Planar { .. } => {
-                set.insert("cvff");
-            }
-            ImproperPotential::Umbrella { .. } => {
+            ImproperPotential::Planar { .. } | ImproperPotential::Umbrella { .. } => {
                 set.insert("umbrella");
             }
         }
