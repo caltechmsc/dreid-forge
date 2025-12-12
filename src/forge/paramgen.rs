@@ -1,3 +1,10 @@
+//! Force field parameter generation.
+//!
+//! This module generates all potential energy function parameters from
+//! the typed and charged intermediate system. It produces bond, angle,
+//! dihedral, improper, van der Waals, and hydrogen bond potentials
+//! according to DREIDING force field rules.
+
 use super::config::{
     AnglePotentialType, BondPotentialType, ChargeMethod, ForgeConfig, VdwPotentialType,
 };
@@ -12,8 +19,30 @@ use crate::model::topology::{
 use crate::model::types::Element;
 use std::collections::{HashMap, HashSet};
 
+/// Atom type for hydrogen bond donor hydrogens.
 const H_BOND_DONOR_HYDROGEN_TYPE: &str = "H_HB";
 
+/// Generates all force field parameters from the intermediate system.
+///
+/// This is the final stage of the parameterization pipeline. Takes the
+/// typed and charged intermediate system and produces all potential
+/// energy function parameters needed for simulation.
+///
+/// # Arguments
+///
+/// * `system` — Original molecular system (cloned into output)
+/// * `intermediate` — Typed and charged intermediate representation
+/// * `params` — Force field parameter set
+/// * `config` — Configuration controlling potential types
+///
+/// # Returns
+///
+/// A fully parameterized [`ForgedSystem`].
+///
+/// # Errors
+///
+/// Returns [`Error::MissingParameter`] if an atom type lacks required
+/// parameters, or [`Error::Conversion`] for internal consistency failures.
 pub fn generate_parameters(
     system: &System,
     intermediate: &IntermediateSystem,
@@ -53,6 +82,7 @@ pub fn generate_parameters(
     })
 }
 
+/// Collects unique atom types and builds a type-to-index mapping.
 fn collect_atom_types(intermediate: &IntermediateSystem) -> (Vec<String>, HashMap<String, usize>) {
     let mut types_set = HashSet::new();
     for atom in &intermediate.atoms {
@@ -71,6 +101,7 @@ fn collect_atom_types(intermediate: &IntermediateSystem) -> (Vec<String>, HashMa
     (atom_types, type_indices)
 }
 
+/// Generates per-atom properties (charge, mass, type index).
 fn generate_atom_properties(
     intermediate: &IntermediateSystem,
     type_indices: &HashMap<String, usize>,
@@ -92,6 +123,7 @@ fn generate_atom_properties(
         .collect()
 }
 
+/// Generates bond stretching potentials (Harmonic or Morse).
 fn generate_bond_potentials(
     intermediate: &IntermediateSystem,
     params: &ForceFieldParams,
@@ -148,6 +180,7 @@ fn generate_bond_potentials(
         .collect()
 }
 
+/// Generates angle bending potentials (ThetaHarmonic or CosineHarmonic).
 fn generate_angle_potentials(
     intermediate: &IntermediateSystem,
     params: &ForceFieldParams,
@@ -201,6 +234,7 @@ fn generate_angle_potentials(
         .collect()
 }
 
+/// Generates proper dihedral (torsion) potentials based on hybridization.
 fn generate_dihedral_potentials(
     intermediate: &IntermediateSystem,
     _params: &ForceFieldParams,
@@ -247,6 +281,7 @@ fn generate_dihedral_potentials(
     Ok(dihedrals)
 }
 
+/// Generates improper dihedral (out-of-plane) potentials for sp² centers.
 fn generate_improper_potentials(
     intermediate: &IntermediateSystem,
     params: &ForceFieldParams,
@@ -267,6 +302,7 @@ fn generate_improper_potentials(
     Ok(impropers)
 }
 
+/// Generates van der Waals pair potentials (LJ or Exp-6).
 fn generate_vdw_potentials(
     atom_types: &[String],
     params: &ForceFieldParams,
@@ -320,6 +356,10 @@ fn generate_vdw_potentials(
     Ok(vdw_pairs)
 }
 
+/// Generates directional hydrogen bond potentials.
+///
+/// Creates H-bond terms for all unique donor-hydrogen-acceptor triplets
+/// where the hydrogen is of type H_HB and the acceptor is N, O, or F.
 fn generate_hbond_potentials(
     intermediate: &IntermediateSystem,
     type_indices: &HashMap<String, usize>,
@@ -380,6 +420,7 @@ fn generate_hbond_potentials(
     Ok(h_bonds)
 }
 
+/// Checks if an element can act as a hydrogen bond acceptor (N, O, F).
 fn is_hbond_acceptor(element: Element) -> bool {
     matches!(element, Element::N | Element::O | Element::F)
 }
