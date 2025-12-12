@@ -1,15 +1,53 @@
+//! Fundamental chemical primitives: elements and bond orders.
+//!
+//! This module provides the building blocks for representing chemical identity across
+//! `dreid-forge`. The [`Element`] enum covers the entire periodic table with atomic
+//! numbers, masses, and symbols, while [`BondOrder`] classifies covalent connectivity.
+//! Both types support string parsing for file I/O and implement standard traits for
+//! use in hash maps and sorted collections.
+
 use std::fmt;
 use std::str::FromStr;
 use thiserror::Error;
 
+/// Error returned when parsing an invalid or unsupported element symbol.
+///
+/// This error occurs when [`Element::from_str`] encounters a string that does not
+/// match any known element symbol. The wrapped `String` contains the original input.
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
 #[error("invalid or unsupported element symbol: '{0}'")]
 pub struct ParseElementError(String);
 
+/// Error returned when parsing an invalid bond order string.
+///
+/// This error occurs when [`BondOrder::from_str`] cannot interpret the input.
+/// Accepted values include `"single"`, `"double"`, `"triple"`, `"aromatic"`,
+/// or their numeric equivalents `"1"`, `"2"`, `"3"`, `"ar"`.
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
 #[error("invalid bond order string: '{0}'")]
 pub struct ParseBondOrderError(String);
 
+/// Chemical element from the periodic table (Z = 1 through 118).
+///
+/// Each variant stores its atomic number in the `repr(u8)` discriminant, enabling
+/// efficient storage and fast comparisons. The type provides accessors for atomic
+/// mass, symbol, and atomic number, and implements [`FromStr`] for parsing element
+/// symbols from molecular file formats.
+///
+/// # Examples
+///
+/// ```
+/// use dreid_forge::Element;
+/// use std::str::FromStr;
+///
+/// let carbon = Element::C;
+/// assert_eq!(carbon.symbol(), "C");
+/// assert_eq!(carbon.atomic_number(), 6);
+/// assert!((carbon.atomic_mass() - 12.011).abs() < 1e-3);
+///
+/// let parsed = Element::from_str("Fe").unwrap();
+/// assert_eq!(parsed, Element::Fe);
+/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[repr(u8)]
 pub enum Element {
@@ -134,6 +172,14 @@ pub enum Element {
 }
 
 impl Element {
+    /// Returns the standard atomic mass in unified atomic mass units (Da).
+    ///
+    /// Values are taken from IUPAC recommendations and are suitable for computing
+    /// molecular masses in force field parameterization and simulation setup.
+    ///
+    /// # Returns
+    ///
+    /// Atomic mass as `f64` in Daltons.
     pub fn atomic_mass(&self) -> f64 {
         match self {
             Element::H => 1.008,
@@ -257,11 +303,27 @@ impl Element {
         }
     }
 
+    /// Returns the atomic number (Z) of this element.
+    ///
+    /// The value ranges from 1 (hydrogen) to 118 (oganesson) and corresponds
+    /// to the number of protons in the nucleus.
+    ///
+    /// # Returns
+    ///
+    /// Atomic number as `u8`.
     #[inline]
     pub fn atomic_number(&self) -> u8 {
         *self as u8
     }
 
+    /// Returns the standard chemical symbol for this element.
+    ///
+    /// Symbols follow IUPAC conventions: one or two letters with the first
+    /// capitalized (e.g., `"H"`, `"He"`, `"Fe"`).
+    ///
+    /// # Returns
+    ///
+    /// Static string slice containing the element symbol.
     pub fn symbol(&self) -> &'static str {
         match self {
             Element::H => "H",
@@ -520,15 +582,50 @@ impl FromStr for Element {
     }
 }
 
+/// Bond order classification for chemical bonds.
+///
+/// Represents the multiplicity or aromaticity of a covalent bond.
+/// Used to determine equilibrium bond lengths and force constants
+/// in the DREIDING force field parameterization.
+///
+/// # Examples
+///
+/// ```
+/// use dreid_forge::BondOrder;
+/// use std::str::FromStr;
+///
+/// // Parse from string representation
+/// let single = BondOrder::from_str("single").unwrap();
+/// let aromatic = BondOrder::from_str("ar").unwrap();
+///
+/// assert_eq!(single.value(), 1.0);
+/// assert_eq!(aromatic.value(), 1.5);
+/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum BondOrder {
+    /// Single bond with bond order 1.0.
     Single,
+    /// Double bond with bond order 2.0.
     Double,
+    /// Triple bond with bond order 3.0.
     Triple,
+    /// Aromatic bond with effective bond order 1.5.
     Aromatic,
 }
 
 impl BondOrder {
+    /// Returns the numeric bond order value.
+    ///
+    /// Converts the bond order variant to its corresponding
+    /// floating-point multiplicity value used in force field
+    /// parameter calculations.
+    ///
+    /// # Returns
+    ///
+    /// * `1.0` for single bonds
+    /// * `2.0` for double bonds
+    /// * `3.0` for triple bonds
+    /// * `1.5` for aromatic bonds
     pub fn value(&self) -> f64 {
         match self {
             BondOrder::Single => 1.0,
@@ -539,6 +636,9 @@ impl BondOrder {
     }
 }
 
+/// Formats the bond order as a human-readable string.
+///
+/// Produces title-case output: "Single", "Double", "Triple", or "Aromatic".
 impl fmt::Display for BondOrder {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -550,6 +650,18 @@ impl fmt::Display for BondOrder {
     }
 }
 
+/// Parses a bond order from its string representation.
+///
+/// Accepts case-insensitive text or numeric forms:
+/// * "single" or "1" → `Single`
+/// * "double" or "2" → `Double`
+/// * "triple" or "3" → `Triple`
+/// * "aromatic" or "ar" → `Aromatic`
+///
+/// # Errors
+///
+/// Returns [`ParseBondOrderError`] if the input string does not
+/// match any recognized bond order format.
 impl FromStr for BondOrder {
     type Err = ParseBondOrderError;
 
