@@ -29,9 +29,9 @@ const FORMAT_CONECT: &str = "FORMAT CONECT (a6,12i6)";
 /// # Errors
 ///
 /// Returns [`Error`] if:
-/// - The system lacks biological metadata (`bio_metadata` is `None`)
-/// - Metadata and atom counts are inconsistent
-/// - An I/O error occurs during writing
+/// * The system lacks biological metadata (`bio_metadata` is `None`)
+/// * Metadata and atom counts are inconsistent
+/// * An I/O error occurs during writing
 ///
 /// # Examples
 ///
