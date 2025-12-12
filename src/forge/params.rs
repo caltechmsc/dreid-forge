@@ -1,3 +1,14 @@
+//! DREIDING force field parameter definitions and loading.
+//!
+//! This module handles loading and accessing DREIDING force field parameters.
+//! Parameters are defined in TOML format and include atom type properties
+//! (bond radii, angles, vdW parameters), global force constants, and
+//! hydrogen bond settings.
+//!
+//! The default parameters are embedded in the library from
+//! `resources/default.params.toml`. Custom parameters can be provided
+//! via [`ForgeConfig::params`](super::ForgeConfig::params).
+
 use super::error::Error;
 use super::intermediate::Hybridization;
 use serde::Deserialize;
@@ -8,25 +19,41 @@ const DEFAULT_PARAMS_TOML: &str = include_str!("../../resources/default.params.t
 
 static DEFAULT_PARAMS: OnceLock<ForceFieldParams> = OnceLock::new();
 
+/// Complete set of DREIDING force field parameters.
+///
+/// Contains global force constants, per-atom-type parameters, and
+/// hydrogen bond settings. Deserialized from TOML format.
 #[derive(Debug, Clone, Deserialize)]
 pub struct ForceFieldParams {
+    /// Global force constants and tolerances.
     pub global: GlobalParams,
+    /// Per-atom-type parameters indexed by type name (e.g., "C_3").
     #[serde(default)]
     pub atoms: HashMap<String, AtomTypeParams>,
+    /// Hydrogen bond potential parameters.
     #[serde(default)]
     pub hydrogen_bond: HydrogenBondParams,
 }
 
+/// Global force field parameters.
+///
+/// These parameters apply across all atom types and control the
+/// base force constants for bonded interactions.
 #[derive(Debug, Clone, Deserialize)]
 pub struct GlobalParams {
+    /// Bond stretching force constant base (kcal/mol/Å²).
     #[serde(default = "default_bond_k")]
     pub bond_k: f64,
+    /// Bond dissociation energy base for Morse potential (kcal/mol).
     #[serde(default = "default_bond_d")]
     pub bond_d: f64,
+    /// Angle bending force constant (kcal/mol/rad²).
     #[serde(default = "default_angle_k")]
     pub angle_k: f64,
+    /// Inversion (improper) force constant (kcal/mol/rad²).
     #[serde(default = "default_inversion_k")]
     pub inversion_k: f64,
+    /// Bond length correction for covalent radii sum (Å).
     #[serde(default = "default_bond_delta")]
     pub bond_delta: f64,
 }
@@ -59,12 +86,21 @@ impl Default for GlobalParams {
     }
 }
 
+/// Per-atom-type force field parameters.
+///
+/// Contains geometric and van der Waals parameters specific to
+/// each DREIDING atom type.
 #[derive(Debug, Clone, Deserialize)]
 pub struct AtomTypeParams {
+    /// Covalent bond radius (Å).
     pub bond_radius: f64,
+    /// Equilibrium bond angle (degrees).
     pub bond_angle: f64,
+    /// Van der Waals equilibrium distance (Å).
     pub vdw_r0: f64,
+    /// Van der Waals well depth (kcal/mol).
     pub vdw_d0: f64,
+    /// Exponential-6 zeta parameter (dimensionless).
     #[serde(default = "default_vdw_zeta")]
     pub vdw_zeta: f64,
 }
@@ -73,12 +109,18 @@ fn default_vdw_zeta() -> f64 {
     12.0
 }
 
+/// Hydrogen bond potential parameters.
+///
+/// Controls the directional hydrogen bond terms in DREIDING.
 #[derive(Debug, Clone, Deserialize)]
 pub struct HydrogenBondParams {
+    /// Equilibrium H···A distance (Å).
     #[serde(default = "default_hbond_r0")]
     pub r0: f64,
+    /// H-bond energy when no explicit charges (kcal/mol).
     #[serde(default = "default_hbond_d0_no_charge")]
     pub d0_no_charge: f64,
+    /// H-bond energy with explicit charges (kcal/mol).
     #[serde(default = "default_hbond_d0_explicit")]
     pub d0_explicit: f64,
 }
@@ -103,6 +145,18 @@ impl Default for HydrogenBondParams {
     }
 }
 
+/// Loads force field parameters from TOML.
+///
+/// If `custom_toml` is provided, parses it as a complete parameter set.
+/// Otherwise, returns a clone of the embedded default parameters.
+///
+/// # Arguments
+///
+/// * `custom_toml` — Optional TOML string containing custom parameters
+///
+/// # Errors
+///
+/// Returns [`Error::ParameterParse`] if the TOML is malformed.
 pub fn load_parameters(custom_toml: Option<&str>) -> Result<ForceFieldParams, Error> {
     match custom_toml {
         Some(toml) => {
@@ -113,6 +167,9 @@ pub fn load_parameters(custom_toml: Option<&str>) -> Result<ForceFieldParams, Er
     }
 }
 
+/// Returns a reference to the embedded default parameters.
+///
+/// The parameters are parsed once and cached for subsequent calls.
 pub fn get_default_parameters() -> &'static ForceFieldParams {
     DEFAULT_PARAMS.get_or_init(|| {
         toml::from_str(DEFAULT_PARAMS_TOML)
@@ -120,13 +177,35 @@ pub fn get_default_parameters() -> &'static ForceFieldParams {
     })
 }
 
+/// Torsion potential parameters for a dihedral angle.
 #[derive(Debug, Clone, Copy)]
 pub struct TorsionParams {
+    /// Barrier height (kcal/mol).
     pub v_barrier: f64,
+    /// Periodicity (number of minima per 360°).
     pub periodicity: i32,
+    /// Phase offset (degrees).
     pub phase_offset: f64,
 }
 
+/// Determines torsion parameters based on central bond hybridizations.
+///
+/// Implements the DREIDING torsion parameter rules based on the
+/// hybridization states of the two central atoms (j and k) in the
+/// i-j-k-l dihedral.
+///
+/// # Arguments
+///
+/// * `j_hyb` — Hybridization of atom j
+/// * `k_hyb` — Hybridization of atom k
+/// * `j_is_oxygen_column` — Whether atom j is O, S, Se, or Te
+/// * `k_is_oxygen_column` — Whether atom k is O, S, Se, or Te
+/// * `i_hyb` — Hybridization of atom i (for special cases)
+///
+/// # Returns
+///
+/// `Some(TorsionParams)` if a torsion term should be generated,
+/// `None` if no torsion is defined for this combination.
 pub fn get_torsion_params(
     j_hyb: Hybridization,
     k_hyb: Hybridization,
@@ -198,6 +277,10 @@ pub fn get_torsion_params(
     }
 }
 
+/// Checks if an element belongs to the oxygen column (group 16).
+///
+/// Returns `true` for O, S, Se, Te which have special torsion rules
+/// in DREIDING.
 pub fn is_oxygen_column(element: crate::model::types::Element) -> bool {
     use crate::model::types::Element;
     matches!(element, Element::O | Element::S | Element::Se | Element::Te)
