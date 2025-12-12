@@ -80,7 +80,7 @@ mod tests {
 
     #[test]
     fn atom_position_precision_preserved() {
-        let pos = [1e-12_f64, -1e6, 3.141592653589793];
+        let pos = [1e-12_f64, -1e6, std::f64::consts::PI];
         let a = Atom::new(Element::H, pos);
         assert_eq!(a.position[0], pos[0]);
         assert_eq!(a.position[1], pos[1]);
