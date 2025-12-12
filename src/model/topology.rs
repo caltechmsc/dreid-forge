@@ -299,12 +299,15 @@ mod tests {
         }
 
         let hb = HBondPotential {
-            donor_idx: 0,
-            hydrogen_idx: 1,
-            acceptor_idx: 2,
+            donor_type_idx: 0,
+            hydrogen_type_idx: 1,
+            acceptor_type_idx: 2,
             d0: 1.5,
             r0: 2.8,
         };
+        assert_eq!(hb.donor_type_idx, 0);
+        assert_eq!(hb.hydrogen_type_idx, 1);
+        assert_eq!(hb.acceptor_type_idx, 2);
         assert_eq!(hb.d0, 1.5);
         assert_eq!(hb.r0, 2.8);
 
