@@ -455,11 +455,7 @@ fn write_improper_coeffs<W: Write>(writer: &mut W, mapping: &TypeMapping) -> Res
     for (id, key) in &mapping.improper_types {
         match key {
             ImproperKey::Planar { k_force, chi0 } => {
-                writeln!(
-                    writer,
-                    "{:>4} cvff {:.6} -1.0 2 {:.6}",
-                    id, k_force.0, chi0.0
-                )?;
+                writeln!(writer, "{:>4} umbrella {:.6} {:.6}", id, k_force.0, chi0.0)?;
             }
             ImproperKey::Umbrella { k_force, psi0 } => {
                 writeln!(writer, "{:>4} umbrella {:.6} {:.6}", id, k_force.0, psi0.0)?;
