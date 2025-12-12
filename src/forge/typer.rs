@@ -1,3 +1,13 @@
+//! DREIDING atom type assignment.
+//!
+//! This module handles the assignment of DREIDING atom types to atoms
+//! based on their element, hybridization, and bonding environment. It
+//! also populates the angle, dihedral, and improper lists in the
+//! intermediate system.
+//!
+//! Atom typing is delegated to the `dreid-typer` crate which implements
+//! the full DREIDING typing rules.
+
 use super::error::Error;
 use super::intermediate::{
     IntermediateAngle, IntermediateDihedral, IntermediateImproper, IntermediateSystem,
@@ -8,6 +18,22 @@ use dreid_typer::{
     assign_topology_with_rules, rules,
 };
 
+/// Assigns DREIDING atom types and topology to an intermediate system.
+///
+/// Uses the `dreid-typer` crate to analyze the molecular graph and assign
+/// atom types (e.g., "C_3", "O_2", "N_R") based on element, hybridization,
+/// and bonding environment. Also populates the angles, dihedrals, and
+/// impropers lists.
+///
+/// # Arguments
+///
+/// * `system` — Mutable reference to the intermediate system
+/// * `rules` — Optional custom typing rules in TOML format
+///
+/// # Errors
+///
+/// Returns [`Error::RuleParse`] if custom rules are malformed, or
+/// [`Error::AtomTyping`] if the molecular graph cannot be typed.
 pub fn assign_atom_types(
     system: &mut IntermediateSystem,
     rules: Option<&str>,
@@ -26,6 +52,7 @@ pub fn assign_atom_types(
     Ok(())
 }
 
+/// Applies computed topology results to the intermediate system.
 fn apply_topology(system: &mut IntermediateSystem, topology: &MolecularTopology) {
     for (int_atom, topo_atom) in system.atoms.iter_mut().zip(topology.atoms.iter()) {
         int_atom.atom_type = topo_atom.atom_type.clone();
@@ -72,6 +99,7 @@ fn apply_topology(system: &mut IntermediateSystem, topology: &MolecularTopology)
         .collect();
 }
 
+/// Builds a molecular graph for the typer from the intermediate system.
 fn build_molecular_graph(system: &IntermediateSystem) -> Result<MolecularGraph, Error> {
     let mut graph = MolecularGraph::new();
 
@@ -90,6 +118,7 @@ fn build_molecular_graph(system: &IntermediateSystem) -> Result<MolecularGraph, 
     Ok(graph)
 }
 
+/// Converts a dreid-forge Element to a dreid-typer Element.
 fn convert_element(elem: crate::model::types::Element) -> Result<TyperElement, Error> {
     let symbol = elem.symbol();
     symbol.parse::<TyperElement>().map_err(|_| {
@@ -100,6 +129,7 @@ fn convert_element(elem: crate::model::types::Element) -> Result<TyperElement, E
     })
 }
 
+/// Converts a BondOrder to a dreid-typer GraphBondOrder.
 fn bond_order_to_graph_order(order: BondOrder) -> GraphBondOrder {
     match order {
         BondOrder::Single => GraphBondOrder::Single,
