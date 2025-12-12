@@ -302,14 +302,14 @@ mod tests {
             donor_type_idx: 0,
             hydrogen_type_idx: 1,
             acceptor_type_idx: 2,
-            d0: 1.5,
-            r0: 2.8,
+            d0: 9.5,
+            r0: 2.75,
         };
         assert_eq!(hb.donor_type_idx, 0);
         assert_eq!(hb.hydrogen_type_idx, 1);
         assert_eq!(hb.acceptor_type_idx, 2);
-        assert_eq!(hb.d0, 1.5);
-        assert_eq!(hb.r0, 2.8);
+        assert_eq!(hb.d0, 9.5);
+        assert_eq!(hb.r0, 2.75);
 
         let mut pots = Potentials::default();
         pots.vdw_pairs.push(lj.clone());
