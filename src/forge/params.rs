@@ -103,13 +103,13 @@ impl Default for HydrogenBondParams {
     }
 }
 
-pub fn load_parameters(custom_toml: Option<&str>) -> Result<&'static ForceFieldParams, Error> {
+pub fn load_parameters(custom_toml: Option<&str>) -> Result<ForceFieldParams, Error> {
     match custom_toml {
         Some(toml) => {
             let params: ForceFieldParams = toml::from_str(toml)?;
-            Ok(Box::leak(Box::new(params)))
+            Ok(params)
         }
-        None => Ok(get_default_parameters()),
+        None => Ok(get_default_parameters().clone()),
     }
 }
 

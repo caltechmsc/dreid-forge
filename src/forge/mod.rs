@@ -24,7 +24,7 @@ pub fn forge(system: &System, config: &ForgeConfig) -> Result<ForgedSystem, Erro
 
     charge::assign_charges(&mut intermediate, &config.charge_method)?;
 
-    let forged = paramgen::generate_parameters(system, &intermediate, ff_params, config)?;
+    let forged = paramgen::generate_parameters(system, &intermediate, &ff_params, config)?;
 
     Ok(forged)
 }
