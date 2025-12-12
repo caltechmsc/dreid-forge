@@ -663,11 +663,13 @@ mod tests {
     #[test]
     fn generates_hbond_potentials_for_h_hb() {
         let int = make_typed_water();
+        let (_, type_indices) = collect_atom_types(&int);
         let params = super::super::params::get_default_parameters();
         let config = ForgeConfig::default();
-        let hbonds = generate_hbond_potentials(&int, params, &config).unwrap();
+        let hbonds = generate_hbond_potentials(&int, &type_indices, params, &config).unwrap();
 
         assert!(!hbonds.is_empty());
+        assert_eq!(hbonds.len(), 1);
         for hb in &hbonds {
             assert!(hb.d0 > 0.0);
             assert!(hb.r0 > 0.0);
@@ -677,16 +679,19 @@ mod tests {
     #[test]
     fn hbond_d0_depends_on_charge_method() {
         let int = make_typed_water();
+        let (_, type_indices) = collect_atom_types(&int);
         let params = super::super::params::get_default_parameters();
 
         let config_no_charge = ForgeConfig::default();
-        let hbonds_no = generate_hbond_potentials(&int, params, &config_no_charge).unwrap();
+        let hbonds_no =
+            generate_hbond_potentials(&int, &type_indices, params, &config_no_charge).unwrap();
 
         let config_qeq = ForgeConfig {
             charge_method: ChargeMethod::Qeq(Default::default()),
             ..Default::default()
         };
-        let hbonds_qeq = generate_hbond_potentials(&int, params, &config_qeq).unwrap();
+        let hbonds_qeq =
+            generate_hbond_potentials(&int, &type_indices, params, &config_qeq).unwrap();
 
         assert_ne!(hbonds_no[0].d0, hbonds_qeq[0].d0);
         assert_eq!(hbonds_no[0].d0, params.hydrogen_bond.d0_no_charge);
