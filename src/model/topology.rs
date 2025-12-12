@@ -1,119 +1,252 @@
+//! Force field topology and potential function definitions.
+//!
+//! This module defines the data structures for DREIDING force field
+//! parameters and potential energy functions. After parameterization,
+//! a [`ForgedSystem`] contains all information needed to run molecular
+//! dynamics or energy minimization simulations.
+//!
+//! # Potential Functions
+//!
+//! The DREIDING force field supports several potential function types:
+//!
+//! - **Bonds**: [`BondPotential`] — Harmonic or Morse stretching
+//! - **Angles**: [`AnglePotential`] — Cosine-harmonic or theta-harmonic bending
+//! - **Dihedrals**: [`DihedralPotential`] — Periodic torsion potentials
+//! - **Impropers**: [`ImproperPotential`] — Out-of-plane (planar/umbrella)
+//! - **Van der Waals**: [`VdwPairPotential`] — LJ 12-6 or Exp-6
+//! - **Hydrogen bonds**: [`HBondPotential`] — Directional H-bond terms
+//!
+//! # Output Structure
+//!
+//! The [`ForgedSystem`] struct combines the original molecular system
+//! with computed atom types, partial charges, and all bonded/non-bonded
+//! potential parameters needed for simulation.
+
 use super::system::System;
 
+/// Per-atom force field parameters.
+///
+/// Contains the computed properties for a single atom after
+/// DREIDING parameterization.
+///
+/// # Fields
+///
+/// * `charge` — Partial atomic charge in elementary charge units
+/// * `mass` — Atomic mass in atomic mass units (amu)
+/// * `type_idx` — Index into the atom type table
 #[derive(Debug, Clone, PartialEq)]
 pub struct AtomParam {
+    /// Partial atomic charge (e).
     pub charge: f64,
+    /// Atomic mass (amu).
     pub mass: f64,
+    /// Index into the atom type name table.
     pub type_idx: usize,
 }
 
+/// Bond stretching potential functions.
 #[derive(Debug, Clone, PartialEq)]
 pub enum BondPotential {
+    /// Harmonic bond stretching potential.
     Harmonic {
+        /// First atom index.
         i: usize,
+        /// Second atom index.
         j: usize,
+        /// Force constant (kcal/mol/Å²).
         k_force: f64,
+        /// Equilibrium bond length (Å).
         r0: f64,
     },
+    /// Morse anharmonic bond potential.
     Morse {
+        /// First atom index.
         i: usize,
+        /// Second atom index.
         j: usize,
+        /// Equilibrium bond length (Å).
         r0: f64,
+        /// Bond dissociation energy (kcal/mol).
         d0: f64,
+        /// Morse alpha parameter (Å⁻¹).
         alpha: f64,
     },
 }
 
+/// Angle bending potential functions.
 #[derive(Debug, Clone, PartialEq)]
 pub enum AnglePotential {
+    /// Cosine-harmonic angle potential (DREIDING default).
     CosineHarmonic {
+        /// First atom index.
         i: usize,
+        /// Central atom index.
         j: usize,
+        /// Third atom index.
         k: usize,
+        /// Force constant (kcal/mol/rad²).
         k_force: f64,
+        /// Equilibrium angle (degrees).
         theta0: f64,
     },
+    /// Simple theta-harmonic angle potential.
     ThetaHarmonic {
+        /// First atom index.
         i: usize,
+        /// Central atom index.
         j: usize,
+        /// Third atom index.
         k: usize,
+        /// Force constant (kcal/mol/rad²).
         k_force: f64,
+        /// Equilibrium angle (degrees).
         theta0: f64,
     },
 }
 
+/// Proper dihedral (torsion) potential.
 #[derive(Debug, Clone, PartialEq)]
 pub struct DihedralPotential {
+    /// First atom index.
     pub i: usize,
+    /// Second atom index (bond axis).
     pub j: usize,
+    /// Third atom index (bond axis).
     pub k: usize,
+    /// Fourth atom index.
     pub l: usize,
+    /// Barrier height (kcal/mol).
     pub v_barrier: f64,
+    /// Periodicity (number of minima in 360°).
     pub periodicity: i32,
+    /// Phase offset (degrees).
     pub phase_offset: f64,
 }
 
+/// Improper dihedral (out-of-plane) potential functions.
 #[derive(Debug, Clone, PartialEq)]
 pub enum ImproperPotential {
+    /// Planar improper for sp² centers.
     Planar {
+        /// First peripheral atom.
         i: usize,
+        /// Central atom (sp² center).
         j: usize,
+        /// Second peripheral atom.
         k: usize,
+        /// Third peripheral atom.
         l: usize,
+        /// Force constant (kcal/mol/rad²).
         k_force: f64,
+        /// Equilibrium out-of-plane angle (degrees).
         chi0: f64,
     },
+    /// Umbrella improper for pyramidal centers.
     Umbrella {
+        /// Central atom (pyramidal center).
         center: usize,
+        /// First peripheral atom.
         p1: usize,
+        /// Second peripheral atom.
         p2: usize,
+        /// Third peripheral atom.
         p3: usize,
+        /// Force constant (kcal/mol).
         k_force: f64,
+        /// Equilibrium umbrella angle (degrees).
         psi0: f64,
     },
 }
 
+/// Van der Waals non-bonded pair potential functions.
 #[derive(Debug, Clone, PartialEq)]
 pub enum VdwPairPotential {
+    /// Lennard-Jones 12-6 potential.
     LennardJones {
+        /// First atom type index.
         type1_idx: usize,
+        /// Second atom type index.
         type2_idx: usize,
+        /// LJ sigma parameter (Å).
         sigma: f64,
+        /// LJ epsilon parameter (kcal/mol).
         epsilon: f64,
     },
+    /// Exponential-6 potential (Buckingham-like).
     Exponential6 {
+        /// First atom type index.
         type1_idx: usize,
+        /// Second atom type index.
         type2_idx: usize,
+        /// Repulsive prefactor A.
         a: f64,
+        /// Exponential decay parameter B (Å⁻¹).
         b: f64,
+        /// Attractive coefficient C (kcal·Å⁶/mol).
         c: f64,
     },
 }
 
+/// Hydrogen bond directional potential.
 #[derive(Debug, Clone, PartialEq)]
 pub struct HBondPotential {
+    /// Donor atom type index (D in D-H···A).
     pub donor_type_idx: usize,
+    /// Hydrogen atom type index (H in D-H···A).
     pub hydrogen_type_idx: usize,
+    /// Acceptor atom type index (A in D-H···A).
     pub acceptor_type_idx: usize,
+    /// H-bond equilibrium energy (kcal/mol).
     pub d0: f64,
+    /// Equilibrium H···A distance (Å).
     pub r0: f64,
 }
 
+/// Collection of all potential energy functions for a system.
+///
+/// Groups all bonded and non-bonded interaction parameters
+/// computed during DREIDING parameterization.
 #[derive(Debug, Clone, Default)]
 pub struct Potentials {
+    /// Bond stretching potentials.
     pub bonds: Vec<BondPotential>,
+    /// Angle bending potentials.
     pub angles: Vec<AnglePotential>,
+    /// Proper dihedral (torsion) potentials.
     pub dihedrals: Vec<DihedralPotential>,
+    /// Improper dihedral (out-of-plane) potentials.
     pub impropers: Vec<ImproperPotential>,
+    /// Van der Waals pair potentials between atom types.
     pub vdw_pairs: Vec<VdwPairPotential>,
+    /// Hydrogen bond potentials.
     pub h_bonds: Vec<HBondPotential>,
 }
 
+/// A fully parameterized molecular system.
+///
+/// Contains the original [`System`] along with computed DREIDING
+/// force field parameters including atom types, partial charges,
+/// and all potential energy function parameters.
+///
+/// This is the primary output of the [`forge`](crate::forge) function
+/// and contains everything needed to write simulation input files
+/// for molecular dynamics packages.
+///
+/// # Fields
+///
+/// * `system` — Original molecular structure
+/// * `atom_types` — DREIDING atom type names (e.g., "C_3", "O_2")
+/// * `atom_properties` — Per-atom charges, masses, and type indices
+/// * `potentials` — All bonded and non-bonded potential parameters
 #[derive(Debug, Clone)]
 pub struct ForgedSystem {
+    /// The original molecular system with atoms and bonds.
     pub system: System,
+    /// DREIDING atom type names, indexed by type_idx.
     pub atom_types: Vec<String>,
+    /// Per-atom force field parameters.
     pub atom_properties: Vec<AtomParam>,
+    /// All potential energy function parameters.
     pub potentials: Potentials,
 }
 
