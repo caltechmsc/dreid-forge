@@ -1083,11 +1083,11 @@ mod tests {
                 },
             ],
             h_bonds: vec![HBondPotential {
-                donor_idx: 1,
-                hydrogen_idx: 2,
-                acceptor_idx: 3,
-                d0: 1.5,
-                r0: 2.8,
+                donor_type_idx: 1,
+                hydrogen_type_idx: 2,
+                acceptor_type_idx: 3,
+                d0: 9.5,
+                r0: 2.75,
             }],
         };
 
@@ -1150,7 +1150,7 @@ mod tests {
         assert!(data_out.contains("Dihedral Coeffs"));
         assert!(data_out.contains("1 charmm 2.500000 3 180.000000 0.0"));
         assert!(data_out.contains("Improper Coeffs"));
-        assert!(data_out.contains("1 cvff 10.000000 -1.0 2 0.000000"));
+        assert!(data_out.contains("1 umbrella 10.000000 0.000000"));
         assert!(data_out.contains("2 umbrella 5.000000 180.000000"));
 
         let lines: Vec<&str> = data_out.lines().collect();
@@ -1192,9 +1192,9 @@ mod tests {
         assert!(settings_out.contains("bond_style     hybrid harmonic morse"));
         assert!(settings_out.contains("angle_style    hybrid cosine/squared harmonic"));
         assert!(settings_out.contains("dihedral_style charmm"));
-        assert!(settings_out.contains("improper_style hybrid cvff umbrella"));
+        assert!(settings_out.contains("improper_style umbrella"));
 
-        assert!(settings_out.contains("pair_style      hybrid/overlay lj/cut/coul/long 12.000 buck/coul/long 12.000 hbond/dreiding/lj 4 10.000 12.000 90.000"));
+        assert!(settings_out.contains("pair_style      hybrid/overlay lj/cut/coul/long 12.000 buck/coul/long 12.000 hbond/dreiding/lj 2 10.000 12.000 90.000"));
         assert!(settings_out.contains("kspace_style    pppm 1.0e-4"));
 
         assert!(settings_out.contains("pair_coeff   1   2 lj/cut/coul/long 0.200000 3.500000"));
@@ -1202,7 +1202,9 @@ mod tests {
             settings_out
                 .contains("pair_coeff   2   4 buck/coul/long 1000.000000 50.000000 2.000000")
         );
-        assert!(settings_out.contains("pair_coeff   3   4 hbond/dreiding/lj 1.500000 2.800000"));
+        assert!(
+            settings_out.contains("pair_coeff   2   4 hbond/dreiding/lj 3 i 9.500000 2.627522 2")
+        );
     }
 
     #[test]
@@ -1212,13 +1214,15 @@ mod tests {
         cfg.system_type = SystemType::NonPeriodic;
         let (_, settings_out) = write_outputs(&forged, &cfg);
 
-        assert!(settings_out.contains("pair_style      hybrid/overlay lj/cut/coul/cut 12.000 buck/coul/cut 12.000 hbond/dreiding/lj 4 10.000 12.000 90.000"));
+        assert!(settings_out.contains("pair_style      hybrid/overlay lj/cut/coul/cut 12.000 buck/coul/cut 12.000 hbond/dreiding/lj 2 10.000 12.000 90.000"));
         assert!(!settings_out.contains("kspace_style"));
         assert!(settings_out.contains("pair_coeff   1   2 lj/cut/coul/cut 0.200000 3.500000"));
         assert!(
             settings_out
                 .contains("pair_coeff   2   4 buck/coul/cut 1000.000000 50.000000 2.000000")
         );
-        assert!(settings_out.contains("pair_coeff   3   4 hbond/dreiding/lj 1.500000 2.800000"));
+        assert!(
+            settings_out.contains("pair_coeff   2   4 hbond/dreiding/lj 3 i 9.500000 2.627522 2")
+        );
     }
 }
