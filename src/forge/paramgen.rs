@@ -34,7 +34,7 @@ pub fn generate_parameters(
 
     let vdw_pairs = generate_vdw_potentials(&atom_types, params, config)?;
 
-    let h_bonds = generate_hbond_potentials(intermediate, params, config)?;
+    let h_bonds = generate_hbond_potentials(intermediate, &type_indices, params, config)?;
 
     let potentials = Potentials {
         bonds,
@@ -322,10 +322,12 @@ fn generate_vdw_potentials(
 
 fn generate_hbond_potentials(
     intermediate: &IntermediateSystem,
+    type_indices: &HashMap<String, usize>,
     params: &ForceFieldParams,
     config: &ForgeConfig,
 ) -> Result<Vec<HBondPotential>, Error> {
     let mut h_bonds = Vec::new();
+    let mut seen_triplets = HashSet::new();
 
     let d0 = match &config.charge_method {
         ChargeMethod::None => params.hydrogen_bond.d0_no_charge,
@@ -333,7 +335,12 @@ fn generate_hbond_potentials(
     };
     let r0 = params.hydrogen_bond.r0;
 
-    for (h_idx, h_atom) in intermediate.atoms.iter().enumerate() {
+    let hydrogen_type_idx = match type_indices.get(H_BOND_DONOR_HYDROGEN_TYPE) {
+        Some(&idx) => idx,
+        None => return Ok(h_bonds),
+    };
+
+    for h_atom in &intermediate.atoms {
         if h_atom.atom_type != H_BOND_DONOR_HYDROGEN_TYPE {
             continue;
         }
@@ -341,17 +348,31 @@ fn generate_hbond_potentials(
         if h_atom.neighbors.is_empty() {
             continue;
         }
-        let donor_idx = h_atom.neighbors[0];
+        let donor_atom = &intermediate.atoms[h_atom.neighbors[0]];
+        let donor_type_idx = *type_indices.get(&donor_atom.atom_type).ok_or_else(|| {
+            Error::Conversion(format!("missing type index for '{}'", donor_atom.atom_type))
+        })?;
 
-        for (acc_idx, acc_atom) in intermediate.atoms.iter().enumerate() {
+        for acc_atom in &intermediate.atoms {
             if is_hbond_acceptor(acc_atom.element) {
-                h_bonds.push(HBondPotential {
-                    donor_idx,
-                    hydrogen_idx: h_idx,
-                    acceptor_idx: acc_idx,
-                    d0,
-                    r0,
-                });
+                let acceptor_type_idx =
+                    *type_indices.get(&acc_atom.atom_type).ok_or_else(|| {
+                        Error::Conversion(format!(
+                            "missing type index for '{}'",
+                            acc_atom.atom_type
+                        ))
+                    })?;
+
+                let triplet = (donor_type_idx, hydrogen_type_idx, acceptor_type_idx);
+                if seen_triplets.insert(triplet) {
+                    h_bonds.push(HBondPotential {
+                        donor_type_idx,
+                        hydrogen_type_idx,
+                        acceptor_type_idx,
+                        d0,
+                        r0,
+                    });
+                }
             }
         }
     }
