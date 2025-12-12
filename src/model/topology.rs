@@ -92,9 +92,9 @@ pub enum VdwPairPotential {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct HBondPotential {
-    pub donor_idx: usize,
-    pub hydrogen_idx: usize,
-    pub acceptor_idx: usize,
+    pub donor_type_idx: usize,
+    pub hydrogen_type_idx: usize,
+    pub acceptor_type_idx: usize,
     pub d0: f64,
     pub r0: f64,
 }
