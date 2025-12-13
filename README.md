@@ -33,7 +33,7 @@ Add `dreid-forge` to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-dreid-forge = "0.1.0"
+dreid-forge = "0.2.0"
 ```
 
 ### Example: Parameterizing a Molecule
