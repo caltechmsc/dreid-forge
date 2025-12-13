@@ -8,7 +8,7 @@ authors = [
 license = "MIT"
 repository = "https://github.com/caltechmsc/dreid-forge"
 edition = "2024"
-description = "A pure Rust library that automates DREIDING force field parameterization by orchestrating structure repair, topology perception, and charge calculation for both biological and chemical systems."
+description = "A pure Rust library and CLI that automates DREIDING force field parameterization by orchestrating structure repair, topology perception, and charge calculation for both biological and chemical systems."
 keywords = [
     "force-field",
     "dreiding",
@@ -16,7 +16,7 @@ keywords = [
     "bioinformatics",
     "molecular-dynamics",
 ]
-categories = ["science", "simulation"]
+categories = ["science", "simulation", "command-line-utilities"]
 readme = "README.md"
 
 [dependencies]
