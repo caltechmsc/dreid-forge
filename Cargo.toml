@@ -29,7 +29,6 @@ cheq = "0.3.0"
 anyhow = { version = "1.0.100", optional = true }
 clap = { version = "4.4.53", features = ["derive"], optional = true }
 indicatif = { version = "0.18.3", optional = true }
-is-terminal = { version = "0.4.17", optional = true }
 
 [lib]
 name = "dreid_forge"
@@ -37,12 +36,12 @@ path = "src/lib.rs"
 
 [[bin]]
 name = "dforge"
-path = "src/bin/dforge.rs"
+path = "src/bin/dforge/main.rs"
 required-features = ["cli"]
 
 [features]
 default = ["cli"]
-cli = ["anyhow", "clap", "indicatif", "is-terminal"]
+cli = ["anyhow", "clap", "indicatif"]
 
 [profile.release]
 opt-level = 3
