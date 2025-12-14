@@ -52,7 +52,12 @@ pub struct ForgeOptions {
     pub charge: ChargeMethod,
 
     /// Total system charge (for QEq constraint)
-    #[arg(long, value_name = "Q", default_value = "0.0")]
+    #[arg(
+        long,
+        value_name = "Q",
+        default_value = "0.0",
+        allow_hyphen_values = true
+    )]
     pub total_charge: f64,
 
     /// Bond potential functional form
@@ -205,7 +210,12 @@ pub struct SolvationOptions {
     pub anion: Anion,
 
     /// Target net charge after ion addition
-    #[arg(long = "solv-charge", value_name = "Q", default_value = "0")]
+    #[arg(
+        long = "solv-charge",
+        value_name = "Q",
+        default_value = "0",
+        allow_hyphen_values = true
+    )]
     pub target_charge: i32,
 
     /// Random seed for reproducible ion placement
