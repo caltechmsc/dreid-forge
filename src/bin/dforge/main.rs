@@ -5,6 +5,7 @@ mod commands;
 mod config;
 mod display;
 mod io;
+mod util;
 
 fn main() -> ExitCode {
     let cli = cli::parse();
