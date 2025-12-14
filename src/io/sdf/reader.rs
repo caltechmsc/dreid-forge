@@ -82,20 +82,28 @@ fn parse_counts(line: &str, line_no: usize) -> Result<(usize, usize), Error> {
 fn parse_atoms(lines: &[(usize, String)]) -> Result<Vec<Atom>, Error> {
     let mut atoms = Vec::with_capacity(lines.len());
     for (ln, raw) in lines {
-        let fixed =
-            (|| -> Result<([f64; 3], String), Error> {
-                let padded = format!("{raw:<40}");
-                let x = padded[0..10].trim().parse::<f64>().map_err(|_| {
-                    Error::parse(Format::Sdf, *ln, "invalid x coordinate in atom line")
-                })?;
-                let y = padded[10..20].trim().parse::<f64>().map_err(|_| {
-                    Error::parse(Format::Sdf, *ln, "invalid y coordinate in atom line")
-                })?;
-                let z = padded[20..30].trim().parse::<f64>().map_err(|_| {
-                    Error::parse(Format::Sdf, *ln, "invalid z coordinate in atom line")
-                })?;
-                Ok(([x, y, z], padded[31..34].to_string()))
-            })();
+        let fixed = (|| -> Result<([f64; 3], String), Error> {
+            let padded = format!("{raw:<40}");
+            let x = padded
+                .get(0..10)
+                .unwrap_or("")
+                .trim()
+                .parse::<f64>()
+                .map_err(|_| Error::parse(Format::Sdf, *ln, "invalid x coordinate in atom line"))?;
+            let y = padded
+                .get(10..20)
+                .unwrap_or("")
+                .trim()
+                .parse::<f64>()
+                .map_err(|_| Error::parse(Format::Sdf, *ln, "invalid y coordinate in atom line"))?;
+            let z = padded
+                .get(20..30)
+                .unwrap_or("")
+                .trim()
+                .parse::<f64>()
+                .map_err(|_| Error::parse(Format::Sdf, *ln, "invalid z coordinate in atom line"))?;
+            Ok(([x, y, z], padded.get(31..34).unwrap_or("").to_string()))
+        })();
 
         let (coords, element_token) = match fixed {
             Ok(val) => val,
