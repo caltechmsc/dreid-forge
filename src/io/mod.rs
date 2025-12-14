@@ -336,8 +336,10 @@ pub enum Format {
     Mol2,
     /// Biograf format for force field output (`.bgf`).
     Bgf,
-    /// LAMMPS data file format (`.data`, `.in`).
-    Lammps,
+    /// LAMMPS data file format (`.data`, `.lammps`).
+    LammpsData,
+    /// LAMMPS settings/parameters file format (`.in.settings`).
+    LammpsSettings,
 }
 
 impl fmt::Display for Format {
@@ -348,7 +350,8 @@ impl fmt::Display for Format {
             Format::Sdf => write!(f, "SDF"),
             Format::Mol2 => write!(f, "MOL2"),
             Format::Bgf => write!(f, "BGF"),
-            Format::Lammps => write!(f, "LAMMPS"),
+            Format::LammpsData => write!(f, "LAMMPS-DATA"),
+            Format::LammpsSettings => write!(f, "LAMMPS-SETTINGS"),
         }
     }
 }
