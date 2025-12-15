@@ -46,7 +46,7 @@ pub fn run_bio(args: BioArgs, ctx: DisplayContext) -> Result<()> {
     }
 
     progress.step("Running DREIDING parameterization");
-    let forge_config = build_forge_config(&args.forge);
+    let forge_config = build_forge_config(&args.forge)?;
     let forged = forge(&system, &forge_config).context("Parameterization failed")?;
 
     let param_substeps = build_param_substeps(&args.forge);
