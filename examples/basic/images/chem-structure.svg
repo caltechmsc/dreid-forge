@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"   viewBox="0.00 0.00 2500.00 2500.00">
+<!-- Created by OpenEye Scientific Software -->
+<!-- Creation Date Fri Dec  5 19:24:10 2025 -->
+<rect width="2500.00" height="2500.00" fill="white" />
+<rect x="10" y="10" width="2480" height="2480" fill="white" />
+<line x1="646.40" y1="965.73" x2="646.40" y2="1665.16" stroke="black" stroke-width="10" stroke-linejoin="round" stroke-linecap="round" />
+<line x1="762.74" y1="1077.64" x2="762.74" y2="1553.25" stroke="black" stroke-width="10" stroke-linejoin="round" stroke-linecap="round" />
+<line x1="646.40" y1="965.73" x2="1250.00" y2="612.58" stroke="black" stroke-width="10" stroke-linejoin="round" stroke-linecap="round" />
+<line x1="646.40" y1="1665.16" x2="1250.00" y2="2011.42" stroke="black" stroke-width="10" stroke-linejoin="round" stroke-linecap="round" />
+<line x1="1250.00" y1="2011.42" x2="1853.60" y2="1665.16" stroke="black" stroke-width="10" stroke-linejoin="round" stroke-linecap="round" />
+<line x1="1288.69" y1="1855.11" x2="1699.13" y2="1619.65" stroke="black" stroke-width="10" stroke-linejoin="round" stroke-linecap="round" />
+<line x1="1853.60" y1="1665.16" x2="1853.60" y2="965.73" stroke="black" stroke-width="10" stroke-linejoin="round" stroke-linecap="round" />
+<line x1="1853.60" y1="965.73" x2="1250.00" y2="612.58" stroke="black" stroke-width="10" stroke-linejoin="round" stroke-linecap="round" />
+<line x1="1698.27" y1="1009.64" x2="1287.83" y2="769.50" stroke="black" stroke-width="10" stroke-linejoin="round" stroke-linecap="round" />
+<text x="435.14" y="892.72" fill="green" font-family="Arial" font-size="146" font-style="normal" font-weight="normal" text-anchor="middle">  C1 </text>
+<text x="436.18" y="1836.33" fill="green" font-family="Arial" font-size="146" font-style="normal" font-weight="normal" text-anchor="middle">  C2 </text>
+<text x="1250.00" y="2303.16" fill="green" font-family="Arial" font-size="146" font-style="normal" font-weight="normal" text-anchor="middle">  C3 </text>
+<text x="2063.82" y="1836.33" fill="green" font-family="Arial" font-size="146" font-style="normal" font-weight="normal" text-anchor="middle">  C4 </text>
+<text x="2064.86" y="892.72" fill="green" font-family="Arial" font-size="146" font-style="normal" font-weight="normal" text-anchor="middle">  C5 </text>
+<text x="1250.00" y="417.20" fill="green" font-family="Arial" font-size="146" font-style="normal" font-weight="normal" text-anchor="middle">  C6 </text>
+</svg>
