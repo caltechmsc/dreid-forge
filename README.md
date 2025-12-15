@@ -29,14 +29,32 @@ flowchart LR
 
 ## Quick Start
 
-Add `dreid-forge` to your `Cargo.toml`:
+### For CLI Users
+
+Install the latest DREID-Forge CLI binary from the [releases page](https://github.com/caltechmsc/dreid-forge/releases) or via `cargo`:
+
+```bash
+cargo install dreid-forge
+```
+
+Once the `dforge` binary is installed, you can parameterize a molecule in a single step:
+
+```bash
+dforge bio -i input.pdb -o output.bgf
+```
+
+Explore the complete parameterization pipeline and more options in the [user manual](MANUAL.md) and browse the [examples directory](https://github.com/caltechmsc/dreid-forge/tree/main/examples) for runnable walkthroughs.
+
+### For Library Developers
+
+DREID-Forge is also available as a library crate. Add it to your `Cargo.toml` dependencies:
 
 ```toml
 [dependencies]
 dreid-forge = "0.2.0"
 ```
 
-### Example: Parameterizing a Molecule
+#### Example: Parameterizing a Molecule
 
 ```rust
 use dreid_forge::{Atom, Bond, BondOrder, Element, System};
@@ -71,7 +89,7 @@ fn main() -> Result<(), ForgeError> {
 }
 ```
 
-### Example: Reading PDB and Writing LAMMPS
+#### Example: Reading PDB and Writing LAMMPS
 
 ```rust
 use std::fs::File;
@@ -109,6 +127,7 @@ For detailed usage instructions and configuration options, refer to the [API Doc
 
 ## Documentation
 
+- [CLI User Manual](MANUAL.md) — detailed explanation of command-line usage and options.
 - [API Documentation](https://docs.rs/dreid-forge) — comprehensive reference for all public types and functions.
 - [Architecture Overview](ARCHITECTURE.md) — detailed explanation of the internal design, algorithms, and data flow.
 
