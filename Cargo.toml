@@ -18,6 +18,7 @@ keywords = [
 ]
 categories = ["science", "simulation", "command-line-utilities"]
 readme = "README.md"
+exclude = ["examples/"]
 
 [dependencies]
 thiserror = "2.0.17"
