@@ -174,68 +174,53 @@ pub fn from_bio_topology(bio_topo: bf::Topology) -> Result<System, ConversionErr
 
 /// Converts a dreid-forge [`System`] to a bio-forge [`Topology`](bf::Topology).
 pub fn to_bio_topology(system: &System) -> Result<bf::Topology, ConversionError> {
-    use std::collections::BTreeMap;
+    use indexmap::IndexMap;
+    use indexmap::map::Entry;
 
     let metadata = system
         .bio_metadata
         .as_ref()
         .ok_or(ConversionError::MissingBioMetadata)?;
 
-    let bio_atoms: Vec<bf::Atom> = system
-        .atoms
-        .iter()
-        .zip(metadata.atom_info.iter())
-        .map(|(atom, info)| {
-            Ok(bf::Atom::new(
-                &info.atom_name,
-                convert_element_to_bf(atom.element)?,
-                bf::Point::new(atom.position[0], atom.position[1], atom.position[2]),
-            ))
-        })
-        .collect::<Result<_, _>>()?;
-
     type ResidueKey = (char, i32, char);
-    let mut residue_atom_indices: BTreeMap<ResidueKey, Vec<usize>> = BTreeMap::new();
-    for (i, info) in metadata.atom_info.iter().enumerate() {
-        let key = (info.chain_id, info.residue_id, info.insertion_code);
-        residue_atom_indices.entry(key).or_default().push(i);
-    }
+    let mut chains: IndexMap<char, IndexMap<ResidueKey, bf::Residue>> = IndexMap::new();
 
-    let mut residues: BTreeMap<ResidueKey, bf::Residue> = BTreeMap::new();
-    for (key, mut indices) in residue_atom_indices {
-        indices.sort_by(|&a, &b| {
-            let ia = &metadata.atom_info[a];
-            let ib = &metadata.atom_info[b];
-            ia.atom_name.cmp(&ib.atom_name).then_with(|| a.cmp(&b))
-        });
-
-        let first_info = &metadata.atom_info[indices[0]];
-        let mut residue = bf::Residue::new(
-            first_info.residue_id,
-            Some(first_info.insertion_code).filter(|&c| c != ' '),
-            &first_info.residue_name,
-            convert_std_res_to_bf(first_info.standard_name)?,
-            convert_res_cat_to_bf(first_info.category)?,
+    for (atom, info) in system.atoms.iter().zip(metadata.atom_info.iter()) {
+        let bio_atom = bf::Atom::new(
+            &info.atom_name,
+            convert_element_to_bf(atom.element)?,
+            bf::Point::new(atom.position[0], atom.position[1], atom.position[2]),
         );
-        residue.position = convert_res_pos_to_bf(first_info.position)?;
 
-        for idx in indices {
-            residue.add_atom(bio_atoms[idx].clone());
-        }
-        residues.insert(key, residue);
-    }
+        let residue_key = (info.chain_id, info.residue_id, info.insertion_code);
+        let residues = chains.entry(info.chain_id).or_default();
 
-    let mut chains: BTreeMap<char, bf::Chain> = BTreeMap::new();
-    for ((chain_id, _, _), residue) in residues {
-        chains
-            .entry(chain_id)
-            .or_insert_with(|| bf::Chain::new(&chain_id.to_string()))
-            .add_residue(residue);
+        let residue = match residues.entry(residue_key) {
+            Entry::Occupied(e) => e.into_mut(),
+            Entry::Vacant(e) => {
+                let mut res = bf::Residue::new(
+                    info.residue_id,
+                    Some(info.insertion_code).filter(|&c| c != ' '),
+                    &info.residue_name,
+                    convert_std_res_to_bf(info.standard_name)?,
+                    convert_res_cat_to_bf(info.category)?,
+                );
+                res.position = convert_res_pos_to_bf(info.position)?;
+                e.insert(res)
+            }
+        };
+
+        residue.add_atom(bio_atom);
     }
 
     let mut bio_struct = bf::Structure::new();
     bio_struct.box_vectors = system.box_vectors;
-    for (_, chain) in chains {
+
+    for (chain_id, residues) in chains {
+        let mut chain = bf::Chain::new(&chain_id.to_string());
+        for (_, residue) in residues {
+            chain.add_residue(residue);
+        }
         bio_struct.add_chain(chain);
     }
 
