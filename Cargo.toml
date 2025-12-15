@@ -23,6 +23,7 @@ readme = "README.md"
 thiserror = "2.0.17"
 toml = "0.9.7"
 serde = { version = "1.0.188", features = ["derive"] }
+indexmap = "2.12.1"
 bio-forge = "0.2.2"
 dreid-typer = "0.4.0"
 cheq = "0.3.0"
