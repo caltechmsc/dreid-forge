@@ -183,8 +183,15 @@ pub fn write<W: Write>(mut writer: W, forged: &ForgedSystem) -> Result<(), Error
 
 fn fit_left(text: &str, width: usize) -> String {
     let mut s = text.trim().to_string();
-    if s.len() > width {
-        s.truncate(width);
+    if width == 0 {
+        s.clear();
+    } else if s.char_indices().nth(width).is_some() {
+        let cut = s
+            .char_indices()
+            .nth(width)
+            .map(|(idx, _)| idx)
+            .unwrap_or_else(|| s.len());
+        s.truncate(cut);
     }
     format!("{:<width$}", s, width = width)
 }

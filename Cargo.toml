@@ -1,6 +1,6 @@
 [package]
 name = "dreid-forge"
-version = "0.1.0"
+version = "0.2.0"
 authors = [
     "Tony Kan <tonykan@caltech.edu>",
     "William A. Goddard III <wag@caltech.edu>",
@@ -8,7 +8,7 @@ authors = [
 license = "MIT"
 repository = "https://github.com/caltechmsc/dreid-forge"
 edition = "2024"
-description = "A pure Rust library that automates DREIDING force field parameterization by orchestrating structure repair, topology perception, and charge calculation for both biological and chemical systems."
+description = "A pure Rust library and CLI that automates DREIDING force field parameterization by orchestrating structure repair, topology perception, and charge calculation for both biological and chemical systems."
 keywords = [
     "force-field",
     "dreiding",
@@ -16,20 +16,34 @@ keywords = [
     "bioinformatics",
     "molecular-dynamics",
 ]
-categories = ["science", "simulation"]
+categories = ["science", "simulation", "command-line-utilities"]
 readme = "README.md"
+exclude = ["examples/"]
 
 [dependencies]
 thiserror = "2.0.17"
 toml = "0.9.7"
 serde = { version = "1.0.188", features = ["derive"] }
-bio-forge = "0.2.1"
+indexmap = "2.12.1"
+bio-forge = "0.2.2"
 dreid-typer = "0.4.0"
 cheq = "0.3.0"
+anyhow = { version = "1.0.100", optional = true }
+clap = { version = "4.4.53", features = ["derive"], optional = true }
+indicatif = { version = "0.18.3", optional = true }
 
 [lib]
 name = "dreid_forge"
 path = "src/lib.rs"
+
+[[bin]]
+name = "dforge"
+path = "src/bin/dforge/main.rs"
+required-features = ["cli"]
+
+[features]
+default = ["cli"]
+cli = ["anyhow", "clap", "indicatif"]
 
 [profile.release]
 opt-level = 3

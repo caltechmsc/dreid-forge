@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"   viewBox="0.00 0.00 2500.00 2500.00">
+<!-- Created by OpenEye Scientific Software -->
+<!-- Creation Date Fri Dec  5 19:20:42 2025 -->
+<rect width="2500.00" height="2500.00" fill="white" />
+<rect x="10" y="10" width="2480" height="2480" fill="white" />
+<line x1="1798.41" y1="609.12" x2="1797.34" y2="978.73" stroke="black" stroke-width="10" stroke-linejoin="round" stroke-linecap="round" />
+<line x1="1958.72" y1="517.18" x2="1798.41" y2="609.12" stroke="black" stroke-width="10" stroke-linejoin="round" stroke-linecap="round" />
+<line x1="1958.72" y1="517.18" x2="2035.95" y2="472.89" stroke="red" stroke-width="10" stroke-linejoin="round" stroke-linecap="round" />
+<line x1="1654.74" y1="488.53" x2="1814.52" y2="581.40" stroke="black" stroke-width="10" stroke-linejoin="round" stroke-linecap="round" />
+<line x1="1654.74" y1="488.53" x2="1577.78" y2="443.80" stroke="red" stroke-width="10" stroke-linejoin="round" stroke-linecap="round" />
+<line x1="1622.52" y1="543.98" x2="1782.29" y2="636.85" stroke="black" stroke-width="10" stroke-linejoin="round" stroke-linecap="round" />
+<line x1="1622.52" y1="543.98" x2="1545.55" y2="499.25" stroke="red" stroke-width="10" stroke-linejoin="round" stroke-linecap="round" />
+<line x1="515.67" y1="1719.36" x2="516.19" y2="2088.97" stroke="black" stroke-width="10" stroke-linejoin="round" stroke-linecap="round" />
+<line x1="515.67" y1="1719.36" x2="835.51" y2="1534.11" stroke="black" stroke-width="10" stroke-linejoin="round" stroke-linecap="round" />
+<line x1="516.19" y1="2088.97" x2="836.53" y2="2273.33" stroke="black" stroke-width="10" stroke-linejoin="round" stroke-linecap="round" />
+<line x1="516.19" y1="2088.97" x2="196.35" y2="2274.22" stroke="black" stroke-width="10" stroke-linejoin="round" stroke-linecap="round" />
+<polygon points="1797.34,978.73 2094.61,1202.81 2139.19,1126.12 " fill="black" stroke="black" stroke-width="7" stroke-linejoin="round" stroke-linecap="round" />
+<line x1="1797.34" y1="978.73" x2="1476.71" y2="1162.61" stroke="black" stroke-width="10" stroke-linejoin="round" stroke-linecap="round" />
+<line x1="1476.71" y1="1162.61" x2="1476.71" y2="1534.11" stroke="black" stroke-width="10" stroke-linejoin="round" stroke-linecap="round" />
+<line x1="1412.58" y1="1222.05" x2="1412.58" y2="1474.67" stroke="black" stroke-width="10" stroke-linejoin="round" stroke-linecap="round" />
+<line x1="1476.71" y1="1162.61" x2="1156.11" y2="975.04" stroke="black" stroke-width="10" stroke-linejoin="round" stroke-linecap="round" />
+<line x1="1476.71" y1="1534.11" x2="1156.11" y2="1718.03" stroke="black" stroke-width="10" stroke-linejoin="round" stroke-linecap="round" />
+<line x1="1156.11" y1="1718.03" x2="835.51" y2="1534.11" stroke="black" stroke-width="10" stroke-linejoin="round" stroke-linecap="round" />
+<line x1="1136.73" y1="1632.97" x2="918.72" y2="1507.90" stroke="black" stroke-width="10" stroke-linejoin="round" stroke-linecap="round" />
+<line x1="835.51" y1="1534.11" x2="835.51" y2="1162.61" stroke="black" stroke-width="10" stroke-linejoin="round" stroke-linecap="round" />
+<line x1="835.51" y1="1162.61" x2="1156.11" y2="975.04" stroke="black" stroke-width="10" stroke-linejoin="round" stroke-linecap="round" />
+<line x1="919.20" y1="1187.96" x2="1137.21" y2="1060.41" stroke="black" stroke-width="10" stroke-linejoin="round" stroke-linecap="round" />
+<text x="1677.51" y="934.49" fill="#4b4b4b" font-family="Arial" font-size="77" font-style="normal" font-weight="normal" text-anchor="middle">  (S) </text>
+<text x="2119.04" y="477.71" fill="red" font-family="Arial" font-size="159" font-style="normal" font-weight="normal" text-anchor="middle">  O </text>
+<text x="2240.67" y="477.71" fill="red" font-family="Arial" font-size="159" font-style="normal" font-weight="normal" text-anchor="middle">  H </text>
+<text x="1478.85" y="475.86" fill="red" font-family="Arial" font-size="159" font-style="normal" font-weight="normal" text-anchor="middle">  O </text>
+</svg>
