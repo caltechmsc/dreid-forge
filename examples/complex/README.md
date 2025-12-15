@@ -2,16 +2,7 @@
 
 ## 5HKR — Fullerene-Protein Complex
 
-<table style="width:100%;border-collapse:collapse;">
-  <tr>
-    <td style="width:50%;padding:4px;vertical-align:top;">
-      <img src="./images/5HKR-structure.png" alt="5HKR Structure" style="width:100%;height:auto;display:block;object-fit:contain;" />
-    </td>
-    <td style="width:50%;padding:4px;vertical-align:top;">
-      <img src="./images/C60-structure.svg" alt="C60 Structure" style="width:100%;height:auto;display:block;object-fit:contain;" />
-    </td>
-  </tr>
-</table>
+![5HKR Structure](./images/5HKR-structure.png)
 
 ### Inputs
 
