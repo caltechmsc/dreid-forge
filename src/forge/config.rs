@@ -37,7 +37,7 @@
 /// ```
 #[derive(Debug, Clone)]
 pub struct ForgeConfig {
-    /// Path to custom atom typing rules in TOML format.
+    /// Custom atom typing rules in TOML format.
     ///
     /// If `None`, uses the built-in DREIDING typing rules from `dreid-typer`.
     pub rules: Option<String>,
