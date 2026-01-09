@@ -136,7 +136,7 @@ fn assign_fixed_charges(
             AtomClass::Protein => lookup_protein_charge(config, info, ph)?,
             AtomClass::NucleicAcid => lookup_nucleic_charge(config, info)?,
             AtomClass::Water => lookup_water_charge(config, info)?,
-            AtomClass::Ion => lookup_ion_charge(&info.residue_name)?,
+            AtomClass::Ion => lookup_ion_charge(info)?,
             AtomClass::Ligand => continue,
         };
         system.atoms[idx].charge = charge;
@@ -248,15 +248,17 @@ fn lookup_water_charge(config: &HybridConfig, info: &AtomResidueInfo) -> Result<
 }
 
 /// Looks up ion charge from ffcharge.
-fn lookup_ion_charge(residue_name: &str) -> Result<f64, Error> {
+fn lookup_ion_charge(info: &AtomResidueInfo) -> Result<f64, Error> {
     IonScheme::Classic
-        .charge(residue_name)
+        .charge(&info.residue_name)
         .map(|c| c as f64)
         .ok_or_else(|| {
-            Error::ChargeCalculation(format!(
-                "ion charge not found for residue '{}'",
-                residue_name
-            ))
+            Error::hybrid_charge_assignment(
+                info.chain_id,
+                info.residue_id,
+                &info.residue_name,
+                format!("ion charge not found for residue '{}'", info.residue_name),
+            )
         })
 }
 
