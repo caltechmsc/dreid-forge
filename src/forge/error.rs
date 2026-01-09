@@ -48,7 +48,7 @@ pub enum Error {
     )]
     HybridChargeAssignment {
         /// Chain identifier.
-        chain_id: char,
+        chain_id: String,
         /// Residue sequence number.
         residue_id: i32,
         /// Residue name.
@@ -115,13 +115,13 @@ impl Error {
     ///
     /// A [`HybridChargeAssignment`](Error::HybridChargeAssignment) error variant.
     pub fn hybrid_charge_assignment(
-        chain_id: char,
+        chain_id: impl Into<String>,
         residue_id: i32,
         residue_name: &str,
         details: impl Into<String>,
     ) -> Self {
         Self::HybridChargeAssignment {
-            chain_id,
+            chain_id: chain_id.into(),
             residue_id,
             residue_name: residue_name.to_string(),
             detail: details.into(),
