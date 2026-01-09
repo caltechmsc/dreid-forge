@@ -256,6 +256,7 @@ mod tests {
                     .position(ResiduePosition::None)
                     .build(),
             ],
+            target_ph: None,
         };
 
         let atom_properties = vec![
@@ -502,6 +503,7 @@ mod tests {
                     .position(ResiduePosition::Internal)
                     .build(),
             ],
+            target_ph: None,
         };
 
         let atom_properties = vec![
@@ -559,6 +561,7 @@ mod tests {
                     .position(ResiduePosition::None)
                     .build(),
             ],
+            target_ph: None,
         };
         let atom_properties = vec![AtomParam {
             charge: 0.0,

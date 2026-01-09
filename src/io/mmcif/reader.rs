@@ -62,6 +62,7 @@ mod tests {
                     .position(ResiduePosition::None)
                     .build(),
             ],
+            target_ph: None,
         };
         let bonds = vec![
             Bond::new(0, 1, BondOrder::Single),
