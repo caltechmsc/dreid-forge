@@ -46,3 +46,41 @@ pub enum VdwPotentialType {
     /// Exponential-6 (Buckingham) potential.
     Exponential6,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn bond_potential_default() {
+        assert_eq!(BondPotentialType::default(), BondPotentialType::Harmonic);
+    }
+
+    #[test]
+    fn angle_potential_default() {
+        assert_eq!(
+            AnglePotentialType::default(),
+            AnglePotentialType::ThetaHarmonic
+        );
+    }
+
+    #[test]
+    fn vdw_potential_default() {
+        assert_eq!(VdwPotentialType::default(), VdwPotentialType::LennardJones);
+    }
+
+    #[test]
+    fn potential_types_are_copy() {
+        let bond = BondPotentialType::Morse;
+        let bond_copy = bond;
+        assert_eq!(bond, bond_copy);
+
+        let angle = AnglePotentialType::CosineHarmonic;
+        let angle_copy = angle;
+        assert_eq!(angle, angle_copy);
+
+        let vdw = VdwPotentialType::Exponential6;
+        let vdw_copy = vdw;
+        assert_eq!(vdw, vdw_copy);
+    }
+}
