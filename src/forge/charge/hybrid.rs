@@ -183,7 +183,7 @@ fn lookup_protein_charge(
         .map(|c| c as f64)
         .ok_or_else(|| {
             Error::hybrid_charge_assignment(
-                info.chain_id,
+                info.chain_id.clone(),
                 info.residue_id,
                 &info.residue_name,
                 format!(
@@ -204,7 +204,7 @@ fn lookup_nucleic_charge(config: &HybridConfig, info: &AtomResidueInfo) -> Resul
         .map(|c| c as f64)
         .ok_or_else(|| {
             Error::hybrid_charge_assignment(
-                info.chain_id,
+                info.chain_id.clone(),
                 info.residue_id,
                 &info.residue_name,
                 format!(
@@ -222,7 +222,7 @@ fn lookup_water_charge(config: &HybridConfig, info: &AtomResidueInfo) -> Result<
         .charges()
         .ok_or_else(|| {
             Error::hybrid_charge_assignment(
-                info.chain_id,
+                info.chain_id.clone(),
                 info.residue_id,
                 &info.residue_name,
                 "water charge parameters not found".to_string(),
@@ -237,7 +237,7 @@ fn lookup_water_charge(config: &HybridConfig, info: &AtomResidueInfo) -> Result<
                 charges.h2
             } else {
                 return Err(Error::hybrid_charge_assignment(
-                    info.chain_id,
+                    info.chain_id.clone(),
                     info.residue_id,
                     &info.residue_name,
                     format!("unknown water atom name: '{}'", info.atom_name),
@@ -254,7 +254,7 @@ fn lookup_ion_charge(info: &AtomResidueInfo) -> Result<f64, Error> {
         .map(|c| c as f64)
         .ok_or_else(|| {
             Error::hybrid_charge_assignment(
-                info.chain_id,
+                info.chain_id.clone(),
                 info.residue_id,
                 &info.residue_name,
                 format!("ion charge not found for residue '{}'", info.residue_name),
@@ -266,7 +266,7 @@ fn lookup_ion_charge(info: &AtomResidueInfo) -> Result<f64, Error> {
 #[derive(Debug)]
 struct LigandGroup {
     /// Unique residue key (chain_id, residue_id, insertion_code).
-    key: (char, i32, char),
+    key: (String, i32, Option<char>),
     /// Atom indices in the system.
     atom_indices: Vec<usize>,
 }
@@ -276,11 +276,11 @@ fn identify_ligand_groups(
     metadata: &BioMetadata,
     classification: &[AtomClass],
 ) -> Vec<LigandGroup> {
-    let mut groups: HashMap<(char, i32, char), Vec<usize>> = HashMap::new();
+    let mut groups: HashMap<(String, i32, Option<char>), Vec<usize>> = HashMap::new();
 
     for (idx, (&class, info)) in classification.iter().zip(&metadata.atom_info).enumerate() {
         if class == AtomClass::Ligand {
-            let key = (info.chain_id, info.residue_id, info.insertion_code);
+            let key = (info.chain_id.clone(), info.residue_id, info.insertion_code);
             groups.entry(key).or_default().push(idx);
         }
     }
@@ -306,12 +306,12 @@ fn assign_ligand_charges(
         .map(|(i, _)| i)
         .collect();
 
-    let custom_configs: HashMap<(char, i32, Option<char>), &LigandChargeConfig> = config
+    let custom_configs: HashMap<(String, i32, Option<char>), &LigandChargeConfig> = config
         .ligand_configs
         .iter()
         .map(|lc| {
             let key = (
-                lc.selector.chain_id,
+                lc.selector.chain_id.clone(),
                 lc.selector.residue_id,
                 lc.selector.insertion_code,
             );
@@ -320,7 +320,7 @@ fn assign_ligand_charges(
         .collect();
 
     for group in ligand_groups {
-        let (chain_id, residue_id, insertion_code) = group.key;
+        let (ref chain_id, residue_id, insertion_code) = group.key;
 
         let default_method = LigandQeqMethod::Vacuum(config.default_ligand_qeq.clone());
         let method = find_ligand_method(&custom_configs, chain_id, residue_id, insertion_code)
@@ -347,12 +347,12 @@ fn assign_ligand_charges(
 
 /// Finds the QEq method for a specific ligand.
 fn find_ligand_method<'a>(
-    custom_configs: &HashMap<(char, i32, Option<char>), &'a LigandChargeConfig>,
-    chain_id: char,
+    custom_configs: &HashMap<(String, i32, Option<char>), &'a LigandChargeConfig>,
+    chain_id: &str,
     residue_id: i32,
-    insertion_code: char,
+    insertion_code: Option<char>,
 ) -> Option<&'a LigandQeqMethod> {
-    if let Some(lc) = custom_configs.get(&(chain_id, residue_id, Some(insertion_code))) {
+    if let Some(lc) = custom_configs.get(&(chain_id.to_string(), residue_id, insertion_code)) {
         return Some(&lc.method);
     }
     None
