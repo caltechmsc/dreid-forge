@@ -434,7 +434,7 @@ mod tests {
 
     #[test]
     fn classify_protein_atom() {
-        let info = AtomResidueInfo::builder("CA", "ALA", 1, 'A')
+        let info = AtomResidueInfo::builder("CA", "ALA", 1, "A")
             .standard_name(Some(StandardResidue::ALA))
             .category(ResidueCategory::Standard)
             .build();
@@ -443,7 +443,7 @@ mod tests {
 
     #[test]
     fn classify_nucleic_acid_atom() {
-        let info = AtomResidueInfo::builder("C1'", "DA", 1, 'B')
+        let info = AtomResidueInfo::builder("C1'", "DA", 1, "B")
             .standard_name(Some(StandardResidue::DA))
             .category(ResidueCategory::Standard)
             .build();
@@ -452,7 +452,7 @@ mod tests {
 
     #[test]
     fn classify_water_atom() {
-        let info = AtomResidueInfo::builder("O", "HOH", 1, 'W')
+        let info = AtomResidueInfo::builder("O", "HOH", 1, "W")
             .standard_name(Some(StandardResidue::HOH))
             .category(ResidueCategory::Standard)
             .build();
@@ -461,7 +461,7 @@ mod tests {
 
     #[test]
     fn classify_ion_atom() {
-        let info = AtomResidueInfo::builder("NA", "NA", 1, 'I')
+        let info = AtomResidueInfo::builder("NA", "NA", 1, "I")
             .category(ResidueCategory::Ion)
             .build();
         assert_eq!(classify_atom(&info), AtomClass::Ion);
@@ -469,15 +469,15 @@ mod tests {
 
     #[test]
     fn classify_ligand_atom() {
-        let info = AtomResidueInfo::builder("C1", "LIG", 1, 'L')
+        let info = AtomResidueInfo::builder("C1", "LIG", 1, "L")
             .category(ResidueCategory::Hetero)
             .build();
         assert_eq!(classify_atom(&info), AtomClass::Ligand);
     }
 
     #[test]
-    fn map_residue_position_n_terminal() {
-        let info = AtomResidueInfo::builder("N", "ALA", 1, 'A')
+    fn map_protein_position_nterminal_low_ph() {
+        let info = AtomResidueInfo::builder("N", "ALA", 1, "A")
             .position(ResiduePosition::NTerminal)
             .build();
         let pos = map_residue_position(&info, 7.0);
@@ -489,7 +489,7 @@ mod tests {
         let config = HybridConfig::default();
         let charge = lookup_water_charge(
             &config,
-            &AtomResidueInfo::builder("O", "HOH", 1, 'W').build(),
+            &AtomResidueInfo::builder("O", "HOH", 1, "W").build(),
         )
         .unwrap();
         assert!((charge - (-0.834)).abs() < 1e-6);
@@ -500,7 +500,7 @@ mod tests {
         let config = HybridConfig::default();
         let charge = lookup_water_charge(
             &config,
-            &AtomResidueInfo::builder("H1", "HOH", 1, 'W').build(),
+            &AtomResidueInfo::builder("H1", "HOH", 1, "W").build(),
         )
         .unwrap();
         assert!((charge - 0.417).abs() < 1e-6);
@@ -509,14 +509,14 @@ mod tests {
     #[test]
     fn lookup_ion_charge_sodium() {
         let charge =
-            lookup_ion_charge(&AtomResidueInfo::builder("NA", "NA", 1, 'I').build()).unwrap();
+            lookup_ion_charge(&AtomResidueInfo::builder("NA", "NA", 1, "I").build()).unwrap();
         assert!((charge - 1.0).abs() < 1e-6);
     }
 
     #[test]
     fn lookup_ion_charge_chloride() {
         let charge =
-            lookup_ion_charge(&AtomResidueInfo::builder("CL", "CL", 1, 'I').build()).unwrap();
+            lookup_ion_charge(&AtomResidueInfo::builder("CL", "CL", 1, "I").build()).unwrap();
         assert!((charge - (-1.0)).abs() < 1e-6);
     }
 }
