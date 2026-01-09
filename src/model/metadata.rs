@@ -19,14 +19,14 @@
 //! ```
 //! use dreid_forge::{AtomResidueInfo, StandardResidue, ResidueCategory, ResiduePosition};
 //!
-//! let info = AtomResidueInfo::builder("CA", "ALA", 42, 'A')
+//! let info = AtomResidueInfo::builder("CA", "ALA", 42, "A")
 //!     .standard_name(Some(StandardResidue::ALA))
 //!     .category(ResidueCategory::Standard)
 //!     .position(ResiduePosition::NTerminal)
 //!     .build();
 //!
 //! assert_eq!(info.atom_name, "CA");
-//! assert_eq!(info.chain_id, 'A');
+//! assert_eq!(info.chain_id, "A");
 //! ```
 
 /// Standard residue types from PDB/mmCIF nomenclature.
@@ -159,8 +159,8 @@ pub enum ResiduePosition {
 /// * `atom_name` — PDB atom name (e.g., "CA", "N", "O")
 /// * `residue_name` — Three-letter residue code (e.g., "ALA", "HOH")
 /// * `residue_id` — Residue sequence number
-/// * `chain_id` — Single-character chain identifier
-/// * `insertion_code` — PDB insertion code (usually ' ')
+/// * `chain_id` — Chain identifier
+/// * `insertion_code` — PDB insertion code (`None` if not present)
 /// * `standard_name` — Parsed [`StandardResidue`] if recognized
 /// * `category` — Residue classification
 /// * `position` — Terminal position within chain
@@ -177,10 +177,10 @@ pub struct AtomResidueInfo {
     pub residue_name: String,
     /// Residue sequence number.
     pub residue_id: i32,
-    /// Single-character chain identifier.
-    pub chain_id: char,
-    /// PDB insertion code for residue numbering conflicts.
-    pub insertion_code: char,
+    /// Chain identifier.
+    pub chain_id: String,
+    /// PDB insertion code for residue numbering conflicts (`None` if absent).
+    pub insertion_code: Option<char>,
     /// Parsed standard residue type, if recognized.
     pub standard_name: Option<StandardResidue>,
     /// Classification of the residue (standard, hetero, ion).
@@ -197,7 +197,7 @@ impl AtomResidueInfo {
     /// * `atom_name` — PDB-style atom name
     /// * `residue_name` — Three-letter residue code
     /// * `residue_id` — Residue sequence number
-    /// * `chain_id` — Single-character chain identifier
+    /// * `chain_id` — Chain identifier
     ///
     /// # Returns
     ///
@@ -208,7 +208,7 @@ impl AtomResidueInfo {
     /// ```
     /// use dreid_forge::{AtomResidueInfo, ResidueCategory, ResiduePosition};
     ///
-    /// let info = AtomResidueInfo::builder("CA", "GLY", 1, 'A')
+    /// let info = AtomResidueInfo::builder("CA", "GLY", 1, "A")
     ///     .category(ResidueCategory::Standard)
     ///     .position(ResiduePosition::Internal)
     ///     .build();
@@ -219,13 +219,13 @@ impl AtomResidueInfo {
         atom_name: impl Into<String>,
         residue_name: impl Into<String>,
         residue_id: i32,
-        chain_id: char,
+        chain_id: impl Into<String>,
     ) -> AtomResidueBuilder {
         AtomResidueBuilder {
             atom_name: atom_name.into(),
             residue_name: residue_name.into(),
             residue_id,
-            chain_id,
+            chain_id: chain_id.into(),
             insertion_code: None,
             standard_name: None,
             category: ResidueCategory::Standard,
@@ -242,7 +242,7 @@ pub struct AtomResidueBuilder {
     atom_name: String,
     residue_name: String,
     residue_id: i32,
-    chain_id: char,
+    chain_id: String,
     insertion_code: Option<char>,
     standard_name: Option<StandardResidue>,
     category: ResidueCategory,
@@ -292,9 +292,6 @@ impl AtomResidueBuilder {
 
     /// Builds the final [`AtomResidueInfo`] instance.
     ///
-    /// Applies default values for unset optional fields:
-    /// * `insertion_code` defaults to `' '`
-    ///
     /// # Returns
     ///
     /// A fully constructed [`AtomResidueInfo`].
@@ -304,7 +301,7 @@ impl AtomResidueBuilder {
             residue_name: self.residue_name,
             residue_id: self.residue_id,
             chain_id: self.chain_id,
-            insertion_code: self.insertion_code.unwrap_or(' '),
+            insertion_code: self.insertion_code,
             standard_name: self.standard_name,
             category: self.category,
             position: self.position,
@@ -325,7 +322,7 @@ impl AtomResidueBuilder {
 ///
 /// let mut metadata = BioMetadata::with_capacity(100);
 ///
-/// let info = AtomResidueInfo::builder("N", "ALA", 1, 'A')
+/// let info = AtomResidueInfo::builder("N", "ALA", 1, "A")
 ///     .category(ResidueCategory::Standard)
 ///     .position(ResiduePosition::NTerminal)
 ///     .build();
