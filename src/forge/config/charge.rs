@@ -77,10 +77,7 @@ impl Default for QeqConfig {
     fn default() -> Self {
         Self {
             total_charge: 0.0,
-            solver_options: SolverOptions {
-                hydrogen_scf: false,
-                ..SolverOptions::default()
-            },
+            solver_options: SolverOptions::default(),
         }
     }
 }
@@ -268,7 +265,7 @@ mod tests {
     fn qeq_config_default_values() {
         let config = QeqConfig::default();
         assert_eq!(config.total_charge, 0.0);
-        assert!(!config.solver_options.hydrogen_scf);
+        assert!(config.solver_options.hydrogen_scf);
     }
 
     #[test]
