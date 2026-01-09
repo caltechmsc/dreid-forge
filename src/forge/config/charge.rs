@@ -140,15 +140,15 @@ pub struct HybridConfig {
 /// use dreid_forge::ResidueSelector;
 ///
 /// // Select residue 500 in chain A
-/// let selector = ResidueSelector::new('A', 500, None);
+/// let selector = ResidueSelector::new("A", 500, None);
 ///
 /// // Select residue 100 with insertion code 'B' in chain L
-/// let with_icode = ResidueSelector::new('L', 100, Some('B'));
+/// let with_icode = ResidueSelector::new("L", 100, Some('B'));
 /// ```
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ResidueSelector {
     /// Chain identifier.
-    pub chain_id: char,
+    pub chain_id: String,
     /// Residue sequence number.
     pub residue_id: i32,
     /// Optional insertion code for distinguishing residues with same ID.
@@ -160,12 +160,12 @@ impl ResidueSelector {
     ///
     /// # Arguments
     ///
-    /// * `chain_id` — Single-character chain identifier
+    /// * `chain_id` — Chain identifier
     /// * `residue_id` — Residue sequence number
     /// * `insertion_code` — Optional insertion code
-    pub fn new(chain_id: char, residue_id: i32, insertion_code: Option<char>) -> Self {
+    pub fn new(chain_id: impl Into<String>, residue_id: i32, insertion_code: Option<char>) -> Self {
         Self {
-            chain_id,
+            chain_id: chain_id.into(),
             residue_id,
             insertion_code,
         }
@@ -183,10 +183,10 @@ impl ResidueSelector {
     ///
     /// `true` if the selector matches the given residue info,
     /// `false` otherwise.
-    pub fn matches(&self, chain_id: char, residue_id: i32, insertion_code: char) -> bool {
+    pub fn matches(&self, chain_id: &str, residue_id: i32, insertion_code: Option<char>) -> bool {
         self.chain_id == chain_id
             && self.residue_id == residue_id
-            && self.insertion_code.is_none_or(|ic| ic == insertion_code)
+            && (self.insertion_code.is_none() || self.insertion_code == insertion_code)
     }
 }
 
