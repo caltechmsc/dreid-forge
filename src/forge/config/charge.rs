@@ -279,16 +279,16 @@ mod tests {
 
     #[test]
     fn residue_selector_matches() {
-        let selector = ResidueSelector::new('A', 100, None);
-        assert!(selector.matches('A', 100, ' '));
-        assert!(selector.matches('A', 100, 'B'));
-        assert!(!selector.matches('B', 100, ' '));
-        assert!(!selector.matches('A', 101, ' '));
+        let selector = ResidueSelector::new("A", 100, None);
+        assert!(selector.matches("A", 100, None));
+        assert!(selector.matches("A", 100, Some('B')));
+        assert!(!selector.matches("B", 100, None));
+        assert!(!selector.matches("A", 101, None));
 
-        let with_icode = ResidueSelector::new('A', 100, Some('X'));
-        assert!(with_icode.matches('A', 100, 'X'));
-        assert!(!with_icode.matches('A', 100, ' '));
-        assert!(!with_icode.matches('A', 100, 'Y'));
+        let with_icode = ResidueSelector::new("A", 100, Some('X'));
+        assert!(with_icode.matches("A", 100, Some('X')));
+        assert!(!with_icode.matches("A", 100, None));
+        assert!(!with_icode.matches("A", 100, Some('Y')));
     }
 
     #[test]
@@ -309,7 +309,7 @@ mod tests {
     fn hybrid_config_with_custom_ligand() {
         let config = HybridConfig {
             ligand_configs: vec![LigandChargeConfig {
-                selector: ResidueSelector::new('A', 500, None),
+                selector: ResidueSelector::new("A", 500, None),
                 method: LigandQeqMethod::Embedded(EmbeddedQeqConfig {
                     cutoff_radius: 8.0,
                     qeq: QeqConfig {
@@ -322,7 +322,7 @@ mod tests {
         };
 
         assert_eq!(config.ligand_configs.len(), 1);
-        assert!(config.ligand_configs[0].selector.matches('A', 500, ' '));
+        assert!(config.ligand_configs[0].selector.matches("A", 500, None));
 
         if let LigandQeqMethod::Embedded(embedded) = &config.ligand_configs[0].method {
             assert_eq!(embedded.cutoff_radius, 8.0);
