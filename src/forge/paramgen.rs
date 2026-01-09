@@ -371,7 +371,7 @@ fn generate_hbond_potentials(
 
     let d0 = match &config.charge_method {
         ChargeMethod::None => params.hydrogen_bond.d0_no_charge,
-        ChargeMethod::Qeq(_) => params.hydrogen_bond.d0_explicit,
+        ChargeMethod::Qeq(_) | ChargeMethod::Hybrid(_) => params.hydrogen_bond.d0_explicit,
     };
     let r0 = params.hydrogen_bond.r0;
 
