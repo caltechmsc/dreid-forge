@@ -19,8 +19,9 @@ mod charge;
 mod potential;
 
 pub use charge::{
-    ChargeMethod, EmbeddedQeqConfig, HybridConfig, LigandChargeConfig, LigandQeqMethod,
-    NucleicScheme, ProteinScheme, QeqConfig, ResidueSelector, SolverOptions, WaterScheme,
+    BasisType, ChargeMethod, DampingStrategy, EmbeddedQeqConfig, HybridConfig, LigandChargeConfig,
+    LigandQeqMethod, NucleicScheme, ProteinScheme, QeqConfig, ResidueSelector, SolverOptions,
+    WaterScheme,
 };
 pub use potential::{AnglePotentialType, BondPotentialType, VdwPotentialType};
 
