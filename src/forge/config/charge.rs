@@ -254,3 +254,84 @@ impl Default for EmbeddedQeqConfig {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn charge_method_default_is_none() {
+        assert!(matches!(ChargeMethod::default(), ChargeMethod::None));
+    }
+
+    #[test]
+    fn qeq_config_default_values() {
+        let config = QeqConfig::default();
+        assert_eq!(config.total_charge, 0.0);
+        assert!(!config.solver_options.hydrogen_scf);
+    }
+
+    #[test]
+    fn hybrid_config_default_schemes() {
+        let config = HybridConfig::default();
+        assert_eq!(config.protein_scheme, ProteinScheme::AmberFFSB);
+        assert_eq!(config.nucleic_scheme, NucleicScheme::Amber);
+        assert_eq!(config.water_scheme, WaterScheme::Tip3p);
+        assert!(config.ligand_configs.is_empty());
+    }
+
+    #[test]
+    fn residue_selector_matches() {
+        let selector = ResidueSelector::new('A', 100, None);
+        assert!(selector.matches('A', 100, ' '));
+        assert!(selector.matches('A', 100, 'B'));
+        assert!(!selector.matches('B', 100, ' '));
+        assert!(!selector.matches('A', 101, ' '));
+
+        let with_icode = ResidueSelector::new('A', 100, Some('X'));
+        assert!(with_icode.matches('A', 100, 'X'));
+        assert!(!with_icode.matches('A', 100, ' '));
+        assert!(!with_icode.matches('A', 100, 'Y'));
+    }
+
+    #[test]
+    fn ligand_qeq_method_default_is_vacuum() {
+        assert!(matches!(
+            LigandQeqMethod::default(),
+            LigandQeqMethod::Vacuum(_)
+        ));
+    }
+
+    #[test]
+    fn embedded_qeq_config_default_cutoff() {
+        let config = EmbeddedQeqConfig::default();
+        assert_eq!(config.cutoff_radius, 10.0);
+    }
+
+    #[test]
+    fn hybrid_config_with_custom_ligand() {
+        let config = HybridConfig {
+            ligand_configs: vec![LigandChargeConfig {
+                selector: ResidueSelector::new('A', 500, None),
+                method: LigandQeqMethod::Embedded(EmbeddedQeqConfig {
+                    cutoff_radius: 8.0,
+                    qeq: QeqConfig {
+                        total_charge: -1.0,
+                        ..Default::default()
+                    },
+                }),
+            }],
+            ..Default::default()
+        };
+
+        assert_eq!(config.ligand_configs.len(), 1);
+        assert!(config.ligand_configs[0].selector.matches('A', 500, ' '));
+
+        if let LigandQeqMethod::Embedded(embedded) = &config.ligand_configs[0].method {
+            assert_eq!(embedded.cutoff_radius, 8.0);
+            assert_eq!(embedded.qeq.total_charge, -1.0);
+        } else {
+            panic!("Expected Embedded variant");
+        }
+    }
+}
