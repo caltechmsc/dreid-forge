@@ -332,12 +332,25 @@ impl AtomResidueBuilder {
 ///
 /// metadata.atom_info.push(info);
 /// assert_eq!(metadata.atom_info.len(), 1);
+///
+/// // Set target pH for charge assignment
+/// metadata.target_ph = Some(7.0);
 /// ```
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default)]
 pub struct BioMetadata {
     /// Per-atom biological annotations, indexed by atom order.
     pub atom_info: Vec<AtomResidueInfo>,
+    /// Target pH for protonation state determination.
+    pub target_ph: Option<f64>,
 }
+
+impl PartialEq for BioMetadata {
+    fn eq(&self, other: &Self) -> bool {
+        self.atom_info == other.atom_info && self.target_ph == other.target_ph
+    }
+}
+
+impl Eq for BioMetadata {}
 
 impl BioMetadata {
     /// Creates an empty [`BioMetadata`] container.
@@ -353,7 +366,13 @@ impl BioMetadata {
     pub fn with_capacity(capacity: usize) -> Self {
         Self {
             atom_info: Vec::with_capacity(capacity),
+            target_ph: None,
         }
+    }
+
+    /// Returns the target pH, defaulting to physiological pH (7.4) if not set.
+    pub fn effective_ph(&self) -> f64 {
+        self.target_ph.unwrap_or(7.4)
     }
 }
 
