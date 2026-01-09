@@ -452,6 +452,39 @@ mod tests {
     }
 
     #[test]
+    fn bio_metadata_target_ph() {
+        let mut bm = BioMetadata::new();
+        assert!(bm.target_ph.is_none());
+        assert!((bm.effective_ph() - 7.4).abs() < f64::EPSILON);
+
+        bm.target_ph = Some(6.5);
+        assert!((bm.effective_ph() - 6.5).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn bio_metadata_equality() {
+        let info = AtomResidueInfo::builder("N", "ALA", 1, 'A')
+            .category(ResidueCategory::Standard)
+            .build();
+
+        let bm1 = BioMetadata {
+            atom_info: vec![info.clone()],
+            target_ph: Some(7.0),
+        };
+        let bm2 = BioMetadata {
+            atom_info: vec![info.clone()],
+            target_ph: Some(7.0),
+        };
+        let bm3 = BioMetadata {
+            atom_info: vec![info],
+            target_ph: Some(7.5),
+        };
+
+        assert_eq!(bm1, bm2);
+        assert_ne!(bm1, bm3);
+    }
+
+    #[test]
     fn debug_contains_expected_fields() {
         let info = AtomResidueInfo::builder("C1", "LIG", -1, 'Z')
             .insertion_code_opt(Some('A'))
@@ -460,6 +493,7 @@ mod tests {
             .build();
         let bm = BioMetadata {
             atom_info: vec![info.clone()],
+            target_ph: None,
         };
         let s_info = format!("{:?}", info);
         let s_bm = format!("{:?}", bm);
