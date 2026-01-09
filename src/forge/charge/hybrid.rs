@@ -508,13 +508,15 @@ mod tests {
 
     #[test]
     fn lookup_ion_charge_sodium() {
-        let charge = lookup_ion_charge("NA").unwrap();
+        let charge =
+            lookup_ion_charge(&AtomResidueInfo::builder("NA", "NA", 1, 'I').build()).unwrap();
         assert!((charge - 1.0).abs() < 1e-6);
     }
 
     #[test]
     fn lookup_ion_charge_chloride() {
-        let charge = lookup_ion_charge("CL").unwrap();
+        let charge =
+            lookup_ion_charge(&AtomResidueInfo::builder("CL", "CL", 1, 'I').build()).unwrap();
         assert!((charge - (-1.0)).abs() < 1e-6);
     }
 }
