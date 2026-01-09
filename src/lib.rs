@@ -107,8 +107,9 @@
 //!
 //! ## Configuration
 //!
-//! - [`ChargeMethod`] — None or QEq charge equilibration
+//! - [`ChargeMethod`] — None, QEq, or Hybrid charge equilibration
 //! - [`QeqConfig`] — QEq solver settings (total charge, convergence)
+//! - [`HybridConfig`] — Hybrid biological/QEq charge assignment settings
 //! - [`BondPotentialType`] — Harmonic vs Morse selection
 //! - [`AnglePotentialType`] — Cosine-harmonic vs theta-harmonic
 //! - [`VdwPotentialType`] — Lennard-Jones vs Exponential-6
@@ -141,8 +142,9 @@ pub use model::metadata::{
 };
 
 pub use forge::{
-    AnglePotentialType, BondPotentialType, ChargeMethod, ForgeConfig, QeqConfig, SolverOptions,
-    VdwPotentialType, forge,
+    AnglePotentialType, BondPotentialType, ChargeMethod, EmbeddedQeqConfig, ForgeConfig,
+    HybridConfig, LigandChargeConfig, LigandQeqMethod, NucleicScheme, ProteinScheme, QeqConfig,
+    ResidueSelector, SolverOptions, VdwPotentialType, WaterScheme, forge,
 };
 
 pub use forge::Error as ForgeError;
