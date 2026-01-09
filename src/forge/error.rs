@@ -35,6 +35,13 @@ pub enum Error {
     #[error("charge calculation failed: {0}")]
     ChargeCalculation(String),
 
+    /// Hybrid charge method requires biological metadata.
+    ///
+    /// Occurs when [`ChargeMethod::Hybrid`](crate::ChargeMethod::Hybrid) is selected
+    /// but the input system has no [`BioMetadata`](crate::BioMetadata).
+    #[error("hybrid charge method requires biological metadata (bio_metadata is None)")]
+    MissingBioMetadata,
+
     /// Required force field parameter not found.
     ///
     /// Occurs when an atom type is assigned but no corresponding
