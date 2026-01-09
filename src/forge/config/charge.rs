@@ -98,7 +98,7 @@ impl Default for QeqConfig {
 /// | Standard amino acid | [`protein_scheme`](Self::protein_scheme) |
 /// | Standard nucleotide | [`nucleic_scheme`](Self::nucleic_scheme) |
 /// | Water (HOH) | [`water_scheme`](Self::water_scheme) |
-/// | Ion | Formal charges (classical, integral) |
+/// | Ion | Formal charges (classical) |
 /// | Hetero | Per-ligand QEq via [`ligand_configs`](Self::ligand_configs) |
 #[derive(Debug, Clone, Default)]
 pub struct HybridConfig {

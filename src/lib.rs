@@ -6,7 +6,8 @@
 //!
 //! - **Atom typing** — Automatic assignment of DREIDING atom types based on
 //!   element, hybridization, and local bonding environment
-//! - **Charge calculation** — QEq charge equilibration for partial atomic charges
+//! - **Flexible charge calculation** — Global QEq, hybrid (classical + QEq), or
+//!   embedded QEq with environment polarization for ligands in protein complexes
 //! - **Parameter generation** — Bond, angle, dihedral, improper, van der Waals,
 //!   and hydrogen bond potentials with multiple functional forms
 //! - **Flexible I/O** — Read/write PDB, mmCIF, MOL2, SDF formats; export to
