@@ -122,6 +122,55 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
+#### Example: Hybrid Charges for Protein-Ligand Systems
+
+```rust
+use std::fs::File;
+use std::io::BufReader;
+
+use dreid_forge::{forge, ForgeConfig, ForgeError};
+use dreid_forge::{ChargeMethod, HybridConfig, LigandChargeConfig, LigandQeqMethod};
+use dreid_forge::{ResidueSelector, EmbeddedQeqConfig, QeqConfig};
+use dreid_forge::io::{BioReader, Format, ProtonationConfig, TopologyConfig};
+
+fn main() -> Result<(), ForgeError> {
+    // Read a protein-ligand complex
+    let file = File::open("complex.pdb").unwrap();
+    let system = BioReader::new(BufReader::new(file), Format::Pdb)
+        .protonate(ProtonationConfig { target_ph: Some(7.4), ..Default::default() })
+        .topology(TopologyConfig::default())
+        .read()
+        .unwrap();
+
+    // Configure hybrid charges:
+    // - Protein: AMBER ff99SB charges
+    // - Ligand at chain A, residue 500: embedded QEq (polarized by protein)
+    let config = ForgeConfig {
+        charge_method: ChargeMethod::Hybrid(HybridConfig {
+            ligand_configs: vec![
+                LigandChargeConfig {
+                    selector: ResidueSelector::new("A", 500, None),
+                    method: LigandQeqMethod::Embedded(EmbeddedQeqConfig {
+                        cutoff_radius: 12.0,  // Include protein atoms within 12 Å
+                        qeq: QeqConfig::default(),
+                    }),
+                },
+            ],
+            ..Default::default()
+        }),
+        ..Default::default()
+    };
+
+    let forged = forge(&system, &config)?;
+
+    // Protein atoms have classical AMBER charges
+    // Ligand atoms have QEq charges polarized by protein environment
+    println!("Total atoms: {}", forged.atom_properties.len());
+
+    Ok(())
+}
+```
+
 > **Tip**: For small molecules without biological context, use `ChemReader` with MOL2 or SDF formats instead.
 
 For detailed usage instructions and configuration options, refer to the [API Documentation](https://docs.rs/dreid-forge).
