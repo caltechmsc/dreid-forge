@@ -476,12 +476,57 @@ mod tests {
     }
 
     #[test]
-    fn map_protein_position_nterminal_low_ph() {
+    fn map_protein_position_nterminal_normal_ph() {
         let info = AtomResidueInfo::builder("N", "ALA", 1, "A")
             .position(ResiduePosition::NTerminal)
             .build();
         let pos = map_residue_position(&info, 7.0);
         assert_eq!(pos, FfPosition::NTerminal);
+    }
+
+    #[test]
+    fn map_protein_position_nterminal_high_ph() {
+        let info = AtomResidueInfo::builder("N", "ALA", 1, "A")
+            .position(ResiduePosition::NTerminal)
+            .build();
+        let pos = map_residue_position(&info, 9.0);
+        assert_eq!(pos, FfPosition::NTerminalDeprotonated);
+    }
+
+    #[test]
+    fn map_protein_position_cterminal_normal_ph() {
+        let info = AtomResidueInfo::builder("C", "ALA", 1, "A")
+            .position(ResiduePosition::CTerminal)
+            .build();
+        let pos = map_residue_position(&info, 7.0);
+        assert_eq!(pos, FfPosition::CTerminal);
+    }
+
+    #[test]
+    fn map_protein_position_cterminal_low_ph() {
+        let info = AtomResidueInfo::builder("C", "ALA", 1, "A")
+            .position(ResiduePosition::CTerminal)
+            .build();
+        let pos = map_residue_position(&info, 2.0);
+        assert_eq!(pos, FfPosition::CTerminalProtonated);
+    }
+
+    #[test]
+    fn map_nucleic_position_five_prime() {
+        let info = AtomResidueInfo::builder("P", "DA", 1, "B")
+            .position(ResiduePosition::FivePrime)
+            .build();
+        let pos = map_residue_position(&info, 7.0);
+        assert_eq!(pos, FfPosition::FivePrime);
+    }
+
+    #[test]
+    fn map_nucleic_position_three_prime() {
+        let info = AtomResidueInfo::builder("O3'", "DA", 1, "B")
+            .position(ResiduePosition::ThreePrime)
+            .build();
+        let pos = map_residue_position(&info, 7.0);
+        assert_eq!(pos, FfPosition::ThreePrime);
     }
 
     #[test]
