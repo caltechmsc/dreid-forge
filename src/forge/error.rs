@@ -42,6 +42,21 @@ pub enum Error {
     #[error("hybrid charge method requires biological metadata (bio_metadata is None)")]
     MissingBioMetadata,
 
+    /// Hybrid charge assignment failed for a specific residue.
+    #[error(
+        "hybrid charge assignment failed for residue {residue_name} at chain {chain_id} residue {residue_id}: {detail}"
+    )]
+    HybridChargeAssignment {
+        /// Chain identifier.
+        chain_id: char,
+        /// Residue sequence number.
+        residue_id: i32,
+        /// Residue name.
+        residue_name: String,
+        /// Description of the problem.
+        detail: String,
+    },
+
     /// Required force field parameter not found.
     ///
     /// Occurs when an atom type is assigned but no corresponding
@@ -87,6 +102,32 @@ impl From<cheq::CheqError> for Error {
 }
 
 impl Error {
+    /// Creates a [`HybridChargeAssignment`](Error::HybridChargeAssignment) error.
+    ///
+    /// # Arguments
+    ///
+    /// * `chain_id` — Chain identifier
+    /// * `residue_id` — Residue sequence number
+    /// * `residue_name` — Residue name
+    /// * `details` — Description of the problem
+    ///
+    /// # Returns
+    ///
+    /// A [`HybridChargeAssignment`](Error::HybridChargeAssignment) error variant.
+    pub fn hybrid_charge_assignment(
+        chain_id: char,
+        residue_id: i32,
+        residue_name: &str,
+        details: impl Into<String>,
+    ) -> Self {
+        Self::HybridChargeAssignment {
+            chain_id,
+            residue_id,
+            residue_name: residue_name.to_string(),
+            detail: details.into(),
+        }
+    }
+
     /// Creates a [`MissingParameter`](Error::MissingParameter) error.
     ///
     /// # Arguments
