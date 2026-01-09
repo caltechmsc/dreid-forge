@@ -20,11 +20,9 @@ mod potential;
 
 pub use charge::{
     ChargeMethod, EmbeddedQeqConfig, HybridConfig, LigandChargeConfig, LigandQeqMethod,
-    NucleicScheme, ProteinScheme, QeqConfig, ResidueSelector, WaterScheme,
+    NucleicScheme, ProteinScheme, QeqConfig, ResidueSelector, SolverOptions, WaterScheme,
 };
 pub use potential::{AnglePotentialType, BondPotentialType, VdwPotentialType};
-
-pub use cheq::SolverOptions;
 
 /// Main configuration for DREIDING force field parameterization.
 ///
