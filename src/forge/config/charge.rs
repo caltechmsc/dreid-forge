@@ -7,7 +7,7 @@ pub use ffcharge::NucleicScheme;
 pub use ffcharge::ProteinScheme;
 pub use ffcharge::WaterScheme;
 
-pub use cheq::SolverOptions;
+pub use cheq::{BasisType, DampingStrategy, SolverOptions};
 
 /// Method for calculating partial atomic charges.
 ///
