@@ -250,6 +250,7 @@ impl IntermediateSystem {
 mod tests {
     use super::*;
     use crate::model::atom::Atom;
+    use crate::model::metadata::BioMetadata;
     use crate::model::system::Bond;
 
     fn make_water() -> System {
@@ -294,6 +295,10 @@ mod tests {
         assert!(int.dihedrals.is_empty());
         assert!(int.impropers.is_empty());
 
+        assert!(int.bio_metadata.is_none());
+        assert!(!int.has_bio_metadata());
+        assert!((int.effective_ph() - 7.4).abs() < f64::EPSILON);
+
         assert_eq!(int.atoms[0].neighbors.len(), 2);
         assert_eq!(int.atoms[1].neighbors.len(), 1);
         assert_eq!(int.atoms[2].neighbors.len(), 1);
@@ -310,6 +315,19 @@ mod tests {
         assert!(int.angles.is_empty());
         assert!(int.dihedrals.is_empty());
         assert!(int.impropers.is_empty());
+    }
+
+    #[test]
+    fn system_with_metadata_preserved() {
+        let mut sys = make_water();
+        let mut metadata = BioMetadata::new();
+        metadata.target_ph = Some(6.5);
+        sys.bio_metadata = Some(metadata);
+
+        let int = IntermediateSystem::from_system(&sys).unwrap();
+        assert!(int.has_bio_metadata());
+        assert!((int.effective_ph() - 6.5).abs() < f64::EPSILON);
+        assert!(int.bio_metadata.is_some());
     }
 
     #[test]
