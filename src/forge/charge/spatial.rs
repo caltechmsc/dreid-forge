@@ -170,3 +170,85 @@ impl SpatialGrid {
         results
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn empty_grid() {
+        let grid = SpatialGrid::new(2.0);
+        let positions: Vec<[f64; 3]> = vec![];
+        let results = grid.query_radius([0.0, 0.0, 0.0], &positions, 2.0);
+        assert!(results.is_empty());
+    }
+
+    #[test]
+    fn single_atom_in_range() {
+        let positions = vec![[1.0, 0.0, 0.0]];
+        let grid = SpatialGrid::from_positions(&positions, 2.0);
+
+        let results = grid.query_radius([0.0, 0.0, 0.0], &positions, 2.0);
+        assert_eq!(results, vec![0]);
+    }
+
+    #[test]
+    fn single_atom_out_of_range() {
+        let positions = vec![[3.0, 0.0, 0.0]];
+        let grid = SpatialGrid::from_positions(&positions, 2.0);
+
+        let results = grid.query_radius([0.0, 0.0, 0.0], &positions, 2.0);
+        assert!(results.is_empty());
+    }
+
+    #[test]
+    fn multiple_atoms_mixed() {
+        let positions = vec![
+            [1.0, 0.0, 0.0],
+            [0.0, 1.5, 0.0],
+            [5.0, 0.0, 0.0],
+            [0.0, 0.0, 1.9],
+            [0.0, 0.0, 2.1],
+        ];
+        let grid = SpatialGrid::from_positions(&positions, 2.0);
+
+        let mut results = grid.query_radius([0.0, 0.0, 0.0], &positions, 2.0);
+        results.sort();
+
+        assert_eq!(results, vec![0, 1, 3]);
+    }
+
+    #[test]
+    fn query_radius_multi() {
+        let positions = vec![[0.0, 0.0, 0.0], [5.0, 0.0, 0.0], [10.0, 0.0, 0.0]];
+        let grid = SpatialGrid::from_positions(&positions, 3.0);
+
+        let queries = vec![[1.0, 0.0, 0.0], [4.0, 0.0, 0.0]];
+
+        let results = grid.query_radius_multi(&queries, &positions, 2.0);
+        assert_eq!(results, vec![0, 1]);
+    }
+
+    #[test]
+    fn query_multi_with_overlap() {
+        let positions = vec![[2.0, 0.0, 0.0]];
+        let grid = SpatialGrid::from_positions(&positions, 5.0);
+
+        let queries = vec![[0.0, 0.0, 0.0], [4.0, 0.0, 0.0]];
+
+        let results = grid.query_radius_multi(&queries, &positions, 3.0);
+        assert_eq!(results, vec![0]);
+    }
+
+    #[test]
+    fn cell_boundary_handling() {
+        let positions = vec![[1.99, 0.0, 0.0], [2.01, 0.0, 0.0]];
+        let grid = SpatialGrid::from_positions(&positions, 2.0);
+
+        let results = grid.query_radius([0.0, 0.0, 0.0], &positions, 2.0);
+        assert_eq!(results, vec![0]);
+
+        let results = grid.query_radius([4.0, 0.0, 0.0], &positions, 2.0);
+        assert_eq!(results, vec![1]);
+    }
+}
