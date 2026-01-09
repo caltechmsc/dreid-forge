@@ -379,7 +379,7 @@ mod tests {
 
     #[test]
     fn atom_residue_info_new_and_all_fields() {
-        let info = AtomResidueInfo::builder("CA", "ALA", 42, 'A')
+        let info = AtomResidueInfo::builder("CA", "ALA", 42, "A")
             .insertion_code_opt(Some('x'))
             .standard_name(Some(StandardResidue::ALA))
             .category(ResidueCategory::Standard)
@@ -388,8 +388,8 @@ mod tests {
         assert_eq!(info.atom_name, "CA");
         assert_eq!(info.residue_name, "ALA");
         assert_eq!(info.residue_id, 42);
-        assert_eq!(info.chain_id, 'A');
-        assert_eq!(info.insertion_code, 'x');
+        assert_eq!(info.chain_id, "A");
+        assert_eq!(info.insertion_code, Some('x'));
         assert_eq!(info.standard_name, Some(StandardResidue::ALA));
         assert_eq!(info.category, ResidueCategory::Standard);
         assert_eq!(info.position, ResiduePosition::Internal);
@@ -397,11 +397,11 @@ mod tests {
 
     #[test]
     fn atom_residue_info_defaults_and_clone() {
-        let info = AtomResidueInfo::builder("N", "GLY", 1, 'B')
+        let info = AtomResidueInfo::builder("N", "GLY", 1, "B")
             .category(ResidueCategory::Hetero)
             .position(ResiduePosition::None)
             .build();
-        assert_eq!(info.insertion_code, ' ');
+        assert_eq!(info.insertion_code, None);
         let cloned = info.clone();
         assert_eq!(info, cloned);
     }
@@ -410,7 +410,7 @@ mod tests {
     fn atom_residue_info_accepts_into_inputs() {
         let atom_name = String::from("O1");
         let residue_name = "LIG";
-        let info = AtomResidueInfo::builder(atom_name, residue_name, 7, 'Z')
+        let info = AtomResidueInfo::builder(atom_name, residue_name, 7, "Z")
             .insertion_code_opt(Some('1'))
             .category(ResidueCategory::Hetero)
             .position(ResiduePosition::CTerminal)
@@ -418,8 +418,8 @@ mod tests {
         assert_eq!(info.atom_name, "O1");
         assert_eq!(info.residue_name, "LIG");
         assert_eq!(info.residue_id, 7);
-        assert_eq!(info.chain_id, 'Z');
-        assert_eq!(info.insertion_code, '1');
+        assert_eq!(info.chain_id, "Z");
+        assert_eq!(info.insertion_code, Some('1'));
         assert_eq!(info.standard_name, None);
         assert_eq!(info.category, ResidueCategory::Hetero);
         assert_eq!(info.position, ResiduePosition::CTerminal);
@@ -430,12 +430,12 @@ mod tests {
         let mut bm = BioMetadata::with_capacity(4);
         assert!(bm.atom_info.capacity() >= 4);
 
-        let info1 = AtomResidueInfo::builder("CA", "ALA", 1, 'A')
+        let info1 = AtomResidueInfo::builder("CA", "ALA", 1, "A")
             .standard_name(Some(StandardResidue::ALA))
             .category(ResidueCategory::Standard)
             .position(ResiduePosition::Internal)
             .build();
-        let info2 = AtomResidueInfo::builder("CB", "ALA", 1, 'A')
+        let info2 = AtomResidueInfo::builder("CB", "ALA", 1, "A")
             .standard_name(Some(StandardResidue::ALA))
             .category(ResidueCategory::Standard)
             .position(ResiduePosition::Internal)
@@ -460,7 +460,7 @@ mod tests {
 
     #[test]
     fn bio_metadata_equality() {
-        let info = AtomResidueInfo::builder("N", "ALA", 1, 'A')
+        let info = AtomResidueInfo::builder("N", "ALA", 1, "A")
             .category(ResidueCategory::Standard)
             .build();
 
@@ -483,7 +483,7 @@ mod tests {
 
     #[test]
     fn debug_contains_expected_fields() {
-        let info = AtomResidueInfo::builder("C1", "LIG", -1, 'Z')
+        let info = AtomResidueInfo::builder("C1", "LIG", -1, "Z")
             .insertion_code_opt(Some('A'))
             .category(ResidueCategory::Hetero)
             .position(ResiduePosition::NTerminal)
