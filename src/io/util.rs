@@ -545,6 +545,7 @@ mod tests {
                     .position(ResiduePosition::NTerminal)
                     .build(),
             ],
+            target_ph: None,
         };
 
         let bonds = vec![
