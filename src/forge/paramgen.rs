@@ -734,9 +734,17 @@ mod tests {
         let hbonds_qeq =
             generate_hbond_potentials(&int, &type_indices, params, &config_qeq).unwrap();
 
+        let config_hybrid = ForgeConfig {
+            charge_method: ChargeMethod::Hybrid(Default::default()),
+            ..Default::default()
+        };
+        let hbonds_hybrid =
+            generate_hbond_potentials(&int, &type_indices, params, &config_hybrid).unwrap();
+
         assert_ne!(hbonds_no[0].d0, hbonds_qeq[0].d0);
         assert_eq!(hbonds_no[0].d0, params.hydrogen_bond.d0_no_charge);
         assert_eq!(hbonds_qeq[0].d0, params.hydrogen_bond.d0_explicit);
+        assert_eq!(hbonds_hybrid[0].d0, params.hydrogen_bond.d0_explicit);
     }
 
     #[test]
