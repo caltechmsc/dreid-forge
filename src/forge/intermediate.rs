@@ -9,6 +9,7 @@
 //! within the forge module to pass data between pipeline stages.
 
 use super::error::Error;
+use crate::model::metadata::BioMetadata;
 use crate::model::system::System;
 use crate::model::types::{BondOrder, Element};
 use cheq::AtomView;
@@ -144,8 +145,9 @@ pub struct IntermediateImproper {
 
 /// Complete intermediate system for parameterization pipeline.
 ///
-/// Contains all atoms, bonds, and enumerated internal coordinates
-/// (angles, dihedrals, impropers) needed for parameter generation.
+/// Contains all atoms, bonds, enumerated internal coordinates
+/// (angles, dihedrals, impropers), and optional biological metadata
+/// needed for parameter generation.
 #[derive(Debug, Clone)]
 pub struct IntermediateSystem {
     /// All atoms with typing and charge information.
@@ -158,6 +160,8 @@ pub struct IntermediateSystem {
     pub dihedrals: Vec<IntermediateDihedral>,
     /// All improper dihedral (out-of-plane) terms.
     pub impropers: Vec<IntermediateImproper>,
+    /// Optional biological metadata.
+    pub bio_metadata: Option<BioMetadata>,
 }
 
 impl IntermediateSystem {
@@ -165,7 +169,8 @@ impl IntermediateSystem {
     ///
     /// Converts atoms and bonds from the input system, building the
     /// neighbor lists for each atom. Angles, dihedrals, and impropers
-    /// are left empty to be populated by the typer.
+    /// are left empty to be populated by the typer. Biological metadata
+    /// is preserved if present.
     ///
     /// # Arguments
     ///
@@ -216,12 +221,28 @@ impl IntermediateSystem {
             angles: Vec::new(),
             dihedrals: Vec::new(),
             impropers: Vec::new(),
+            bio_metadata: system.bio_metadata.clone(),
         })
     }
 
     /// Returns a slice of all intermediate atoms.
     pub fn atoms(&self) -> &[IntermediateAtom] {
         &self.atoms
+    }
+
+    /// Returns `true` if biological metadata is available.
+    pub fn has_bio_metadata(&self) -> bool {
+        self.bio_metadata.is_some()
+    }
+
+    /// Returns the effective pH for charge assignment.
+    ///
+    /// Defaults to physiological pH (7.4) if metadata is absent or pH is not set.
+    pub fn effective_ph(&self) -> f64 {
+        self.bio_metadata
+            .as_ref()
+            .map(|m| m.effective_ph())
+            .unwrap_or(7.4)
     }
 }
 
