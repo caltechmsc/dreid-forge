@@ -322,9 +322,8 @@ fn assign_ligand_charges(
     for group in ligand_groups {
         let (ref chain_id, residue_id, insertion_code) = group.key;
 
-        let default_method = LigandQeqMethod::Vacuum(config.default_ligand_qeq.clone());
         let method = find_ligand_method(&custom_configs, chain_id, residue_id, insertion_code)
-            .unwrap_or(&default_method);
+            .unwrap_or(&config.default_ligand_method);
 
         match method {
             LigandQeqMethod::Vacuum(qeq_config) => {
