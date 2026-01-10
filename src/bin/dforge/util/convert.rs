@@ -54,26 +54,21 @@ fn build_hybrid_config(
     let ligand_configs: Vec<LigandChargeConfig> = hybrid
         .ligands
         .iter()
-        .filter_map(|s| parse_residue_selector(s))
-        .map(|selector| LigandChargeConfig {
-            selector,
-            method: build_ligand_method(hybrid, &solver_options, total_charge),
-        })
+        .filter_map(|s| parse_ligand_config(s, &solver_options, total_charge, hybrid))
         .collect();
+
+    let default_ligand_method = build_default_ligand_method(hybrid, &solver_options, total_charge);
 
     HybridConfig {
         protein_scheme: hybrid.protein_scheme.into(),
         nucleic_scheme: hybrid.nucleic_scheme.into(),
         water_scheme: hybrid.water_scheme.into(),
         ligand_configs,
-        default_ligand_qeq: QeqConfig {
-            total_charge,
-            solver_options,
-        },
+        default_ligand_method,
     }
 }
 
-fn build_ligand_method(
+fn build_default_ligand_method(
     hybrid: &cli::HybridChargeOptions,
     solver_options: &SolverOptions,
     total_charge: f64,
@@ -83,12 +78,137 @@ fn build_ligand_method(
         solver_options: *solver_options,
     };
 
-    match hybrid.ligand_method {
+    match hybrid.default_ligand_method {
         cli::LigandQeqMethod::Vacuum => LibLigandQeqMethod::Vacuum(qeq),
         cli::LigandQeqMethod::Embedded => LibLigandQeqMethod::Embedded(EmbeddedQeqConfig {
-            cutoff_radius: hybrid.ligand_cutoff,
+            cutoff_radius: hybrid.default_ligand_cutoff,
             qeq,
         }),
+    }
+}
+
+fn parse_ligand_config(
+    s: &str,
+    solver_options: &SolverOptions,
+    total_charge: f64,
+    hybrid: &cli::HybridChargeOptions,
+) -> Option<LigandChargeConfig> {
+    let parts: Vec<&str> = s.split(':').collect();
+
+    if parts.len() < 2 {
+        return None;
+    }
+
+    let chain = parts[0];
+    let res_num: i32 = parts[1].parse().ok()?;
+
+    let (icode, method) = match parts.len() {
+        // CHAIN:RESID
+        2 => (None, None),
+        // CHAIN:RESID:X - X could be icode or method
+        3 => {
+            let x = parts[2];
+            if is_method_keyword(x) {
+                (
+                    None,
+                    Some(parse_ligand_method(
+                        x,
+                        None,
+                        solver_options,
+                        total_charge,
+                        hybrid,
+                    )?),
+                )
+            } else {
+                (Some(x.chars().next()?), None)
+            }
+        }
+        // CHAIN:RESID:X:Y - X could be icode, Y could be method or cutoff
+        4 => {
+            let x = parts[2];
+            let y = parts[3];
+            if is_method_keyword(x) {
+                // X is method, Y is cutoff
+                let cutoff: f64 = y.parse().ok()?;
+                (
+                    None,
+                    Some(parse_ligand_method(
+                        x,
+                        Some(cutoff),
+                        solver_options,
+                        total_charge,
+                        hybrid,
+                    )?),
+                )
+            } else {
+                // X is icode, Y is method
+                let icode = x.chars().next()?;
+                (
+                    Some(icode),
+                    Some(parse_ligand_method(
+                        y,
+                        None,
+                        solver_options,
+                        total_charge,
+                        hybrid,
+                    )?),
+                )
+            }
+        }
+        // CHAIN:RESID:ICODE:METHOD:CUTOFF (5 parts)
+        5 => {
+            let icode = parts[2].chars().next()?;
+            let method_str = parts[3];
+            let cutoff: f64 = parts[4].parse().ok()?;
+            (
+                Some(icode),
+                Some(parse_ligand_method(
+                    method_str,
+                    Some(cutoff),
+                    solver_options,
+                    total_charge,
+                    hybrid,
+                )?),
+            )
+        }
+        _ => return None,
+    };
+
+    let selector = ResidueSelector::new(chain, res_num, icode);
+
+    let method =
+        method.unwrap_or_else(|| build_default_ligand_method(hybrid, solver_options, total_charge));
+
+    Some(LigandChargeConfig { selector, method })
+}
+
+fn is_method_keyword(s: &str) -> bool {
+    let lower = s.to_lowercase();
+    lower == "vacuum" || lower == "embedded"
+}
+
+fn parse_ligand_method(
+    method_str: &str,
+    cutoff: Option<f64>,
+    solver_options: &SolverOptions,
+    total_charge: f64,
+    hybrid: &cli::HybridChargeOptions,
+) -> Option<LibLigandQeqMethod> {
+    let qeq = QeqConfig {
+        total_charge,
+        solver_options: *solver_options,
+    };
+
+    match method_str.to_lowercase().as_str() {
+        "vacuum" => Some(LibLigandQeqMethod::Vacuum(qeq)),
+        "embedded" => {
+            let cutoff_radius = cutoff.unwrap_or(hybrid.default_ligand_cutoff);
+            Some(LibLigandQeqMethod::Embedded(EmbeddedQeqConfig {
+                cutoff_radius,
+                qeq,
+            }))
+        }
+        _ => None,
     }
 }
 
@@ -100,22 +220,6 @@ fn build_solver_options(qeq: &cli::QeqSolverOptions) -> SolverOptions {
         hydrogen_scf: qeq.hydrogen_scf,
         basis_type: qeq.basis_type.into(),
         damping: (&qeq.damping).into(),
-    }
-}
-
-fn parse_residue_selector(s: &str) -> Option<ResidueSelector> {
-    let parts: Vec<&str> = s.split(':').collect();
-    match parts.as_slice() {
-        [chain, resid] => {
-            let res_num = resid.parse().ok()?;
-            Some(ResidueSelector::new(*chain, res_num, None))
-        }
-        [chain, resid, icode] => {
-            let res_num = resid.parse().ok()?;
-            let ic = icode.chars().next()?;
-            Some(ResidueSelector::new(*chain, res_num, Some(ic)))
-        }
-        _ => None,
     }
 }
 
