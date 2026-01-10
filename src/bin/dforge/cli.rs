@@ -85,7 +85,7 @@ pub struct HybridChargeOptions {
     #[arg(long = "water-scheme", value_name = "SCHEME", default_value = "tip3p")]
     pub water_scheme: WaterScheme,
 
-    /// Ligand configuration (CHAIN:RESID[:ICODE][:METHOD[:CUTOFF]]), repeatable
+    /// Ligand configuration (`CHAIN:RESID[:ICODE][:METHOD[:CUTOFF]]`), repeatable
     ///
     /// METHOD: vacuum | embedded (default: use --default-ligand-method)
     /// CUTOFF: environment radius in Å for embedded method
@@ -133,7 +133,7 @@ pub struct QeqSolverOptions {
     #[arg(long = "qeq-basis", value_name = "TYPE", default_value = "sto")]
     pub basis_type: BasisType,
 
-    /// SCF damping strategy (none, fixed:<f>, auto, auto:<f>)
+    /// SCF damping strategy (`none`, `fixed:VALUE`, `auto`, `auto:VALUE`)
     #[arg(long = "qeq-damping", value_name = "STRATEGY", default_value = "auto")]
     pub damping: DampingStrategy,
 }
