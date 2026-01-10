@@ -310,6 +310,27 @@ impl HintCollector {
                 self.collect_charge_calc_hints(msg);
             }
 
+            ForgeError::MissingBioMetadata => {
+                self.add("Hybrid charge method requires biological metadata");
+                self.add("Use 'dforge bio' for structures with residue information");
+                self.add("Or use --charge=qeq for small molecules with 'dforge chem'");
+            }
+
+            ForgeError::HybridChargeAssignment {
+                chain_id,
+                residue_id,
+                residue_name,
+                detail,
+            } => {
+                self.add(format!(
+                    "Hybrid charge assignment failed for {} {} in chain {}",
+                    residue_name, residue_id, chain_id
+                ));
+                self.add(format!("Issue: {}", detail));
+                self.add("Check that the residue has correct atom naming");
+                self.add("Verify force field scheme supports this residue type");
+            }
+
             ForgeError::MissingParameter { atom_type, detail } => {
                 self.add(format!("No parameters found for atom type '{}'", atom_type));
                 self.add(format!("Missing: {}", detail));
