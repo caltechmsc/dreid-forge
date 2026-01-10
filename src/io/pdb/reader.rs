@@ -14,7 +14,7 @@ pub fn read<R: BufRead>(builder: BioReader<R>) -> Result<System, Error> {
 
     bf::ops::repair_structure(&mut bio_struct)?;
 
-    let bf_hydro_config = util::to_bf_hydro_config(builder.protonation_config);
+    let bf_hydro_config = util::to_bf_hydro_config(builder.protonation_config.clone());
     bf::ops::add_hydrogens(&mut bio_struct, &bf_hydro_config)?;
 
     if let Some(solvate_config) = builder.solvate_config {
@@ -23,7 +23,11 @@ pub fn read<R: BufRead>(builder: BioReader<R>) -> Result<System, Error> {
     }
 
     let bf_topo = util::build_topology(bio_struct, &builder.topology_config)?;
-    let system = util::from_bio_topology(bf_topo)?;
+    let mut system = util::from_bio_topology(bf_topo)?;
+
+    if let Some(metadata) = system.bio_metadata.as_mut() {
+        metadata.target_ph = builder.protonation_config.target_ph;
+    }
 
     Ok(system)
 }
