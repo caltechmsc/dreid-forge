@@ -289,6 +289,13 @@ mod tests {
         assert_eq!(config.nucleic_scheme, NucleicScheme::Amber);
         assert_eq!(config.water_scheme, WaterScheme::Tip3p);
         assert!(config.ligand_configs.is_empty());
+        assert!(matches!(
+            config.default_ligand_method,
+            LigandQeqMethod::Embedded(_)
+        ));
+        if let LigandQeqMethod::Embedded(embedded) = &config.default_ligand_method {
+            assert_eq!(embedded.cutoff_radius, 10.0);
+        }
     }
 
     #[test]
