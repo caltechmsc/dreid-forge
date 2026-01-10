@@ -1019,7 +1019,7 @@ pub struct HybridConfig {
     pub nucleic_scheme: NucleicScheme,   // AMBER OL15/OL21/OL24/bsc1/OL3, CHARMM C27/C36
     pub water_scheme: WaterScheme,       // TIP3P, TIP3P-FB, SPC, SPC/E, OPC3
     pub ligand_configs: Vec<LigandChargeConfig>, // Per-ligand QEq configuration
-    pub default_ligand_qeq: QeqConfig,   // Default QEq for unlisted ligands
+    pub default_ligand_method: LigandQeqMethod,  // Default method for unlisted ligands
 }
 ```
 
