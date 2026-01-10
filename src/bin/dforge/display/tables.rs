@@ -235,15 +235,16 @@ pub fn print_chain_breakdown(system: &System) {
         None => return,
     };
 
-    let mut chain_residues: HashMap<char, std::collections::HashSet<(i32, char)>> = HashMap::new();
-    let mut chain_atoms: HashMap<char, usize> = HashMap::new();
+    let mut chain_residues: HashMap<String, std::collections::HashSet<(i32, Option<char>)>> =
+        HashMap::new();
+    let mut chain_atoms: HashMap<String, usize> = HashMap::new();
 
     for info in &bio_meta.atom_info {
         chain_residues
-            .entry(info.chain_id)
+            .entry(info.chain_id.clone())
             .or_default()
             .insert((info.residue_id, info.insertion_code));
-        *chain_atoms.entry(info.chain_id).or_insert(0) += 1;
+        *chain_atoms.entry(info.chain_id.clone()).or_insert(0) += 1;
     }
 
     if chain_atoms.is_empty() {
@@ -291,7 +292,7 @@ pub fn print_chain_breakdown(system: &System) {
     );
 
     for (chain, atoms) in &sorted {
-        let residues = chain_residues.get(chain).map(|s| s.len()).unwrap_or(0);
+        let residues = chain_residues.get(*chain).map(|s| s.len()).unwrap_or(0);
         let _ = writeln!(
             out,
             "{}│ {:<chain_w$} │ {:>residues_w$} │ {:>atoms_w$} │",
