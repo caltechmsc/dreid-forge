@@ -85,21 +85,28 @@ pub struct HybridChargeOptions {
     #[arg(long = "water-scheme", value_name = "SCHEME", default_value = "tip3p")]
     pub water_scheme: WaterScheme,
 
-    /// Ligand residue selector (chain:resid or chain:resid:icode), repeatable
-    #[arg(long = "ligand", value_name = "SELECTOR", action = clap::ArgAction::Append)]
+    /// Ligand configuration (CHAIN:RESID[:ICODE][:METHOD[:CUTOFF]]), repeatable
+    ///
+    /// METHOD: vacuum | embedded (default: use --default-ligand-method)
+    /// CUTOFF: environment radius in Å for embedded method
+    #[arg(long = "ligand", value_name = "CONFIG", action = clap::ArgAction::Append)]
     pub ligands: Vec<String>,
 
-    /// Ligand QEq method (vacuum or embedded)
+    /// Default ligand QEq method for unlisted ligands
     #[arg(
-        long = "ligand-method",
+        long = "default-ligand-method",
         value_name = "METHOD",
         default_value = "embedded"
     )]
-    pub ligand_method: LigandQeqMethod,
+    pub default_ligand_method: LigandQeqMethod,
 
-    /// Embedded QEq environment cutoff radius (Å)
-    #[arg(long = "ligand-cutoff", value_name = "Å", default_value = "10.0")]
-    pub ligand_cutoff: f64,
+    /// Default embedded QEq cutoff radius for unlisted ligands (Å)
+    #[arg(
+        long = "default-ligand-cutoff",
+        value_name = "Å",
+        default_value = "10.0"
+    )]
+    pub default_ligand_cutoff: f64,
 }
 
 /// QEq solver options (advanced tuning).
