@@ -87,7 +87,7 @@ impl Default for QeqConfig {
 /// Specifies how charges are assigned to different molecule types
 /// in a biological system. Standard residues (proteins, nucleic acids,
 /// water, ions) receive classical force field charges, while hetero
-/// groups (ligands) can use vacuum or embedded QEq.
+/// groups (ligands) use QEq methods (vacuum or embedded).
 ///
 /// # Molecule Classification
 ///
@@ -99,8 +99,8 @@ impl Default for QeqConfig {
 /// | Standard nucleotide | [`nucleic_scheme`](Self::nucleic_scheme) |
 /// | Water (HOH) | [`water_scheme`](Self::water_scheme) |
 /// | Ion | Formal charges (classical) |
-/// | Hetero | Per-ligand QEq via [`ligand_configs`](Self::ligand_configs) |
-#[derive(Debug, Clone, Default)]
+/// | Hetero | Per-ligand or [`default_ligand_method`](Self::default_ligand_method) |
+#[derive(Debug, Clone)]
 pub struct HybridConfig {
     /// Force field scheme for protein residue charges.
     ///
@@ -117,16 +117,30 @@ pub struct HybridConfig {
     /// Default is [`WaterScheme::Tip3p`].
     pub water_scheme: WaterScheme,
 
-    /// Per-ligand charge configuration.
+    /// Per-ligand charge configuration overrides.
     ///
-    /// Each entry specifies a residue selector and the QEq method to use.
-    /// Ligands not explicitly listed will use the [`default_ligand_qeq`](Self::default_ligand_qeq).
+    /// Each entry specifies a residue selector and the QEq method to use
+    /// for that specific ligand. Ligands not listed here will use
+    /// [`default_ligand_method`](Self::default_ligand_method).
     pub ligand_configs: Vec<LigandChargeConfig>,
 
-    /// Default QEq configuration for ligands not in [`ligand_configs`](Self::ligand_configs).
+    /// Default QEq method for ligands not in [`ligand_configs`](Self::ligand_configs).
     ///
-    /// Default is vacuum QEq with neutral total charge.
-    pub default_ligand_qeq: QeqConfig,
+    /// Default is [`LigandQeqMethod::Embedded`] with 10 Å cutoff and neutral
+    /// total charge.
+    pub default_ligand_method: LigandQeqMethod,
+}
+
+impl Default for HybridConfig {
+    fn default() -> Self {
+        Self {
+            protein_scheme: ProteinScheme::default(),
+            nucleic_scheme: NucleicScheme::default(),
+            water_scheme: WaterScheme::default(),
+            ligand_configs: Vec::new(),
+            default_ligand_method: LigandQeqMethod::Embedded(EmbeddedQeqConfig::default()),
+        }
+    }
 }
 
 /// Residue selector for identifying specific residues.
