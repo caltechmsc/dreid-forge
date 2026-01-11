@@ -18,7 +18,7 @@ dforge bio -i 5HKR.pdb -o 5HKR.bgf --template C60.mol2
 # Global QEq charges for all atoms
 dforge bio -i 5HKR.pdb -o 5HKR-qeq.bgf --template C60.mol2 --charge qeq
 
-# Hybrid charges: AMBER for protein, embedded QEq for C60 (default pH is physiological)
+# Hybrid charges: AMBER for protein, embedded QEq for C60
 dforge bio -i 5HKR.pdb -o 5HKR-hybrid.bgf --template C60.mol2 --charge hybrid
 
 # Hybrid charges at different pH conditions
