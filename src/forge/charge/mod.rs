@@ -1,13 +1,16 @@
 //! Partial charge calculation for molecular systems.
 //!
-//! This module handles the assignment of partial atomic charges
-//! using the charge equilibration (QEq) method. Charges are computed
-//! based on atomic electronegativities and the molecular geometry.
+//! This module handles the assignment of partial atomic charges using
+//! multiple methods, including global QEq, hybrid (biological + QEq), and
+//! no charges.
 
-use super::config::{ChargeMethod, QeqConfig};
+mod hybrid;
+mod qeq;
+mod spatial;
+
+use super::config::ChargeMethod;
 use super::error::Error;
 use super::intermediate::IntermediateSystem;
-use cheq::{QEqSolver, get_default_parameters};
 
 /// Assigns partial charges to atoms based on the configured method.
 ///
@@ -21,36 +24,22 @@ use cheq::{QEqSolver, get_default_parameters};
 ///
 /// # Errors
 ///
-/// Returns [`Error::ChargeCalculation`] if QEq solver fails to converge.
+/// Returns [`Error`] if:
+/// - QEq solver fails to converge ([`Error::ChargeCalculation`])
+/// - Hybrid method is used without biological metadata ([`Error::MissingBioMetadata`])
+/// - Classical charge lookup fails ([`Error::HybridChargeAssignment`])
 pub fn assign_charges(system: &mut IntermediateSystem, method: &ChargeMethod) -> Result<(), Error> {
     match method {
         ChargeMethod::None => Ok(()),
-        ChargeMethod::Qeq(config) => assign_qeq_charges(system, config),
+        ChargeMethod::Qeq(config) => qeq::assign_qeq_charges(system, config),
+        ChargeMethod::Hybrid(config) => hybrid::assign_hybrid_charges(system, config),
     }
-}
-
-/// Assigns charges using the QEq (charge equilibration) method.
-///
-/// Uses the `cheq` library to compute electronegativity-equalized
-/// partial charges based on atomic positions.
-fn assign_qeq_charges(system: &mut IntermediateSystem, config: &QeqConfig) -> Result<(), Error> {
-    let params = get_default_parameters();
-    let solver = QEqSolver::new(params).with_options(config.solver_options);
-
-    let atoms = system.atoms();
-
-    let result = solver.solve(atoms, config.total_charge)?;
-
-    for (atom, &charge) in system.atoms.iter_mut().zip(result.charges.iter()) {
-        atom.charge = charge;
-    }
-
-    Ok(())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::forge::config::QeqConfig;
     use crate::model::atom::Atom;
     use crate::model::system::{Bond, System};
     use crate::model::types::{BondOrder, Element};

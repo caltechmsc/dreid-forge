@@ -4,7 +4,7 @@ This document provides a comprehensive guide to the internal design, data flow, 
 
 ## 1. System Overview
 
-DREID-Forge is architected as a **multi-stage transformation pipeline** that converts raw molecular geometry into simulation-ready force field parameters. The system integrates three external crates (`bio-forge`, `dreid-typer`, `cheq`) and orchestrates them through a unified API.
+DREID-Forge is architected as a **multi-stage transformation pipeline** that converts raw molecular geometry into simulation-ready force field parameters. The system integrates four external crates (`bio-forge`, `dreid-typer`, `cheq`, `ffcharge`) and orchestrates them through a unified API.
 
 ```mermaid
 flowchart TD
@@ -42,7 +42,7 @@ flowchart TD
         direction TB
         INT["IntermediateSystem"]
         TYPER["Atom Typing<br><i>(dreid-typer)</i>"]
-        CHARGE["Charge Calculation<br><i>(cheq QEq)</i>"]
+        CHARGE["Charge Calculation<br><i>(cheq/ffcharge)</i>"]
         PGEN["Parameter Generation"]
     end
 
@@ -89,12 +89,12 @@ flowchart TD
 
 ### Core Components
 
-| Component           | Description                                                                     |
-| ------------------- | ------------------------------------------------------------------------------- |
-| **I/O Layer**       | Readers and writers for molecular structure file formats                        |
-| **Model Layer**     | Neutral data structures (`System`, `Atom`, `Bond`, `BioMetadata`)               |
-| **Forge Pipeline**  | The parameterization engine: typing → charging → parameter generation           |
-| **External Crates** | `bio-forge` (structure prep), `dreid-typer` (atom typing), `cheq` (QEq charges) |
+| Component           | Description                                                                                                     |
+| ------------------- | --------------------------------------------------------------------------------------------------------------- |
+| **I/O Layer**       | Readers and writers for molecular structure file formats                                                        |
+| **Model Layer**     | Neutral data structures (`System`, `Atom`, `Bond`, `BioMetadata`)                                               |
+| **Forge Pipeline**  | The parameterization engine: typing → charging → parameter generation                                           |
+| **External Crates** | `bio-forge` (structure prep), `dreid-typer` (atom typing), `cheq` (QEq charges), `ffcharge` (classical charges) |
 
 ---
 
@@ -432,17 +432,50 @@ flowchart TD
 - `IntermediateSystem.dihedrals` ← enumerated proper dihedral terms
 - `IntermediateSystem.impropers` ← enumerated improper dihedral terms
 
-### 3.3 Stage 3: Charge Calculation via cheq
+### 3.3 Stage 3: Charge Calculation
 
-When `ChargeMethod::Qeq` is configured, partial charges are computed using the QEq method:
+The charge module supports three methods: **None** (zero charges), **QEq** (global charge equilibration), and **Hybrid** (classical force field charges for biomolecules + QEq for ligands).
 
 ```mermaid
 flowchart TD
     subgraph "Input"
         INT["IntermediateSystem"]
-        QCF["QeqConfig<br><i>total_charge, solver_options</i>"]
+        CM["ChargeMethod"]
     end
 
+    subgraph "Method Dispatch"
+        NONE["None"]
+        QEQ["Qeq"]
+        HYB["Hybrid"]
+    end
+
+    subgraph "None Path"
+        N_OUT["charges = 0.0"]
+    end
+
+    subgraph "QEq Path"
+        Q_SOLVE["cheq::QEqSolver"]
+        Q_OUT["Equilibrated charges"]
+    end
+
+    subgraph "Hybrid Path"
+        H_CLASS["classify_atoms"]
+        H_FIXED["assign_fixed_charges<br><i>(ffcharge)</i>"]
+        H_LIGAND["assign_ligand_charges<br><i>(cheq)</i>"]
+    end
+
+    INT --> CM
+    CM --> NONE --> N_OUT
+    CM --> QEQ --> Q_SOLVE --> Q_OUT
+    CM --> HYB --> H_CLASS --> H_FIXED --> H_LIGAND
+```
+
+#### 3.3.1 Global QEq Method
+
+When `ChargeMethod::Qeq` is configured, partial charges are computed using the `cheq` crate:
+
+```mermaid
+flowchart TD
     subgraph "cheq Solver"
         PARAMS(["ElementData<br><i>χ, J, r, n</i>"])
         BUILD(["Build Invariant System"])
@@ -457,8 +490,6 @@ flowchart TD
         MU["μ_eq: equilibrated potential"]
     end
 
-    INT --> BUILD
-    QCF --> BUILD
     PARAMS --> BUILD
     BUILD --> MATRIX
     BUILD --> RHS
@@ -466,9 +497,6 @@ flowchart TD
     RHS --> SOLVE
     SOLVE --> SCF --> CHARGES
     SOLVE --> MU
-
-    classDef doubleBorder stroke-width:4px,stroke-dasharray: 6 2;
-    class BUILD,SOLVE,SCF doubleBorder;
 ```
 
 **QEq algorithm summary:**
@@ -482,6 +510,111 @@ flowchart TD
 2. **Solve:** $A (q, \mu)^T = b$ yields charges and chemical potential
 
 3. **Iterate:** If hydrogen SCF is enabled, update hydrogen hardness based on charge and re-solve
+
+#### 3.3.2 Hybrid Charge Method
+
+The hybrid method combines classical force field charges for biomolecules with QEq for ligands. This requires biological metadata (`BioMetadata`) to classify atoms.
+
+```mermaid
+flowchart TD
+    subgraph "Atom Classification"
+        META["BioMetadata"]
+        CLASS["classify_atoms"]
+        PROT["Protein"]
+        NUC["Nucleic Acid"]
+        WAT["Water"]
+        ION["Ion"]
+        LIG["Ligand"]
+    end
+
+    subgraph "Fixed Charges (ffcharge)"
+        FF_PROT["ProteinScheme<br><i>AMBER/CHARMM</i>"]
+        FF_NUC["NucleicScheme<br><i>AMBER/CHARMM</i>"]
+        FF_WAT["WaterScheme<br><i>TIP3P/TIP3P-FB/SPC/OPC3</i>"]
+        FF_ION["IonScheme<br><i>Formal charges</i>"]
+    end
+
+    subgraph "Ligand QEq"
+        LIG_CFG["LigandChargeConfig[]"]
+        VAC["Vacuum QEq<br><i>isolated</i>"]
+        EMB["Embedded QEq<br><i>polarized by environment</i>"]
+    end
+
+    META --> CLASS
+    CLASS --> PROT --> FF_PROT
+    CLASS --> NUC --> FF_NUC
+    CLASS --> WAT --> FF_WAT
+    CLASS --> ION --> FF_ION
+    CLASS --> LIG --> LIG_CFG
+    LIG_CFG --> VAC
+    LIG_CFG --> EMB
+```
+
+**Atom classification rules:**
+
+| Category     | Source                                    | Charge Source             |
+| ------------ | ----------------------------------------- | ------------------------- |
+| Protein      | `StandardResidue::ALA..VAL`               | `ffcharge::ProteinScheme` |
+| Nucleic Acid | `StandardResidue::A..DI`                  | `ffcharge::NucleicScheme` |
+| Water        | `StandardResidue::HOH`                    | `ffcharge::WaterScheme`   |
+| Ion          | `ResidueCategory::Ion`                    | `ffcharge::IonScheme`     |
+| Ligand       | `ResidueCategory::Hetero` or unrecognized | QEq (vacuum or embedded)  |
+
+**pH-aware terminal handling:**
+
+Terminal protonation states are determined by comparing `BioMetadata.target_ph` with pKa values:
+
+| Terminal   | pKa | Low pH            | High pH             |
+| ---------- | --- | ----------------- | ------------------- |
+| N-terminal | 8.0 | NH₃⁺ (protonated) | NH₂ (neutral)       |
+| C-terminal | 3.1 | COOH (protonated) | COO⁻ (deprotonated) |
+
+#### 3.3.3 Embedded QEq for Ligands
+
+Embedded QEq polarizes the ligand's charge distribution based on the electrostatic potential from surrounding fixed-charge atoms (proteins, nucleic acids).
+
+```mermaid
+flowchart TD
+    subgraph "Input"
+        LIG_ATOMS["Ligand atoms"]
+        FIXED["Fixed-charge atoms"]
+        CUTOFF["cutoff_radius"]
+    end
+
+    subgraph "Spatial Query"
+        GRID["SpatialGrid<br><i>cell_size = cutoff</i>"]
+        QUERY["query_radius_multi"]
+        ENV["Environment atoms"]
+    end
+
+    subgraph "cheq Solver"
+        EXT["ExternalPotential<br><i>from point charges</i>"]
+        SOLVE["solve_in_field"]
+    end
+
+    subgraph "Output"
+        CHARGES["Polarized ligand charges"]
+    end
+
+    FIXED --> GRID
+    LIG_ATOMS --> QUERY
+    CUTOFF --> QUERY
+    GRID --> QUERY --> ENV
+    ENV --> EXT --> SOLVE --> CHARGES
+```
+
+**Spatial grid optimization:**
+
+The `SpatialGrid` data structure provides O(1) amortized neighbor lookups:
+
+- Space is divided into cubic cells of size equal to the cutoff radius
+- Each cell stores indices of atoms within its bounds
+- Range queries check the 27 neighboring cells (3×3×3 cube)
+- Multi-point queries (`query_radius_multi`) efficiently find all atoms within range of any ligand atom
+
+**Why fixed charges only as environment:**
+
+Only atoms with pre-assigned fixed charges (proteins, nucleic acids, water, ions) are included in the external potential. Including other ligands would create mutual dependencies requiring self-consistent iteration, adding complexity without significant accuracy improvement for typical drug-protein systems
 
 ### 3.4 Stage 4: Parameter Generation
 
@@ -573,14 +706,16 @@ classDiagram
 
     class BioMetadata {
         +atom_info: Vec~AtomResidueInfo~
+        +target_ph: Option~f64~
+        +effective_ph() f64
     }
 
     class AtomResidueInfo {
         +atom_name: String
         +residue_name: String
         +residue_id: i32
-        +chain_id: char
-        +insertion_code: char
+        +chain_id: String
+        +insertion_code: Option~char~
         +standard_name: Option~StandardResidue~
         +category: ResidueCategory
         +position: ResiduePosition
@@ -806,6 +941,8 @@ flowchart TD
         FE_RP["RuleParse<br><i>typing rules malformed</i>"]
         FE_AT["AtomTyping<br><i>dreid-typer failure</i>"]
         FE_CC["ChargeCalculation<br><i>cheq failure</i>"]
+        FE_MB["MissingBioMetadata<br><i>hybrid requires metadata</i>"]
+        FE_HC["HybridChargeAssignment<br><i>classical charge lookup failed</i>"]
         FE_MP["MissingParameter<br><i>no params for atom type</i>"]
         FE_IB["InvalidBond<br><i>bond index out of range</i>"]
         FE_ES["EmptySystem<br><i>no atoms</i>"]
@@ -840,7 +977,7 @@ flowchart TD
 pub struct ForgeConfig {
     pub rules: Option<String>,        // Custom typing rules (TOML)
     pub params: Option<String>,       // Custom FF params (TOML)
-    pub charge_method: ChargeMethod,  // None or Qeq
+    pub charge_method: ChargeMethod,  // None, Qeq, or Hybrid
     pub bond_potential: BondPotentialType,   // Harmonic or Morse
     pub angle_potential: AnglePotentialType, // ThetaHarmonic or CosineHarmonic
     pub vdw_potential: VdwPotentialType,     // LennardJones or Exponential6
@@ -855,7 +992,17 @@ pub struct ForgeConfig {
 | `angle_potential` | `ThetaHarmonic`, `CosineHarmonic` | `ThetaHarmonic`  |
 | `vdw_potential`   | `LennardJones`, `Exponential6`    | `LennardJones`   |
 
-### 7.3 QeqConfig
+### 7.3 Charge Method Configuration
+
+```rust
+pub enum ChargeMethod {
+    None,              // All charges = 0.0
+    Qeq(QeqConfig),    // Global QEq for all atoms
+    Hybrid(HybridConfig), // Classical + QEq (requires BioMetadata)
+}
+```
+
+### 7.4 QeqConfig
 
 ```rust
 pub struct QeqConfig {
@@ -864,7 +1011,48 @@ pub struct QeqConfig {
 }
 ```
 
-### 7.4 I/O Configurations
+### 7.5 HybridConfig
+
+```rust
+pub struct HybridConfig {
+    pub protein_scheme: ProteinScheme,   // AMBER ff99SB/ff14SB/ff19SB, AMBER ff03, CHARMM C22/C27/C36/C36m
+    pub nucleic_scheme: NucleicScheme,   // AMBER OL15/OL21/OL24/bsc1/OL3, CHARMM C27/C36
+    pub water_scheme: WaterScheme,       // TIP3P, TIP3P-FB, SPC, SPC/E, OPC3
+    pub ligand_configs: Vec<LigandChargeConfig>, // Per-ligand QEq configuration
+    pub default_ligand_method: LigandQeqMethod,  // Default method for unlisted ligands
+}
+```
+
+### 7.6 Ligand Charge Configuration
+
+```rust
+pub struct LigandChargeConfig {
+    pub selector: ResidueSelector,  // Target residue (chain_id, residue_id, insertion_code)
+    pub method: LigandQeqMethod,    // Vacuum or Embedded QEq
+}
+
+pub enum LigandQeqMethod {
+    Vacuum(QeqConfig),        // Isolated QEq calculation
+    Embedded(EmbeddedQeqConfig), // QEq polarized by environment
+}
+
+pub struct EmbeddedQeqConfig {
+    pub cutoff_radius: f64,   // Environment search radius in Å (default: 10.0)
+    pub qeq: QeqConfig,       // QEq solver settings
+}
+```
+
+### 7.7 Residue Selector
+
+```rust
+pub struct ResidueSelector {
+    pub chain_id: String,
+    pub residue_id: i32,
+    pub insertion_code: Option<char>,  // None matches any insertion code
+}
+```
+
+### 7.8 I/O Configurations
 
 | Config              | Purpose                            |
 | ------------------- | ---------------------------------- |
@@ -881,9 +1069,10 @@ pub struct QeqConfig {
 ```mermaid
 flowchart BT
     subgraph "External Crates"
-        BF["bio-forge v0.2<br><i>structure preparation</i>"]
+        BF["bio-forge v0.3<br><i>structure preparation</i>"]
         DT["dreid-typer v0.4<br><i>atom typing</i>"]
-        CQ["cheq v0.3<br><i>QEq charges</i>"]
+        CQ["cheq v0.5<br><i>QEq charges</i>"]
+        FF["ffcharge v0.2<br><i>classical FF charges</i>"]
     end
 
     subgraph "dreid-forge Modules"
@@ -900,6 +1089,7 @@ flowchart BT
     BF --> IO
     DT --> FORGE
     CQ --> FORGE
+    FF --> FORGE
     SERDE --> BF
     SERDE --> DT
     SERDE --> CQ
@@ -909,11 +1099,12 @@ flowchart BT
 
 ### Integration Points
 
-| Crate         | Integration Module                 | Key Types Exchanged                                    |
-| ------------- | ---------------------------------- | ------------------------------------------------------ |
-| `bio-forge`   | `io::util`, `io::pdb`, `io::mmcif` | `Structure`, `Topology`, `Template`                    |
-| `dreid-typer` | `forge::typer`                     | `MolecularGraph`, `MolecularTopology`, `Hybridization` |
-| `cheq`        | `forge::charge`                    | `AtomView`, `SolverOptions`, `CalculationResult`       |
+| Crate         | Version | Integration Module                            | Key Types Exchanged                                          |
+| ------------- | ------- | --------------------------------------------- | ------------------------------------------------------------ |
+| `bio-forge`   | 0.3     | `io::util`, `io::pdb`, `io::mmcif`            | `Structure`, `Topology`, `Template`                          |
+| `dreid-typer` | 0.4     | `forge::typer`                                | `MolecularGraph`, `MolecularTopology`, `Hybridization`       |
+| `cheq`        | 0.5     | `forge::charge::qeq`, `forge::charge::hybrid` | `QEqSolver`, `ExternalPotential`, `PointCharge`              |
+| `ffcharge`    | 0.2     | `forge::charge::hybrid`                       | `ProteinScheme`, `NucleicScheme`, `WaterScheme`, `IonScheme` |
 
 ---
 

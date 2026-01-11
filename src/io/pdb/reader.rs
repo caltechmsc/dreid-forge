@@ -14,7 +14,7 @@ pub fn read<R: BufRead>(builder: BioReader<R>) -> Result<System, Error> {
 
     bf::ops::repair_structure(&mut bio_struct)?;
 
-    let bf_hydro_config = util::to_bf_hydro_config(builder.protonation_config);
+    let bf_hydro_config = util::to_bf_hydro_config(builder.protonation_config.clone());
     bf::ops::add_hydrogens(&mut bio_struct, &bf_hydro_config)?;
 
     if let Some(solvate_config) = builder.solvate_config {
@@ -23,7 +23,11 @@ pub fn read<R: BufRead>(builder: BioReader<R>) -> Result<System, Error> {
     }
 
     let bf_topo = util::build_topology(bio_struct, &builder.topology_config)?;
-    let system = util::from_bio_topology(bf_topo)?;
+    let mut system = util::from_bio_topology(bf_topo)?;
+
+    if let Some(metadata) = system.bio_metadata.as_mut() {
+        metadata.target_ph = builder.protonation_config.target_ph;
+    }
 
     Ok(system)
 }
@@ -57,6 +61,7 @@ mod tests {
                     .position(ResiduePosition::None)
                     .build(),
             ],
+            target_ph: None,
         };
         let bonds = vec![Bond::new(0, 1, BondOrder::Double)];
         let system = System {
@@ -105,7 +110,7 @@ mod tests {
 
         let key = |info: &AtomResidueInfo| {
             (
-                info.chain_id,
+                info.chain_id.clone(),
                 info.residue_id,
                 info.insertion_code,
                 info.atom_name.clone(),
@@ -137,7 +142,7 @@ mod tests {
                 let info_j = &meta_b.atom_info[b.j];
                 let i = *map
                     .get(&(
-                        info_i.chain_id,
+                        info_i.chain_id.clone(),
                         info_i.residue_id,
                         info_i.insertion_code,
                         info_i.atom_name.clone(),
@@ -145,7 +150,7 @@ mod tests {
                     .unwrap();
                 let j = *map
                     .get(&(
-                        info_j.chain_id,
+                        info_j.chain_id.clone(),
                         info_j.residue_id,
                         info_j.insertion_code,
                         info_j.atom_name.clone(),

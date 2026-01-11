@@ -43,23 +43,105 @@ pub struct IoOptions {
     pub quiet: bool,
 }
 
-/// Force field options shared by bio and chem commands.
+/// Charge calculation options shared by bio and chem commands.
 #[derive(Args)]
-#[command(next_help_heading = "Force Field Options")]
-pub struct ForgeOptions {
+#[command(next_help_heading = "Charge Calculation")]
+pub struct ChargeOptions {
     /// Charge calculation method
-    #[arg(long, value_name = "METHOD", default_value = "qeq")]
-    pub charge: ChargeMethod,
+    #[arg(long = "charge", value_name = "METHOD", default_value = "none")]
+    pub method: ChargeMethod,
 
     /// Total system charge (for QEq constraint)
     #[arg(
-        long,
+        long = "total-charge",
         value_name = "Q",
         default_value = "0.0",
         allow_hyphen_values = true
     )]
     pub total_charge: f64,
+}
 
+/// Hybrid charge calculation options (bio command only).
+#[derive(Args)]
+#[command(next_help_heading = "Hybrid Charge Options")]
+pub struct HybridChargeOptions {
+    /// Protein force field charge scheme
+    #[arg(
+        long = "protein-scheme",
+        value_name = "SCHEME",
+        default_value = "amber-ffsb"
+    )]
+    pub protein_scheme: ProteinScheme,
+
+    /// Nucleic acid force field charge scheme
+    #[arg(
+        long = "nucleic-scheme",
+        value_name = "SCHEME",
+        default_value = "amber"
+    )]
+    pub nucleic_scheme: NucleicScheme,
+
+    /// Water model charge scheme
+    #[arg(long = "water-scheme", value_name = "SCHEME", default_value = "tip3p")]
+    pub water_scheme: WaterScheme,
+
+    /// Ligand configuration (`CHAIN:RESID[:ICODE][:METHOD[:CUTOFF]]`), repeatable
+    ///
+    /// METHOD: vacuum | embedded (default: use --default-ligand-method)
+    /// CUTOFF: environment radius in Å for embedded method
+    #[arg(long = "ligand", value_name = "CONFIG", action = clap::ArgAction::Append)]
+    pub ligands: Vec<String>,
+
+    /// Default ligand QEq method for unlisted ligands
+    #[arg(
+        long = "default-ligand-method",
+        value_name = "METHOD",
+        default_value = "embedded"
+    )]
+    pub default_ligand_method: LigandQeqMethod,
+
+    /// Default embedded QEq cutoff radius for unlisted ligands (Å)
+    #[arg(
+        long = "default-ligand-cutoff",
+        value_name = "Å",
+        default_value = "10.0"
+    )]
+    pub default_ligand_cutoff: f64,
+}
+
+/// QEq solver options (advanced tuning).
+#[derive(Args)]
+#[command(next_help_heading = "QEq Solver Options")]
+pub struct QeqSolverOptions {
+    /// Convergence tolerance for charge equilibration
+    #[arg(long = "qeq-tolerance", value_name = "TOL", default_value = "1e-6")]
+    pub tolerance: f64,
+
+    /// Maximum iterations for QEq solver
+    #[arg(long = "qeq-max-iter", value_name = "N", default_value = "100")]
+    pub max_iterations: u32,
+
+    /// Orbital screening parameter λ (Rappe–Goddard)
+    #[arg(long = "qeq-lambda", value_name = "λ", default_value = "0.5")]
+    pub lambda_scale: f64,
+
+    /// Enable hydrogen SCF (nonlinear hardness update)
+    #[arg(long = "qeq-hydrogen-scf", value_name = "BOOL", default_value = "true")]
+    pub hydrogen_scf: bool,
+
+    /// Basis function type for Coulomb integrals
+    #[arg(long = "qeq-basis", value_name = "TYPE", default_value = "sto")]
+    pub basis_type: BasisType,
+
+    /// SCF damping strategy (`none`, `fixed:VALUE`, `auto`, `auto:VALUE`)
+    #[arg(long = "qeq-damping", value_name = "STRATEGY", default_value = "auto")]
+    pub damping: DampingStrategy,
+}
+
+/// Potential function options shared by bio and chem commands.
+#[derive(Args)]
+#[command(next_help_heading = "Potential Functions")]
+pub struct PotentialOptions {
     /// Bond potential functional form
     #[arg(long, value_name = "TYPE", default_value = "harmonic")]
     pub bond_potential: BondPotential,
@@ -136,7 +218,16 @@ pub struct BioArgs {
     pub topology: TopologyOptions,
 
     #[command(flatten)]
-    pub forge: ForgeOptions,
+    pub charge: ChargeOptions,
+
+    #[command(flatten)]
+    pub hybrid: HybridChargeOptions,
+
+    #[command(flatten)]
+    pub qeq: QeqSolverOptions,
+
+    #[command(flatten)]
+    pub potential: PotentialOptions,
 
     #[command(flatten)]
     pub lammps: LammpsOptions,
@@ -173,9 +264,10 @@ pub struct CleanOptions {
 #[derive(Args)]
 #[command(next_help_heading = "Protonation")]
 pub struct ProtonationOptions {
-    /// Target pH for protonation state assignment
-    #[arg(long, value_name = "PH", default_value = "7.0")]
-    pub ph: f64,
+    /// Target pH for protonation state assignment.
+    /// If not specified, uses protonation states from residue names in input structure.
+    #[arg(long, value_name = "PH")]
+    pub ph: Option<f64>,
 
     /// Histidine tautomer selection strategy
     #[arg(long, value_name = "STRATEGY", default_value = "network")]
@@ -249,7 +341,13 @@ pub struct ChemArgs {
     pub output_format: Option<ChemOutputFormat>,
 
     #[command(flatten)]
-    pub forge: ForgeOptions,
+    pub charge: ChargeOptions,
+
+    #[command(flatten)]
+    pub qeq: QeqSolverOptions,
+
+    #[command(flatten)]
+    pub potential: PotentialOptions,
 
     #[command(flatten)]
     pub lammps: LammpsOptions,
@@ -303,11 +401,123 @@ pub enum ChemOutputFormat {
 
 #[derive(Clone, Copy, ValueEnum, Default)]
 pub enum ChargeMethod {
-    /// QEq charge equilibration
-    #[default]
-    Qeq,
     /// No charge calculation (all zeros + H-bond compensation)
+    #[default]
     None,
+    /// QEq charge equilibration for all atoms
+    Qeq,
+    /// Hybrid: force field for biomolecules, QEq for ligands
+    Hybrid,
+}
+
+#[derive(Clone, Copy, ValueEnum, Default)]
+pub enum ProteinScheme {
+    /// AMBER ff99SB/ff14SB/ff19SB
+    #[default]
+    #[value(name = "amber-ffsb", alias = "ffsb")]
+    AmberFfsb,
+    /// AMBER ff03
+    #[value(name = "amber-ff03", alias = "ff03")]
+    AmberFf03,
+    /// CHARMM22/27/36/36m
+    Charmm,
+}
+
+#[derive(Clone, Copy, ValueEnum, Default)]
+pub enum NucleicScheme {
+    /// AMBER OL15/OL21/OL24/bsc1/OL3
+    #[default]
+    Amber,
+    /// CHARMM C27/C36
+    Charmm,
+}
+
+#[derive(Clone, Copy, ValueEnum, Default)]
+pub enum WaterScheme {
+    /// TIP3P
+    #[default]
+    Tip3p,
+    /// TIP3P-FB
+    #[value(name = "tip3p-fb")]
+    Tip3pFb,
+    /// SPC
+    Spc,
+    /// SPC/E
+    #[value(name = "spc-e")]
+    SpcE,
+    /// OPC3
+    Opc3,
+}
+
+#[derive(Clone, Copy, ValueEnum, Default)]
+pub enum LigandQeqMethod {
+    /// Vacuum QEq (isolated ligand)
+    Vacuum,
+    /// Embedded QEq (polarized by environment)
+    #[default]
+    Embedded,
+}
+
+#[derive(Clone, Copy, ValueEnum, Default)]
+pub enum BasisType {
+    /// Gaussian-type orbitals (faster, approximate)
+    Gto,
+    /// Slater-type orbitals (exact)
+    #[default]
+    Sto,
+}
+
+#[derive(Clone, Debug)]
+pub enum DampingStrategy {
+    /// No damping (fastest, may not converge)
+    None,
+    /// Fixed damping factor (0 < d ≤ 1)
+    Fixed(f64),
+    /// Automatic adaptive damping
+    Auto {
+        /// Initial damping factor
+        initial: f64,
+    },
+}
+
+impl Default for DampingStrategy {
+    fn default() -> Self {
+        Self::Auto { initial: 0.5 }
+    }
+}
+
+impl std::str::FromStr for DampingStrategy {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let s = s.to_lowercase();
+        if s == "none" {
+            Ok(Self::None)
+        } else if s == "auto" {
+            Ok(Self::Auto { initial: 0.5 })
+        } else if let Some(val) = s.strip_prefix("auto:") {
+            let initial = val
+                .parse::<f64>()
+                .map_err(|_| format!("invalid auto damping value: {}", val))?;
+            if initial <= 0.0 || initial > 1.0 {
+                return Err("auto damping initial must be in (0, 1]".into());
+            }
+            Ok(Self::Auto { initial })
+        } else if let Some(val) = s.strip_prefix("fixed:") {
+            let factor = val
+                .parse::<f64>()
+                .map_err(|_| format!("invalid fixed damping value: {}", val))?;
+            if factor <= 0.0 || factor > 1.0 {
+                return Err("fixed damping must be in (0, 1]".into());
+            }
+            Ok(Self::Fixed(factor))
+        } else {
+            Err(format!(
+                "unknown damping strategy: '{}' (use none, auto, auto:<f>, or fixed:<f>)",
+                s
+            ))
+        }
+    }
 }
 
 #[derive(Clone, Copy, ValueEnum, Default)]

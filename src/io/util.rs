@@ -141,7 +141,7 @@ pub fn from_bio_topology(bio_topo: bf::Topology) -> Result<System, ConversionErr
             bio_atom.name.clone(),
             residue.name.clone(),
             residue.id,
-            chain.id.chars().next().unwrap_or(' '),
+            chain.id.as_str(),
         )
         .insertion_code_opt(residue.insertion_code)
         .standard_name(convert_std_res_from_bf(residue.standard_name)?)
@@ -182,8 +182,8 @@ pub fn to_bio_topology(system: &System) -> Result<bf::Topology, ConversionError>
         .as_ref()
         .ok_or(ConversionError::MissingBioMetadata)?;
 
-    type ResidueKey = (char, i32, char);
-    let mut chains: IndexMap<char, IndexMap<ResidueKey, bf::Residue>> = IndexMap::new();
+    type ResidueKey = (String, i32, Option<char>);
+    let mut chains: IndexMap<String, IndexMap<ResidueKey, bf::Residue>> = IndexMap::new();
 
     for (atom, info) in system.atoms.iter().zip(metadata.atom_info.iter()) {
         let bio_atom = bf::Atom::new(
@@ -192,15 +192,15 @@ pub fn to_bio_topology(system: &System) -> Result<bf::Topology, ConversionError>
             bf::Point::new(atom.position[0], atom.position[1], atom.position[2]),
         );
 
-        let residue_key = (info.chain_id, info.residue_id, info.insertion_code);
-        let residues = chains.entry(info.chain_id).or_default();
+        let residue_key = (info.chain_id.clone(), info.residue_id, info.insertion_code);
+        let residues = chains.entry(info.chain_id.clone()).or_default();
 
         let residue = match residues.entry(residue_key) {
             Entry::Occupied(e) => e.into_mut(),
             Entry::Vacant(e) => {
                 let mut res = bf::Residue::new(
                     info.residue_id,
-                    Some(info.insertion_code).filter(|&c| c != ' '),
+                    info.insertion_code,
                     &info.residue_name,
                     convert_std_res_to_bf(info.standard_name)?,
                     convert_res_cat_to_bf(info.category)?,
@@ -217,7 +217,7 @@ pub fn to_bio_topology(system: &System) -> Result<bf::Topology, ConversionError>
     bio_struct.box_vectors = system.box_vectors;
 
     for (chain_id, residues) in chains {
-        let mut chain = bf::Chain::new(&chain_id.to_string());
+        let mut chain = bf::Chain::new(&chain_id);
         for (_, residue) in residues {
             chain.add_residue(residue);
         }
@@ -545,6 +545,7 @@ mod tests {
                     .position(ResiduePosition::NTerminal)
                     .build(),
             ],
+            target_ph: None,
         };
 
         let bonds = vec![

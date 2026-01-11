@@ -5,7 +5,8 @@
 ## Highlights
 
 - **Automated atom typing** — assigns DREIDING atom types (e.g., `C_3`, `O_R`, `N_2`) based on element, hybridization, and local bonding environment via the `dreid-typer` crate.
-- **QEq charge equilibration** — computes electronegativity-equalized partial atomic charges using the `cheq` library, with configurable total charge constraints.
+- **Flexible charge assignment** — supports global QEq charge equilibration via `cheq`, or hybrid mode combining classical force field charges for biomolecules (AMBER/CHARMM) with QEq for ligands via `ffcharge`.
+- **Embedded QEq for ligands** — polarizes ligand charges based on the surrounding protein electrostatic environment using efficient spatial indexing.
 - **Comprehensive potential generation** — produces bond (harmonic/Morse), angle (theta-harmonic/cosine-harmonic), dihedral, improper, van der Waals (LJ 12-6/Exp-6), and hydrogen bond potentials.
 - **Format interoperability** — reads PDB, mmCIF, MOL2, and SDF structures with optional biomolecular preparation (cleaning, protonation, solvation); exports to BGF and complete LAMMPS simulation packages.
 - **Rust-first ergonomics** — no FFI, no global mutable state, edition 2024, and a carefully designed public API with comprehensive RustDoc documentation.
@@ -23,7 +24,7 @@ flowchart LR
 
 1. **Convert** — `IntermediateSystem::from_system` builds neighbor lists and prepares bonds for physical order assignment.
 2. **Type** — `assign_atom_types` delegates to `dreid-typer` to assign DREIDING atom types and enumerate angles, dihedrals, and impropers.
-3. **Charge** — `assign_charges` optionally computes QEq partial charges via `cheq`.
+3. **Charge** — `assign_charges` computes partial charges using QEq (global or embedded) or classical force field parameters.
 4. **Generate** — `generate_parameters` produces all bonded and non-bonded potential parameters according to DREIDING rules.
 5. **Output** — The resulting `ForgedSystem` is ready for export to BGF or LAMMPS formats.
 
@@ -51,7 +52,7 @@ DREID-Forge is also available as a library crate. Add it to your `Cargo.toml` de
 
 ```toml
 [dependencies]
-dreid-forge = "0.2.0"
+dreid-forge = "0.3.0"
 ```
 
 #### Example: Parameterizing a Molecule
@@ -121,6 +122,55 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
+#### Example: Hybrid Charges for Protein-Ligand Systems
+
+```rust
+use std::fs::File;
+use std::io::BufReader;
+
+use dreid_forge::{forge, ForgeConfig, ForgeError};
+use dreid_forge::{ChargeMethod, HybridConfig, LigandChargeConfig, LigandQeqMethod};
+use dreid_forge::{ResidueSelector, EmbeddedQeqConfig, QeqConfig};
+use dreid_forge::io::{BioReader, Format, ProtonationConfig, TopologyConfig};
+
+fn main() -> Result<(), ForgeError> {
+    // Read a protein-ligand complex
+    let file = File::open("complex.pdb").unwrap();
+    let system = BioReader::new(BufReader::new(file), Format::Pdb)
+        .protonate(ProtonationConfig { target_ph: Some(7.4), ..Default::default() })
+        .topology(TopologyConfig::default())
+        .read()
+        .unwrap();
+
+    // Configure hybrid charges:
+    // - Protein: AMBER ff99SB charges
+    // - Ligand at chain A, residue 500: embedded QEq (polarized by protein)
+    let config = ForgeConfig {
+        charge_method: ChargeMethod::Hybrid(HybridConfig {
+            ligand_configs: vec![
+                LigandChargeConfig {
+                    selector: ResidueSelector::new("A", 500, None),
+                    method: LigandQeqMethod::Embedded(EmbeddedQeqConfig {
+                        cutoff_radius: 12.0,  // Include protein atoms within 12 Å
+                        qeq: QeqConfig::default(),
+                    }),
+                },
+            ],
+            ..Default::default()
+        }),
+        ..Default::default()
+    };
+
+    let forged = forge(&system, &config)?;
+
+    // Protein atoms have classical AMBER charges
+    // Ligand atoms have QEq charges polarized by protein environment
+    println!("Total atoms: {}", forged.atom_properties.len());
+
+    Ok(())
+}
+```
+
 > **Tip**: For small molecules without biological context, use `ChemReader` with MOL2 or SDF formats instead.
 
 For detailed usage instructions and configuration options, refer to the [API Documentation](https://docs.rs/dreid-forge).
@@ -138,7 +188,8 @@ For detailed usage instructions and configuration options, refer to the [API Doc
 | Crate                                                 | Purpose                                                                         |
 | ----------------------------------------------------- | ------------------------------------------------------------------------------- |
 | [`dreid-typer`](https://crates.io/crates/dreid-typer) | DREIDING atom type assignment and topology enumeration                          |
-| [`cheq`](https://crates.io/crates/cheq)               | Charge equilibration (QEq) solver                                               |
+| [`cheq`](https://crates.io/crates/cheq)               | Charge equilibration (QEq) solver with embedded field support                   |
+| [`ffcharge`](https://crates.io/crates/ffcharge)       | Classical force field charges for proteins, nucleic acids, water, and ions      |
 | [`bio-forge`](https://crates.io/crates/bio-forge)     | Biomolecular structure preparation (cleaning, protonation, solvation, topology) |
 
 ## License

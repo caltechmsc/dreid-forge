@@ -4,7 +4,7 @@ use dreid_forge::forge;
 use dreid_forge::io::{ChemReader, ChemWriter, Format, write_lammps_data, write_lammps_settings};
 
 use crate::cli::ChemArgs;
-use crate::config::{build_forge_config, build_lammps_config, potential_names};
+use crate::config::{build_chem_forge_config, build_lammps_config, potential_names};
 use crate::display::{
     Context as DisplayContext, Progress, print_atom_types, print_parameters, print_structure_info,
 };
@@ -39,15 +39,15 @@ pub fn run_chem(args: ChemArgs, ctx: DisplayContext) -> Result<()> {
     }
 
     progress.step("Running DREIDING parameterization");
-    let forge_config = build_forge_config(&args.forge)?;
+    let forge_config = build_chem_forge_config(&args.charge, &args.qeq, &args.potential)?;
     let forged = forge(&system, &forge_config).context("Parameterization failed")?;
 
-    let param_substeps = build_param_substeps(&args.forge);
+    let param_substeps = build_param_substeps(&args);
     let param_substeps_ref: Vec<&str> = param_substeps.iter().map(|s| s.as_str()).collect();
     progress.complete_step("Running DREIDING parameterization", &param_substeps_ref);
 
     if ctx.interactive {
-        let (bond_type, angle_type, vdw_type) = potential_names(&args.forge);
+        let (bond_type, angle_type, vdw_type) = potential_names(&args.potential);
         print_atom_types(&system, Some(&forged));
         print_parameters(&forged, bond_type, angle_type, vdw_type);
     }
@@ -79,32 +79,37 @@ fn build_read_substeps(format: Format) -> Vec<String> {
     ]
 }
 
-fn build_param_substeps(forge: &crate::cli::ForgeOptions) -> Vec<String> {
+fn build_param_substeps(args: &ChemArgs) -> Vec<String> {
     use crate::cli::{AnglePotential, BondPotential, ChargeMethod, VdwPotential};
 
     let mut steps = Vec::new();
 
-    if forge.rules.is_some() {
+    if args.potential.rules.is_some() {
         steps.push("Assign atom types (custom rules)".to_string());
     } else {
         steps.push("Assign atom types (DREIDING rules)".to_string());
     }
 
-    let charge_method = match forge.charge {
-        ChargeMethod::Qeq => format!("Compute charges (QEq, total: {:.1}e)", forge.total_charge),
+    let charge_step = match args.charge.method {
         ChargeMethod::None => "Skip charge calculation".to_string(),
+        ChargeMethod::Qeq | ChargeMethod::Hybrid => {
+            format!(
+                "Compute charges (QEq, total: {:.1}e)",
+                args.charge.total_charge
+            )
+        }
     };
-    steps.push(charge_method);
+    steps.push(charge_step);
 
-    let bond_type = match forge.bond_potential {
+    let bond_type = match args.potential.bond_potential {
         BondPotential::Harmonic => "harmonic",
         BondPotential::Morse => "Morse",
     };
-    let angle_type = match forge.angle_potential {
+    let angle_type = match args.potential.angle_potential {
         AnglePotential::Cosine => "cosine",
         AnglePotential::ThetaHarmonic => "θ-harmonic",
     };
-    let vdw_type = match forge.vdw_potential {
+    let vdw_type = match args.potential.vdw_potential {
         VdwPotential::Lj => "LJ 12-6",
         VdwPotential::Exp6 => "exp-6",
     };
@@ -114,7 +119,7 @@ fn build_param_substeps(forge: &crate::cli::ForgeOptions) -> Vec<String> {
         bond_type, angle_type, vdw_type
     ));
 
-    if forge.params.is_some() {
+    if args.potential.params.is_some() {
         steps.push("Apply custom parameters".to_string());
     }
 

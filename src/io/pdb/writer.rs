@@ -41,6 +41,7 @@ mod tests {
                     .position(ResiduePosition::None)
                     .build(),
             ],
+            target_ph: None,
         };
         let bonds = vec![Bond::new(0, 1, BondOrder::Double)];
         let system = System {
@@ -88,7 +89,7 @@ mod tests {
 
         let key = |info: &AtomResidueInfo| {
             (
-                info.chain_id,
+                info.chain_id.clone(),
                 info.residue_id,
                 info.insertion_code,
                 info.atom_name.clone(),
@@ -120,7 +121,7 @@ mod tests {
                 let info_j = &meta_b.atom_info[b.j];
                 let i = *map
                     .get(&(
-                        info_i.chain_id,
+                        info_i.chain_id.clone(),
                         info_i.residue_id,
                         info_i.insertion_code,
                         info_i.atom_name.clone(),
@@ -128,7 +129,7 @@ mod tests {
                     .unwrap();
                 let j = *map
                     .get(&(
-                        info_j.chain_id,
+                        info_j.chain_id.clone(),
                         info_j.residue_id,
                         info_j.insertion_code,
                         info_j.atom_name.clone(),

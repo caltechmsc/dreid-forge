@@ -6,7 +6,8 @@
 //!
 //! - **Atom typing** — Automatic assignment of DREIDING atom types based on
 //!   element, hybridization, and local bonding environment
-//! - **Charge calculation** — QEq charge equilibration for partial atomic charges
+//! - **Flexible charge calculation** — Global QEq, hybrid (classical + QEq), or
+//!   embedded QEq with environment polarization for ligands in protein complexes
 //! - **Parameter generation** — Bond, angle, dihedral, improper, van der Waals,
 //!   and hydrogen bond potentials with multiple functional forms
 //! - **Flexible I/O** — Read/write PDB, mmCIF, MOL2, SDF formats; export to
@@ -107,8 +108,9 @@
 //!
 //! ## Configuration
 //!
-//! - [`ChargeMethod`] — None or QEq charge equilibration
+//! - [`ChargeMethod`] — None, QEq, or Hybrid charge equilibration
 //! - [`QeqConfig`] — QEq solver settings (total charge, convergence)
+//! - [`HybridConfig`] — Hybrid biological/QEq charge assignment settings
 //! - [`BondPotentialType`] — Harmonic vs Morse selection
 //! - [`AnglePotentialType`] — Cosine-harmonic vs theta-harmonic
 //! - [`VdwPotentialType`] — Lennard-Jones vs Exponential-6
@@ -141,8 +143,10 @@ pub use model::metadata::{
 };
 
 pub use forge::{
-    AnglePotentialType, BondPotentialType, ChargeMethod, ForgeConfig, QeqConfig, SolverOptions,
-    VdwPotentialType, forge,
+    AnglePotentialType, BasisType, BondPotentialType, ChargeMethod, DampingStrategy,
+    EmbeddedQeqConfig, ForgeConfig, HybridConfig, LigandChargeConfig, LigandQeqMethod,
+    NucleicScheme, ProteinScheme, QeqConfig, ResidueSelector, SolverOptions, VdwPotentialType,
+    WaterScheme, forge,
 };
 
 pub use forge::Error as ForgeError;

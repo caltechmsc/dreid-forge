@@ -31,7 +31,7 @@ At a high level, the CLI runs:
    - `dforge chem`: MOL2/SDF direct chemistry parsing
 2. **Forge (DREIDING Parameterization)**
    - Atom typing (DREIDING rules or custom typing rules)
-   - Charge assignment (`qeq` or `none`)
+   - Charge assignment (`none`, `qeq`, or `hybrid`)
    - Parameter generation (bond/angle/vdW functional forms selectable)
 3. **Write Outputs**
    - LAMMPS data/settings and/or structure formats (depending on command)
@@ -70,7 +70,7 @@ Both `bio` and `chem` share these I/O flags:
 
 ### Stdin / Stdout Safeguards
 
-- If `--input` is omitted **and stdin is a terminal**, the command errors (prevents “waiting for input” by accident).
+- If `--input` is omitted **and stdin is a terminal**, the command errors (prevents "waiting for input" by accident).
 - If `--output` is omitted **and stdout is a terminal**, the command errors (prevents dumping structured output into your terminal).
 
 ### Input Format Inference
@@ -192,7 +192,94 @@ Solvation is opt-in via `--solvate`.
 Template notes:
 
 - Templates are used during topology building for non-standard residues (ligands/cofactors).
-- If a template does not match the structure’s residue/atom naming, topology building may fail.
+- If a template does not match the structure's residue/atom naming, topology building may fail.
+
+### Charge Calculation
+
+| Flag                 | Values / Type           | Default | Meaning                                                    |
+| -------------------- | ----------------------- | ------- | ---------------------------------------------------------- |
+| `--charge <METHOD>`  | `none`, `qeq`, `hybrid` | `none`  | Charge calculation method.                                 |
+| `--total-charge <Q>` | float                   | `0.0`   | Total system charge constraint used by QEq/Hybrid methods. |
+
+`--charge` values:
+
+- `none` — All charges remain zero (default).
+- `qeq` — QEq charge equilibration for all atoms.
+- `hybrid` — Hybrid mode: force field charges for biomolecules, QEq for ligands (bio only).
+
+### Hybrid Charge Options (bio only)
+
+These options are only used when `--charge hybrid` is selected.
+
+| Flag                               | Values / Type                               | Default      | Meaning                                         |
+| ---------------------------------- | ------------------------------------------- | ------------ | ----------------------------------------------- |
+| `--protein-scheme <SCHEME>`        | `amber-ffsb`, `amber-ff03`, `charmm`        | `amber-ffsb` | Protein force field charge scheme.              |
+| `--nucleic-scheme <SCHEME>`        | `amber`, `charmm`                           | `amber`      | Nucleic acid force field charge scheme.         |
+| `--water-scheme <SCHEME>`          | `tip3p`, `tip3p-fb`, `spc`, `spc-e`, `opc3` | `tip3p`      | Water model charge scheme.                      |
+| `--ligand <CONFIG>`                | string (repeatable)                         | none         | Per-ligand configuration (see below).           |
+| `--default-ligand-method <METHOD>` | `vacuum`, `embedded`                        | `embedded`   | Default QEq method for unlisted ligands.        |
+| `--default-ligand-cutoff <Å>`      | float                                       | `10.0`       | Default embedded QEq environment cutoff radius. |
+
+**Force field scheme options:**
+
+- `--protein-scheme`:
+
+  - `amber-ffsb` (alias: `ffsb`) — AMBER ff99SB/ff14SB/ff19SB (default)
+  - `amber-ff03` (alias: `ff03`) — AMBER ff03
+  - `charmm` — CHARMM22/27/36/36m
+
+- `--nucleic-scheme`:
+
+  - `amber` — AMBER OL15/OL21/OL24/bsc1/OL3 (default)
+  - `charmm` — CHARMM C27/C36
+
+- `--water-scheme`:
+  - `tip3p` — TIP3P (default)
+  - `tip3p-fb` — TIP3P-FB
+  - `spc` — SPC
+  - `spc-e` — SPC/E
+  - `opc3` — OPC3
+
+**Ligand configuration format:** `CHAIN:RESID[:ICODE][:METHOD[:CUTOFF]]`
+
+- `CHAIN` — Chain identifier (e.g., `A`, `L`)
+- `RESID` — Residue sequence number
+- `ICODE` — Optional insertion code (single character)
+- `METHOD` — Optional QEq method: `vacuum` or `embedded`
+- `CUTOFF` — Optional cutoff radius for embedded method (Å)
+
+Examples:
+
+```bash
+# Use embedded QEq for ligand at chain A, residue 500
+--ligand A:500
+
+# Use vacuum QEq for ligand at chain L, residue 1
+--ligand L:1:vacuum
+
+# Use embedded QEq with 15 Å cutoff for residue 100 with insertion code B
+--ligand A:100:B:embedded:15.0
+```
+
+### QEq Solver Options
+
+These options tune the QEq solver and apply to both `qeq` and `hybrid` charge methods.
+
+| Flag                       | Values / Type | Default | Meaning                                          |
+| -------------------------- | ------------- | ------- | ------------------------------------------------ |
+| `--qeq-tolerance <TOL>`    | float         | `1e-6`  | Convergence tolerance for charge equilibration.  |
+| `--qeq-max-iter <N>`       | integer       | `100`   | Maximum iterations for QEq solver.               |
+| `--qeq-lambda <λ>`         | float         | `0.5`   | Orbital screening parameter λ (Rappe–Goddard).   |
+| `--qeq-hydrogen-scf`       | boolean       | `true`  | Enable hydrogen SCF (nonlinear hardness update). |
+| `--qeq-basis <TYPE>`       | `gto`, `sto`  | `sto`   | Basis function type for Coulomb integrals.       |
+| `--qeq-damping <STRATEGY>` | string        | `auto`  | SCF damping strategy.                            |
+
+`--qeq-damping` values:
+
+- `none` — No damping (fastest, may not converge for difficult systems).
+- `fixed:<f>` — Fixed damping factor (0 < f ≤ 1).
+- `auto` — Automatic adaptive damping (default).
+- `auto:<f>` — Automatic damping with initial factor f.
 
 ### Force Field Options
 
@@ -200,8 +287,6 @@ These affect the DREIDING parameterization stage.
 
 | Flag                       | Values / Type              | Default          | Meaning                                                                                           |
 | -------------------------- | -------------------------- | ---------------- | ------------------------------------------------------------------------------------------------- |
-| `--charge <METHOD>`        | `qeq`, `none`              | `qeq`            | Charge calculation method.                                                                        |
-| `--total-charge <Q>`       | float                      | `0.0`            | Total system charge constraint used by QEq.                                                       |
 | `--bond-potential <TYPE>`  | `harmonic`, `morse`        | `harmonic`       | Bond potential functional form.                                                                   |
 | `--angle-potential <TYPE>` | `cosine`, `theta-harmonic` | `theta-harmonic` | Angle potential functional form. (`theta` is accepted as an alias.)                               |
 | `--vdw-potential <TYPE>`   | `lj`, `exp6`               | `lj`             | van der Waals potential functional form. (`lennard-jones` and `buckingham` are accepted aliases.) |
@@ -245,14 +330,27 @@ Aliases:
 - `lammps-data` accepts `data`
 - `lammps-settings` accepts `settings`
 
+### Charge Calculation
+
+| Flag                 | Values / Type           | Default | Meaning                                     |
+| -------------------- | ----------------------- | ------- | ------------------------------------------- |
+| `--charge <METHOD>`  | `none`, `qeq`, `hybrid` | `none`  | Charge calculation method.                  |
+| `--total-charge <Q>` | float                   | `0.0`   | Total system charge constraint used by QEq. |
+
+Notes:
+
+- For `dforge chem`, `--charge hybrid` behaves the same as `--charge qeq` (no biological metadata).
+
+### QEq Solver Options
+
+Same as `dforge bio` — see above.
+
 ### Force Field Options
 
 These affect the DREIDING parameterization stage.
 
 | Flag                       | Values / Type              | Default          | Meaning                                                                                           |
 | -------------------------- | -------------------------- | ---------------- | ------------------------------------------------------------------------------------------------- |
-| `--charge <METHOD>`        | `qeq`, `none`              | `qeq`            | Charge calculation method.                                                                        |
-| `--total-charge <Q>`       | float                      | `0.0`            | Total system charge constraint used by QEq.                                                       |
 | `--bond-potential <TYPE>`  | `harmonic`, `morse`        | `harmonic`       | Bond potential functional form.                                                                   |
 | `--angle-potential <TYPE>` | `cosine`, `theta-harmonic` | `theta-harmonic` | Angle potential functional form. (`theta` is accepted as an alias.)                               |
 | `--vdw-potential <TYPE>`   | `lj`, `exp6`               | `lj`             | van der Waals potential functional form. (`lennard-jones` and `buckingham` are accepted aliases.) |

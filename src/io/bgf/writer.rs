@@ -75,18 +75,18 @@ pub fn write<W: Write>(mut writer: W, forged: &ForgedSystem) -> Result<(), Error
             .then_with(|| ia.atom_name.cmp(&ib.atom_name))
     });
 
-    let mut resid_map: HashMap<(char, i32, char), i32> = HashMap::new();
-    let mut last_resid_per_chain: HashMap<char, i32> = HashMap::new();
+    let mut resid_map: HashMap<(String, i32, Option<char>), i32> = HashMap::new();
+    let mut last_resid_per_chain: HashMap<String, i32> = HashMap::new();
     for &idx in &indices {
         let info = &metadata.atom_info[idx];
-        let key = (info.chain_id, info.residue_id, info.insertion_code);
+        let key = (info.chain_id.clone(), info.residue_id, info.insertion_code);
         resid_map.entry(key).or_insert_with(|| {
             let last = last_resid_per_chain.get(&info.chain_id).copied();
             let mut assigned = info.residue_id;
             if let Some(prev) = last.filter(|p| assigned <= *p) {
                 assigned = prev + 1;
             }
-            last_resid_per_chain.insert(info.chain_id, assigned);
+            last_resid_per_chain.insert(info.chain_id.clone(), assigned);
             assigned
         });
     }
@@ -131,11 +131,13 @@ pub fn write<W: Write>(mut writer: W, forged: &ForgedSystem) -> Result<(), Error
         };
 
         let resid_out = *resid_map
-            .get(&(info.chain_id, info.residue_id, info.insertion_code))
+            .get(&(info.chain_id.clone(), info.residue_id, info.insertion_code))
             .ok_or_else(|| Error::Conversion("residue id map missing for atom".into()))?;
 
         let atoms_connected: usize = adjacency.get(&(serial + 1)).map(|s| s.len()).unwrap_or(0);
         let lone_pairs: usize = 0;
+
+        let chain_char = info.chain_id.chars().next().unwrap_or(' ');
 
         writeln!(
             writer,
@@ -144,7 +146,7 @@ pub fn write<W: Write>(mut writer: W, forged: &ForgedSystem) -> Result<(), Error
             serial + 1,
             fit_left(&info.atom_name, 5),
             fit_left(&info.residue_name, 3),
-            info.chain_id,
+            chain_char,
             resid_out,
             atom.position[0],
             atom.position[1],
@@ -256,6 +258,7 @@ mod tests {
                     .position(ResiduePosition::None)
                     .build(),
             ],
+            target_ph: None,
         };
 
         let atom_properties = vec![
@@ -502,6 +505,7 @@ mod tests {
                     .position(ResiduePosition::Internal)
                     .build(),
             ],
+            target_ph: None,
         };
 
         let atom_properties = vec![
@@ -559,6 +563,7 @@ mod tests {
                     .position(ResiduePosition::None)
                     .build(),
             ],
+            target_ph: None,
         };
         let atom_properties = vec![AtomParam {
             charge: 0.0,
