@@ -270,7 +270,7 @@ These options tune the QEq solver and apply to both `qeq` and `hybrid` charge me
 | `--qeq-tolerance <TOL>`    | float         | `1e-6`  | Convergence tolerance for charge equilibration.  |
 | `--qeq-max-iter <N>`       | integer       | `100`   | Maximum iterations for QEq solver.               |
 | `--qeq-lambda <λ>`         | float         | `0.5`   | Orbital screening parameter λ (Rappe–Goddard).   |
-| `--qeq-hydrogen-scf`       | flag          | off     | Enable hydrogen SCF (nonlinear hardness update). |
+| `--qeq-hydrogen-scf`       | boolean       | `true`  | Enable hydrogen SCF (nonlinear hardness update). |
 | `--qeq-basis <TYPE>`       | `gto`, `sto`  | `sto`   | Basis function type for Coulomb integrals.       |
 | `--qeq-damping <STRATEGY>` | string        | `auto`  | SCF damping strategy.                            |
 
