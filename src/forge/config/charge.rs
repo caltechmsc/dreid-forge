@@ -305,7 +305,7 @@ mod tests {
     fn residue_selector_matches() {
         let selector = ResidueSelector::new("A", 100, None);
         assert!(selector.matches("A", 100, None));
-        assert!(selector.matches("A", 100, Some('B')));
+        assert!(!selector.matches("A", 100, Some('B')));
         assert!(!selector.matches("B", 100, None));
         assert!(!selector.matches("A", 101, None));
 
