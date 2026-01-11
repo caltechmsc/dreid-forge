@@ -23,7 +23,7 @@ pub fn build_clean_config(opts: &CleanOptions) -> CleanConfig {
 
 pub fn build_protonate_config(opts: &ProtonationOptions) -> ProtonationConfig {
     ProtonationConfig {
-        target_ph: Some(opts.ph),
+        target_ph: opts.ph,
         remove_existing_h: true,
         his_strategy: opts.his.into(),
     }
