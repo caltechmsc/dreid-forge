@@ -111,9 +111,14 @@ fn build_prep_substeps(args: &BioArgs, format: Format) -> Vec<String> {
         HisStrategy::Hie => "HIE",
         HisStrategy::Random => "random",
     };
+    let ph_str = args
+        .protonation
+        .ph
+        .map(|p| format!("{:.1}", p))
+        .unwrap_or_else(|| "by residue name".to_string());
     steps.push(format!(
-        "Add hydrogens (pH {:.1}, HIS: {})",
-        args.protonation.ph, his_method
+        "Add hydrogens (pH: {}, HIS: {})",
+        ph_str, his_method
     ));
 
     if args.solvation.solvate {
