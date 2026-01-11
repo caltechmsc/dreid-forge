@@ -155,9 +155,13 @@ impl Default for HybridConfig {
 ///
 /// // Select residue 500 in chain A
 /// let selector = ResidueSelector::new("A", 500, None);
+/// assert!(selector.matches("A", 500, None));
+/// assert!(!selector.matches("A", 500, Some('A')));
 ///
 /// // Select residue 100 with insertion code 'B' in chain L
 /// let with_icode = ResidueSelector::new("L", 100, Some('B'));
+/// assert!(with_icode.matches("L", 100, Some('B')));
+/// assert!(!with_icode.matches("L", 100, None));
 /// ```
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ResidueSelector {
@@ -195,12 +199,11 @@ impl ResidueSelector {
     ///
     /// # Returns
     ///
-    /// `true` if the selector matches the given residue info,
-    /// `false` otherwise.
+    /// `true` if all fields match exactly, `false` otherwise.
     pub fn matches(&self, chain_id: &str, residue_id: i32, insertion_code: Option<char>) -> bool {
         self.chain_id == chain_id
             && self.residue_id == residue_id
-            && (self.insertion_code.is_none() || self.insertion_code == insertion_code)
+            && self.insertion_code == insertion_code
     }
 }
 
