@@ -264,9 +264,10 @@ pub struct CleanOptions {
 #[derive(Args)]
 #[command(next_help_heading = "Protonation")]
 pub struct ProtonationOptions {
-    /// Target pH for protonation state assignment
-    #[arg(long, value_name = "PH", default_value = "7.0")]
-    pub ph: f64,
+    /// Target pH for protonation state assignment.
+    /// If not specified, uses protonation states from residue names in input structure.
+    #[arg(long, value_name = "PH")]
+    pub ph: Option<f64>,
 
     /// Histidine tautomer selection strategy
     #[arg(long, value_name = "STRATEGY", default_value = "network")]
