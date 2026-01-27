@@ -52,7 +52,7 @@ DREID-Forge is also available as a library crate. Add it to your `Cargo.toml` de
 
 ```toml
 [dependencies]
-dreid-forge = "0.3.0"
+dreid-forge = "0.4.0"
 ```
 
 #### Example: Parameterizing a Molecule
