@@ -1,10 +1,10 @@
 use anyhow::{Context, Result, bail};
 
 use dreid_forge::forge;
-use dreid_forge::io::{ChemReader, ChemWriter, Format, write_lammps_data, write_lammps_settings};
+use dreid_forge::io::{ChemReader, ChemWriter, Format};
 
 use crate::cli::ChemArgs;
-use crate::config::{build_chem_forge_config, build_lammps_config, potential_names};
+use crate::config::{build_chem_forge_config, potential_names};
 use crate::display::{
     Context as DisplayContext, Progress, print_atom_types, print_parameters, print_structure_info,
 };
@@ -53,8 +53,7 @@ pub fn run_chem(args: ChemArgs, ctx: DisplayContext) -> Result<()> {
     }
 
     progress.step("Writing output");
-    let lammps_config = build_lammps_config(&args.lammps);
-    write_outputs(&forged, &output_specs, &lammps_config)?;
+    write_outputs(&forged, &output_specs)?;
 
     let write_substeps = build_write_substeps(&output_specs);
     let write_substeps_ref: Vec<&str> = write_substeps.iter().map(|s| s.as_str()).collect();
@@ -142,8 +141,6 @@ fn build_write_substeps(specs: &[OutputSpec]) -> Vec<String> {
                 .unwrap_or_else(|| "stdout".to_string());
 
             match spec.format {
-                Format::LammpsData => format!("Write LAMMPS data → {}", path_str),
-                Format::LammpsSettings => format!("Write LAMMPS settings → {}", path_str),
                 Format::Mol2 => format!("Write MOL2 → {}", path_str),
                 Format::Sdf => format!("Write SDF → {}", path_str),
                 _ => format!("Write {:?} → {}", spec.format, path_str),
@@ -177,10 +174,7 @@ fn resolve_outputs(args: &ChemArgs) -> Result<Vec<OutputSpec>> {
                 "No output file specified and stdout is a terminal.\n\nUsage: dforge chem <INPUT> -o <OUTPUT> or pipe output."
             );
         }
-        let format = args
-            .output_format
-            .map(|f| f.into())
-            .unwrap_or(Format::LammpsData);
+        let format = args.output_format.map(|f| f.into()).unwrap_or(Format::Mol2);
         return Ok(vec![OutputSpec { path: None, format }]);
     }
 
@@ -225,25 +219,13 @@ fn read_chem_structure(args: &ChemArgs, format: Format) -> Result<dreid_forge::S
         .context("Failed to read structure")
 }
 
-fn write_outputs(
-    forged: &dreid_forge::ForgedSystem,
-    specs: &[OutputSpec],
-    lammps_config: &dreid_forge::io::LammpsConfig,
-) -> Result<()> {
+fn write_outputs(forged: &dreid_forge::ForgedSystem, specs: &[OutputSpec]) -> Result<()> {
     use Format::*;
 
     for spec in specs {
-        let mut writer = create_output(spec.path.as_deref())?;
+        let writer = create_output(spec.path.as_deref())?;
 
         match spec.format {
-            LammpsData => {
-                write_lammps_data(&mut writer, forged, lammps_config)
-                    .context("Failed to write LAMMPS data file")?;
-            }
-            LammpsSettings => {
-                write_lammps_settings(&mut writer, forged, lammps_config)
-                    .context("Failed to write LAMMPS settings file")?;
-            }
             Mol2 | Sdf => {
                 ChemWriter::new(writer, spec.format)
                     .write(&forged.system)
