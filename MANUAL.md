@@ -34,7 +34,7 @@ At a high level, the CLI runs:
    - Charge assignment (`none`, `qeq`, or `hybrid`)
    - Parameter generation (bond/angle/vdW functional forms selectable)
 3. **Write Outputs**
-   - LAMMPS data/settings and/or structure formats (depending on command)
+   - BGF and/or structure formats (depending on command)
 
 ---
 
@@ -96,12 +96,10 @@ If one or more `--output` paths are provided:
 
 If no `--output` is provided (stdout output):
 
-- Output format is `--outfmt` if provided, otherwise defaults to `lammps-data`.
+- Output format is `--outfmt` if provided, otherwise defaults to `bgf`.
 
 Output inference mapping:
 
-- `.data`, `.lammps` → `lammps-data`
-- `.settings` → `lammps-settings`
 - `.bgf` → `bgf`
 - `.pdb`, `.ent` → `pdb`
 - `.cif`, `.mmcif` → `mmcif`
@@ -122,15 +120,10 @@ dforge bio [OPTIONS]
 
 ### Format Flags
 
-| Flag                | Values                                                                 | Meaning                                                   |
-| ------------------- | ---------------------------------------------------------------------- | --------------------------------------------------------- |
-| `--infmt <FORMAT>`  | `pdb`, `mmcif`                                                         | Force input parsing format.                               |
-| `--outfmt <FORMAT>` | `lammps-data`, `lammps-settings`, `bgf`, `pdb`, `mmcif`, `mol2`, `sdf` | Output format for stdout output or the first `-o` output. |
-
-Aliases:
-
-- `lammps-data` accepts `data`
-- `lammps-settings` accepts `settings`
+| Flag                | Values                               | Meaning                                                   |
+| ------------------- | ------------------------------------ | --------------------------------------------------------- |
+| `--infmt <FORMAT>`  | `pdb`, `mmcif`                       | Force input parsing format.                               |
+| `--outfmt <FORMAT>` | `bgf`, `pdb`, `mmcif`, `mol2`, `sdf` | Output format for stdout output or the first `-o` output. |
 
 ### Structure Cleaning
 
@@ -293,19 +286,6 @@ These affect the DREIDING parameterization stage.
 | `--rules <FILE>`           | path                       | none             | Custom typing rules (TOML file).                                                                  |
 | `--params <FILE>`          | path                       | none             | Custom force field parameters (TOML file).                                                        |
 
-### LAMMPS Output Options
-
-These affect how LAMMPS outputs are generated.
-
-| Flag                      | Type                       | Default    | Meaning                                                                         |
-| ------------------------- | -------------------------- | ---------- | ------------------------------------------------------------------------------- |
-| `--lmp-cutoff <Å>`        | float                      | `12.0`     | Non-bonded cutoff distance (Å).                                                 |
-| `--lmp-hbond-inner <Å>`   | float                      | `10.0`     | Hydrogen bond inner cutoff (Å).                                                 |
-| `--lmp-hbond-outer <Å>`   | float                      | `12.0`     | Hydrogen bond outer cutoff (Å).                                                 |
-| `--lmp-hbond-angle <DEG>` | float                      | `90.0`     | Hydrogen bond angle cutoff (degrees).                                           |
-| `--lmp-margin <Å>`        | float                      | `5.0`      | Box margin for non-periodic systems (Å).                                        |
-| `--lmp-system <TYPE>`     | `periodic`, `non-periodic` | `periodic` | Boundary condition type. (`shrink` is accepted as an alias for `non-periodic`.) |
-
 ---
 
 ## Command: `dforge chem`
@@ -320,15 +300,10 @@ dforge chem [OPTIONS]
 
 ### Format Flags
 
-| Flag                | Values                                          | Meaning                                                   |
-| ------------------- | ----------------------------------------------- | --------------------------------------------------------- |
-| `--infmt <FORMAT>`  | `mol2`, `sdf`                                   | Force input parsing format.                               |
-| `--outfmt <FORMAT>` | `lammps-data`, `lammps-settings`, `mol2`, `sdf` | Output format for stdout output or the first `-o` output. |
-
-Aliases:
-
-- `lammps-data` accepts `data`
-- `lammps-settings` accepts `settings`
+| Flag                | Values        | Meaning                                                   |
+| ------------------- | ------------- | --------------------------------------------------------- |
+| `--infmt <FORMAT>`  | `mol2`, `sdf` | Force input parsing format.                               |
+| `--outfmt <FORMAT>` | `mol2`, `sdf` | Output format for stdout output or the first `-o` output. |
 
 ### Charge Calculation
 
@@ -357,22 +332,9 @@ These affect the DREIDING parameterization stage.
 | `--rules <FILE>`           | path                       | none             | Custom typing rules (TOML file).                                                                  |
 | `--params <FILE>`          | path                       | none             | Custom force field parameters (TOML file).                                                        |
 
-### LAMMPS Output Options
-
-These affect how LAMMPS outputs are generated.
-
-| Flag                      | Type                       | Default    | Meaning                                                                         |
-| ------------------------- | -------------------------- | ---------- | ------------------------------------------------------------------------------- |
-| `--lmp-cutoff <Å>`        | float                      | `12.0`     | Non-bonded cutoff distance (Å).                                                 |
-| `--lmp-hbond-inner <Å>`   | float                      | `10.0`     | Hydrogen bond inner cutoff (Å).                                                 |
-| `--lmp-hbond-outer <Å>`   | float                      | `12.0`     | Hydrogen bond outer cutoff (Å).                                                 |
-| `--lmp-hbond-angle <DEG>` | float                      | `90.0`     | Hydrogen bond angle cutoff (degrees).                                           |
-| `--lmp-margin <Å>`        | float                      | `5.0`      | Box margin for non-periodic systems (Å).                                        |
-| `--lmp-system <TYPE>`     | `periodic`, `non-periodic` | `periodic` | Boundary condition type. (`shrink` is accepted as an alias for `non-periodic`.) |
-
 ### Output Format Constraints
 
-- `dforge chem` can write: `lammps-data`, `lammps-settings`, `mol2`, `sdf`.
+- `dforge chem` can write: `mol2`, `sdf`.
 - Attempting to write `bgf`, `pdb`, or `mmcif` from `dforge chem` is rejected because those formats require biomolecular metadata.
 
 ---
