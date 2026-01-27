@@ -8,7 +8,7 @@
 - **Flexible charge assignment** — supports global QEq charge equilibration via `cheq`, or hybrid mode combining classical force field charges for biomolecules (AMBER/CHARMM) with QEq for ligands via `ffcharge`.
 - **Embedded QEq for ligands** — polarizes ligand charges based on the surrounding protein electrostatic environment using efficient spatial indexing.
 - **Comprehensive potential generation** — produces bond (harmonic/Morse), angle (theta-harmonic/cosine-harmonic), dihedral, improper, van der Waals (LJ 12-6/Exp-6), and hydrogen bond potentials.
-- **Format interoperability** — reads PDB, mmCIF, MOL2, and SDF structures with optional biomolecular preparation (cleaning, protonation, solvation); exports to BGF and complete LAMMPS simulation packages.
+- **Format interoperability** — reads PDB, mmCIF, MOL2, and SDF structures with optional biomolecular preparation (cleaning, protonation, solvation); exports to BGF format.
 - **Rust-first ergonomics** — no FFI, no global mutable state, edition 2024, and a carefully designed public API with comprehensive RustDoc documentation.
 
 ## Parameterization Pipeline at a Glance
@@ -26,7 +26,7 @@ flowchart LR
 2. **Type** — `assign_atom_types` delegates to `dreid-typer` to assign DREIDING atom types and enumerate angles, dihedrals, and impropers.
 3. **Charge** — `assign_charges` computes partial charges using QEq (global or embedded) or classical force field parameters.
 4. **Generate** — `generate_parameters` produces all bonded and non-bonded potential parameters according to DREIDING rules.
-5. **Output** — The resulting `ForgedSystem` is ready for export to BGF or LAMMPS formats.
+5. **Output** — The resulting `ForgedSystem` is ready for export to BGF format.
 
 ## Quick Start
 
@@ -90,17 +90,14 @@ fn main() -> Result<(), ForgeError> {
 }
 ```
 
-#### Example: Reading PDB and Writing LAMMPS
+#### Example: Reading PDB and Writing BGF
 
 ```rust
 use std::fs::File;
 use std::io::{BufReader, BufWriter};
 
 use dreid_forge::{forge, ForgeConfig};
-use dreid_forge::io::{
-    BioReader, Format, CleanConfig, ProtonationConfig,
-    write_lammps_package, LammpsConfig,
-};
+use dreid_forge::io::{BioReader, Format, CleanConfig, ProtonationConfig, write_bgf};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Read and prepare a PDB structure
@@ -113,10 +110,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Parameterize with DREIDING force field
     let forged = forge(&system, &ForgeConfig::default())?;
 
-    // Write LAMMPS data and settings files
-    let mut data = BufWriter::new(File::create("system.data")?);
-    let mut settings = BufWriter::new(File::create("system.in.settings")?);
-    write_lammps_package(&mut data, &mut settings, &forged, &LammpsConfig::default())?;
+    // Write BGF file
+    let mut output = BufWriter::new(File::create("system.bgf")?);
+    write_bgf(&mut output, &forged)?;
 
     Ok(())
 }
