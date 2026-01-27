@@ -1,14 +1,12 @@
 use anyhow::{Context, Result, bail};
 
 use dreid_forge::forge;
-use dreid_forge::io::{
-    BioReader, BioWriter, ChemWriter, Format, write_bgf, write_lammps_data, write_lammps_settings,
-};
+use dreid_forge::io::{BioReader, BioWriter, ChemWriter, Format, write_bgf};
 
 use crate::cli::BioArgs;
 use crate::config::{
-    build_bio_forge_config, build_clean_config, build_lammps_config, build_protonate_config,
-    build_solvate_config, build_topology_config, potential_names,
+    build_bio_forge_config, build_clean_config, build_protonate_config, build_solvate_config,
+    build_topology_config, potential_names,
 };
 use crate::display::{
     Context as DisplayContext, Progress, print_atom_types, print_chain_breakdown, print_parameters,
@@ -61,8 +59,7 @@ pub fn run_bio(args: BioArgs, ctx: DisplayContext) -> Result<()> {
     }
 
     progress.step("Writing output");
-    let lammps_config = build_lammps_config(&args.lammps);
-    write_outputs(&forged, &output_specs, &lammps_config)?;
+    write_outputs(&forged, &output_specs)?;
 
     let write_substeps = build_write_substeps(&output_specs);
     let write_substeps_ref: Vec<&str> = write_substeps.iter().map(|s| s.as_str()).collect();
@@ -243,8 +240,6 @@ fn build_write_substeps(specs: &[OutputSpec]) -> Vec<String> {
                 .unwrap_or_else(|| "stdout".to_string());
 
             match spec.format {
-                Format::LammpsData => format!("Write LAMMPS data → {}", path_str),
-                Format::LammpsSettings => format!("Write LAMMPS settings → {}", path_str),
                 Format::Bgf => format!("Write BGF → {}", path_str),
                 Format::Pdb => format!("Write PDB → {}", path_str),
                 Format::Mmcif => format!("Write mmCIF → {}", path_str),
@@ -280,10 +275,7 @@ fn resolve_outputs(args: &BioArgs) -> Result<Vec<OutputSpec>> {
                 "No output file specified and stdout is a terminal.\n\nUsage: dforge bio <INPUT> -o <OUTPUT> or pipe output."
             );
         }
-        let format = args
-            .output_format
-            .map(|f| f.into())
-            .unwrap_or(Format::LammpsData);
+        let format = args.output_format.map(|f| f.into()).unwrap_or(Format::Bgf);
         return Ok(vec![OutputSpec { path: None, format }]);
     }
 
@@ -341,25 +333,13 @@ fn read_bio_structure(args: &BioArgs, format: Format) -> Result<dreid_forge::Sys
     reader.read().context("Failed to read structure")
 }
 
-fn write_outputs(
-    forged: &dreid_forge::ForgedSystem,
-    specs: &[OutputSpec],
-    lammps_config: &dreid_forge::io::LammpsConfig,
-) -> Result<()> {
+fn write_outputs(forged: &dreid_forge::ForgedSystem, specs: &[OutputSpec]) -> Result<()> {
     use Format::*;
 
     for spec in specs {
         let mut writer = create_output(spec.path.as_deref())?;
 
         match spec.format {
-            LammpsData => {
-                write_lammps_data(&mut writer, forged, lammps_config)
-                    .context("Failed to write LAMMPS data file")?;
-            }
-            LammpsSettings => {
-                write_lammps_settings(&mut writer, forged, lammps_config)
-                    .context("Failed to write LAMMPS settings file")?;
-            }
             Bgf => {
                 write_bgf(&mut writer, forged).context("Failed to write BGF file")?;
             }
