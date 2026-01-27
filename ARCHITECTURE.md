@@ -53,7 +53,6 @@ flowchart TD
     subgraph "Writers"
         direction LR
         W_BGF["BGF Writer"]
-        W_LAM["LAMMPS Writer"]
         W_PDB["PDB/mmCIF Writer"]
         W_CHEM["MOL2/SDF Writer"]
     end
@@ -219,7 +218,6 @@ flowchart LR
 | **ChemWriter** | `mol2::writer`, `sdf::writer`  | `System`                    | Chemical formats               |
 | **BioWriter**  | `pdb::writer`, `mmcif::writer` | `System` with `BioMetadata` | Biological formats             |
 | **BGF**        | `write_bgf`                    | `ForgedSystem`              | Biograf format with atom types |
-| **LAMMPS**     | `write_lammps_package`         | `ForgedSystem`              | Data + settings files          |
 
 ### 2.4 Data Model Conversion
 
@@ -1060,7 +1058,6 @@ pub struct ResidueSelector {
 | `ProtonationConfig` | pH, histidine strategy             |
 | `SolvateConfig`     | Water box margin, ion types        |
 | `TopologyConfig`    | Hetero templates, disulfide cutoff |
-| `LammpsConfig`      | Cutoffs, boundary conditions       |
 
 ---
 
