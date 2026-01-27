@@ -44,7 +44,7 @@ required-features = ["cli"]
 
 [features]
 default = ["cli"]
-cli = ["anyhow", "clap", "indicatif"]
+cli = ["dep:anyhow", "dep:clap", "dep:indicatif"]
 
 [profile.release]
 opt-level = 3
