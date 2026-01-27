@@ -163,35 +163,6 @@ pub struct PotentialOptions {
     pub params: Option<PathBuf>,
 }
 
-/// LAMMPS output options shared by bio and chem commands.
-#[derive(Args)]
-#[command(next_help_heading = "LAMMPS Output Options")]
-pub struct LammpsOptions {
-    /// Non-bonded cutoff distance (Å)
-    #[arg(long = "lmp-cutoff", value_name = "Å", default_value = "12.0")]
-    pub nonbonded_cutoff: f64,
-
-    /// Hydrogen bond inner cutoff (Å)
-    #[arg(long = "lmp-hbond-inner", value_name = "Å", default_value = "10.0")]
-    pub hbond_inner: f64,
-
-    /// Hydrogen bond outer cutoff (Å)
-    #[arg(long = "lmp-hbond-outer", value_name = "Å", default_value = "12.0")]
-    pub hbond_outer: f64,
-
-    /// Hydrogen bond angle cutoff (degrees)
-    #[arg(long = "lmp-hbond-angle", value_name = "DEG", default_value = "90.0")]
-    pub hbond_angle: f64,
-
-    /// Box margin for non-periodic systems (Å)
-    #[arg(long = "lmp-margin", value_name = "Å", default_value = "5.0")]
-    pub aabb_margin: f64,
-
-    /// Boundary condition type
-    #[arg(long = "lmp-system", value_name = "TYPE", default_value = "periodic")]
-    pub system_type: SystemBoundary,
-}
-
 #[derive(Args)]
 pub struct BioArgs {
     #[command(flatten)]
@@ -228,9 +199,6 @@ pub struct BioArgs {
 
     #[command(flatten)]
     pub potential: PotentialOptions,
-
-    #[command(flatten)]
-    pub lammps: LammpsOptions,
 }
 
 #[derive(Args)]
@@ -348,9 +316,6 @@ pub struct ChemArgs {
 
     #[command(flatten)]
     pub potential: PotentialOptions,
-
-    #[command(flatten)]
-    pub lammps: LammpsOptions,
 }
 
 #[derive(Clone, Copy, ValueEnum)]
@@ -367,12 +332,6 @@ pub enum ChemInputFormat {
 
 #[derive(Clone, Copy, ValueEnum)]
 pub enum BioOutputFormat {
-    /// LAMMPS data file (topology + coordinates)
-    #[value(name = "lammps-data", alias = "data")]
-    LammpsData,
-    /// LAMMPS settings file (force field parameters)
-    #[value(name = "lammps-settings", alias = "settings")]
-    LammpsSettings,
     /// BGF format (DREIDING native)
     Bgf,
     /// PDB format
@@ -387,12 +346,6 @@ pub enum BioOutputFormat {
 
 #[derive(Clone, Copy, ValueEnum)]
 pub enum ChemOutputFormat {
-    /// LAMMPS data file
-    #[value(name = "lammps-data", alias = "data")]
-    LammpsData,
-    /// LAMMPS settings file
-    #[value(name = "lammps-settings", alias = "settings")]
-    LammpsSettings,
     /// MOL2 format
     Mol2,
     /// SDF format
@@ -548,16 +501,6 @@ pub enum VdwPotential {
     /// Exponential-6 (Buckingham)
     #[value(alias = "buckingham")]
     Exp6,
-}
-
-#[derive(Clone, Copy, ValueEnum, Default)]
-pub enum SystemBoundary {
-    /// Periodic boundary conditions (PPPM)
-    #[default]
-    Periodic,
-    /// Non-periodic (shrink-wrapped)
-    #[value(name = "non-periodic", alias = "shrink")]
-    NonPeriodic,
 }
 
 #[derive(Clone, Copy, ValueEnum, Default)]
