@@ -96,7 +96,9 @@ If one or more `--output` paths are provided:
 
 If no `--output` is provided (stdout output):
 
-- Output format is `--outfmt` if provided, otherwise defaults to `bgf`.
+- Output format is `--outfmt` if provided, otherwise uses command-specific default:
+  - `dforge bio` → `bgf`
+  - `dforge chem` → `mol2`
 
 Output inference mapping:
 
@@ -216,13 +218,11 @@ These options are only used when `--charge hybrid` is selected.
 **Force field scheme options:**
 
 - `--protein-scheme`:
-
   - `amber-ffsb` (alias: `ffsb`) — AMBER ff99SB/ff14SB/ff19SB (default)
   - `amber-ff03` (alias: `ff03`) — AMBER ff03
   - `charmm` — CHARMM22/27/36/36m
 
 - `--nucleic-scheme`:
-
   - `amber` — AMBER OL15/OL21/OL24/bsc1/OL3 (default)
   - `charmm` — CHARMM C27/C36
 
