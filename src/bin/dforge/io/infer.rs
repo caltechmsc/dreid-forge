@@ -23,9 +23,6 @@ pub fn chem_input(path: &Path) -> Option<Format> {
 pub fn output(path: &Path) -> Option<Format> {
     let ext = path.extension()?.to_str()?.to_lowercase();
     match ext.as_str() {
-        // LAMMPS formats
-        "data" | "lammps" => Some(Format::LammpsData),
-        "settings" => Some(Format::LammpsSettings),
         // Bio formats
         "bgf" => Some(Format::Bgf),
         "pdb" | "ent" => Some(Format::Pdb),

@@ -115,7 +115,7 @@ impl HintCollector {
 
             IoError::UnsupportedWriteFormat(fmt) => {
                 self.add(format!("The '{}' format cannot be used for output", fmt));
-                self.add("Supported output formats: pdb, mmcif, mol2, sdf, bgf, lammps");
+                self.add("Supported output formats: pdb, mmcif, mol2, sdf, bgf");
             }
 
             IoError::MissingMetadata(fmt) => {
@@ -220,8 +220,8 @@ impl HintCollector {
                 self.add("SDF: Check atom block and bond block formatting");
             }
 
-            Format::Bgf | Format::LammpsData | Format::LammpsSettings => {
-                // These are write-only formats, parsing hints not applicable
+            Format::Bgf => {
+                // This is a write-only format, parsing hints not applicable
             }
         }
     }

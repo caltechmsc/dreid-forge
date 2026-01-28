@@ -1,5 +1,5 @@
 use dreid_forge::io::{
-    Anion as LibAnion, Cation as LibCation, Format, HisStrategy as LibHisStrategy, SystemType,
+    Anion as LibAnion, Cation as LibCation, Format, HisStrategy as LibHisStrategy,
 };
 use dreid_forge::{
     AnglePotentialType, BondPotentialType, ChargeMethod as LibChargeMethod, EmbeddedQeqConfig,
@@ -321,8 +321,6 @@ impl From<cli::ChemInputFormat> for Format {
 impl From<cli::BioOutputFormat> for Format {
     fn from(f: cli::BioOutputFormat) -> Self {
         match f {
-            cli::BioOutputFormat::LammpsData => Self::LammpsData,
-            cli::BioOutputFormat::LammpsSettings => Self::LammpsSettings,
             cli::BioOutputFormat::Bgf => Self::Bgf,
             cli::BioOutputFormat::Pdb => Self::Pdb,
             cli::BioOutputFormat::Mmcif => Self::Mmcif,
@@ -335,19 +333,8 @@ impl From<cli::BioOutputFormat> for Format {
 impl From<cli::ChemOutputFormat> for Format {
     fn from(f: cli::ChemOutputFormat) -> Self {
         match f {
-            cli::ChemOutputFormat::LammpsData => Self::LammpsData,
-            cli::ChemOutputFormat::LammpsSettings => Self::LammpsSettings,
             cli::ChemOutputFormat::Mol2 => Self::Mol2,
             cli::ChemOutputFormat::Sdf => Self::Sdf,
-        }
-    }
-}
-
-impl From<cli::SystemBoundary> for SystemType {
-    fn from(s: cli::SystemBoundary) -> Self {
-        match s {
-            cli::SystemBoundary::Periodic => Self::Periodic,
-            cli::SystemBoundary::NonPeriodic => Self::NonPeriodic,
         }
     }
 }

@@ -13,7 +13,6 @@
 //! | MOL2 | ✓ | ✓ | Small molecules, atom types |
 //! | SDF | ✓ | ✓ | Small molecules (MDL) |
 //! | BGF | — | ✓ | Force field output (DREIDING) |
-//! | LAMMPS | — | ✓ | MD simulation input |
 //!
 //! # Reader Types
 //!
@@ -27,7 +26,6 @@
 //! - [`ChemWriter`] — For small molecules (MOL2, SDF).
 //! - [`BioWriter`] — For biomolecules (PDB, mmCIF).
 //! - [`write_bgf`] — BGF format for force field visualization.
-//! - [`write_lammps_package`] — Complete LAMMPS simulation input files.
 //!
 //! # Configuration Structs
 //!
@@ -45,7 +43,6 @@ mod error;
 mod util;
 
 mod bgf;
-mod lammps;
 mod mmcif;
 mod mol2;
 mod pdb;
@@ -54,11 +51,6 @@ mod sdf;
 pub use error::Error;
 
 pub use bgf::writer::write as write_bgf;
-
-pub use lammps::writer::{
-    LammpsConfig, SystemType, write_data_file as write_lammps_data,
-    write_package as write_lammps_package, write_settings_file as write_lammps_settings,
-};
 
 pub use bio_forge::Template;
 
@@ -336,10 +328,6 @@ pub enum Format {
     Mol2,
     /// Biograf format for force field output (`.bgf`).
     Bgf,
-    /// LAMMPS data file format (`.data`, `.lammps`).
-    LammpsData,
-    /// LAMMPS settings/parameters file format (`.in.settings`).
-    LammpsSettings,
 }
 
 impl fmt::Display for Format {
@@ -350,8 +338,6 @@ impl fmt::Display for Format {
             Format::Sdf => write!(f, "SDF"),
             Format::Mol2 => write!(f, "MOL2"),
             Format::Bgf => write!(f, "BGF"),
-            Format::LammpsData => write!(f, "LAMMPS-DATA"),
-            Format::LammpsSettings => write!(f, "LAMMPS-SETTINGS"),
         }
     }
 }

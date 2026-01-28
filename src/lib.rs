@@ -10,8 +10,7 @@
 //!   embedded QEq with environment polarization for ligands in protein complexes
 //! - **Parameter generation** — Bond, angle, dihedral, improper, van der Waals,
 //!   and hydrogen bond potentials with multiple functional forms
-//! - **Flexible I/O** — Read/write PDB, mmCIF, MOL2, SDF formats; export to
-//!   BGF and LAMMPS simulation input files
+//! - **Flexible I/O** — Read/write PDB, mmCIF, MOL2, SDF formats; export to BGF
 //!
 //! # Quick Start
 //!
@@ -80,7 +79,7 @@
 //!
 //! # Module Organization
 //!
-//! - [`io`] — File I/O for molecular structures (PDB, mmCIF, MOL2, SDF, BGF, LAMMPS)
+//! - [`io`] — File I/O for molecular structures (PDB, mmCIF, MOL2, SDF, BGF)
 //! - [`forge`] — Main parameterization function
 //! - [`ForgeConfig`] — Configuration for potential types and charge methods
 //!
