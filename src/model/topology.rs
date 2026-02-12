@@ -53,8 +53,8 @@ pub enum BondPotential {
         i: usize,
         /// Second atom index.
         j: usize,
-        /// Force constant (kcal/mol/Å²).
-        k_force: f64,
+        /// Half force constant (kcal/mol/Å²).
+        k_half: f64,
         /// Equilibrium bond length (Å).
         r0: f64,
     },
@@ -64,11 +64,11 @@ pub enum BondPotential {
         i: usize,
         /// Second atom index.
         j: usize,
+        /// Dissociation energy (kcal/mol).
+        de: f64,
         /// Equilibrium bond length (Å).
         r0: f64,
-        /// Bond dissociation energy (kcal/mol).
-        d0: f64,
-        /// Morse alpha parameter (Å⁻¹).
+        /// Stiffness parameter alpha (Å⁻¹).
         alpha: f64,
     },
 }
@@ -84,10 +84,10 @@ pub enum AnglePotential {
         j: usize,
         /// Third atom index.
         k: usize,
-        /// Force constant (kcal/mol/rad²).
-        k_force: f64,
-        /// Equilibrium angle (degrees).
-        theta0: f64,
+        /// Half force constant (kcal/mol/rad²).
+        k_half: f64,
+        /// Cosine of equilibrium angle.
+        cos0: f64,
     },
     /// Simple theta-harmonic angle potential.
     ThetaHarmonic {
@@ -97,9 +97,9 @@ pub enum AnglePotential {
         j: usize,
         /// Third atom index.
         k: usize,
-        /// Force constant (kcal/mol/rad²).
-        k_force: f64,
-        /// Equilibrium angle (degrees).
+        /// Half force constant (kcal/mol/rad²).
+        k_half: f64,
+        /// Equilibrium angle (radians).
         theta0: f64,
     },
 }
@@ -115,12 +115,14 @@ pub struct DihedralPotential {
     pub k: usize,
     /// Fourth atom index.
     pub l: usize,
-    /// Barrier height (kcal/mol).
-    pub v_barrier: f64,
+    /// Half barrier height (kcal/mol).
+    pub v_half: f64,
     /// Periodicity (number of minima in 360°).
-    pub periodicity: i32,
-    /// Phase offset (degrees).
-    pub phase_offset: f64,
+    pub n: u8,
+    /// Precomputed cos(n·φ₀).
+    pub cos_n_phi0: f64,
+    /// Precomputed sin(n·φ₀).
+    pub sin_n_phi0: f64,
 }
 
 /// Improper dihedral (out-of-plane) potential functions.
@@ -136,10 +138,8 @@ pub enum ImproperPotential {
         k: usize,
         /// Third peripheral atom.
         l: usize,
-        /// Force constant (kcal/mol/rad²).
-        k_force: f64,
-        /// Equilibrium out-of-plane angle (degrees).
-        chi0: f64,
+        /// Half force constant (kcal/mol/rad²).
+        c_half: f64,
     },
     /// Umbrella improper for pyramidal centers.
     Umbrella {
@@ -151,10 +151,10 @@ pub enum ImproperPotential {
         p2: usize,
         /// Third peripheral atom.
         p3: usize,
-        /// Force constant (kcal/mol).
-        k_force: f64,
-        /// Equilibrium umbrella angle (degrees).
-        psi0: f64,
+        /// Half force constant (kcal/mol/rad²).
+        c_half: f64,
+        /// Cosine of equilibrium angle.
+        cos_psi0: f64,
     },
 }
 
@@ -167,23 +167,27 @@ pub enum VdwPairPotential {
         type1_idx: usize,
         /// Second atom type index.
         type2_idx: usize,
-        /// LJ sigma parameter (Å).
-        sigma: f64,
-        /// LJ epsilon parameter (kcal/mol).
-        epsilon: f64,
+        /// Energy well depth (kcal/mol).
+        d0: f64,
+        /// Squared equilibrium distance (Å²).
+        r0_sq: f64,
     },
-    /// Exponential-6 potential (Buckingham-like).
-    Exponential6 {
+    /// Buckingham (Exponential-6) potential with energy reflection.
+    Buckingham {
         /// First atom type index.
         type1_idx: usize,
         /// Second atom type index.
         type2_idx: usize,
-        /// Repulsive prefactor A.
+        /// Repulsion prefactor (kcal/mol).
         a: f64,
-        /// Exponential decay parameter B (Å⁻¹).
+        /// Repulsion decay (Å⁻¹).
         b: f64,
-        /// Attractive coefficient C (kcal·Å⁶/mol).
+        /// Attraction coefficient (kcal·Å⁶/mol).
         c: f64,
+        /// Squared distance of energy maximum (Å²).
+        r_max_sq: f64,
+        /// Twice the energy at maximum (kcal/mol).
+        two_e_max: f64,
     },
 }
 
@@ -196,10 +200,10 @@ pub struct HBondPotential {
     pub hydrogen_type_idx: usize,
     /// Acceptor atom type index (A in D-H···A).
     pub acceptor_type_idx: usize,
-    /// H-bond equilibrium energy (kcal/mol).
-    pub d0: f64,
-    /// Equilibrium H···A distance (Å).
-    pub r0: f64,
+    /// Energy well depth (kcal/mol).
+    pub d_hb: f64,
+    /// Squared equilibrium distance (Å²).
+    pub r_hb_sq: f64,
 }
 
 /// Collection of all potential energy functions for a system.
