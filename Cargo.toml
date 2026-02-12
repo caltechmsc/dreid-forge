@@ -29,6 +29,7 @@ bio-forge = "0.3.1"
 dreid-typer = "0.4.0"
 ffcharge = "0.2.0"
 cheq = "0.5.0"
+dreid-kernel = "0.4.0"
 anyhow = { version = "1.0.100", optional = true }
 clap = { version = "4.5.54", features = ["derive"], optional = true }
 indicatif = { version = "0.18.3", optional = true }
