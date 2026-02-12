@@ -257,233 +257,561 @@ pub struct ForgedSystem {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::model::system::System;
 
     #[test]
-    fn atom_param_fields_and_clone() {
-        let p = AtomParam {
-            charge: -0.34,
-            mass: 12.011,
-            type_idx: 2,
-        };
-        assert!(p.charge < 0.0);
-        assert_eq!(p.mass, 12.011);
-        assert_eq!(p.type_idx, 2);
-        let q = p.clone();
-        assert_eq!(p, q);
-    }
-
-    #[test]
-    fn bond_potential_variants_and_debug() {
-        let h = BondPotential::Harmonic {
+    fn bond_harmonic_construction() {
+        let bond = BondPotential::Harmonic {
             i: 0,
             j: 1,
-            k_force: 300.0,
-            r0: 1.23,
+            k_half: 350.0,
+            r0: 1.54,
         };
-        let m = BondPotential::Morse {
-            i: 1,
-            j: 2,
-            r0: 1.5,
-            d0: 4.0,
-            alpha: 2.0,
-        };
-        match h {
-            BondPotential::Harmonic { i, j, k_force, r0 } => {
+
+        match bond {
+            BondPotential::Harmonic { i, j, k_half, r0 } => {
                 assert_eq!(i, 0);
                 assert_eq!(j, 1);
-                assert!(k_force > 0.0);
-                assert!(r0 > 0.0);
+                assert_eq!(k_half, 350.0);
+                assert_eq!(r0, 1.54);
             }
             _ => panic!("expected Harmonic variant"),
         }
-        match m {
-            BondPotential::Morse {
-                i,
-                j,
-                r0,
-                d0,
-                alpha,
-            } => {
-                assert_eq!(i, 1);
-                assert_eq!(j, 2);
-                assert!(d0 > 0.0);
-                assert!(alpha > 0.0);
-                assert!(r0 > 0.0);
-            }
-            _ => panic!("expected Morse variant"),
-        }
-        let s = format!("{:?} {:?}", h, m);
-        assert!(s.contains("Harmonic"));
-        assert!(s.contains("Morse"));
     }
 
     #[test]
-    fn angle_potential_variants() {
+    fn bond_morse_construction() {
+        let bond = BondPotential::Morse {
+            i: 2,
+            j: 3,
+            de: 70.0,
+            r0: 1.10,
+            alpha: 2.0,
+        };
+
+        match bond {
+            BondPotential::Morse {
+                i,
+                j,
+                de,
+                r0,
+                alpha,
+            } => {
+                assert_eq!(i, 2);
+                assert_eq!(j, 3);
+                assert_eq!(de, 70.0);
+                assert_eq!(r0, 1.10);
+                assert_eq!(alpha, 2.0);
+            }
+            _ => panic!("expected Morse variant"),
+        }
+    }
+
+    #[test]
+    fn bond_partial_eq() {
+        let b1 = BondPotential::Harmonic {
+            i: 0,
+            j: 1,
+            k_half: 350.0,
+            r0: 1.54,
+        };
+        let b2 = BondPotential::Harmonic {
+            i: 0,
+            j: 1,
+            k_half: 350.0,
+            r0: 1.54,
+        };
+        let b3 = BondPotential::Harmonic {
+            i: 0,
+            j: 1,
+            k_half: 400.0,
+            r0: 1.54,
+        };
+
+        assert_eq!(b1, b2);
+        assert_ne!(b1, b3);
+    }
+
+    #[test]
+    fn bond_clone() {
+        let bond = BondPotential::Harmonic {
+            i: 5,
+            j: 6,
+            k_half: 350.0,
+            r0: 1.09,
+        };
+        let cloned = bond.clone();
+        assert_eq!(bond, cloned);
+    }
+
+    #[test]
+    fn angle_cosine_harmonic_construction() {
+        let angle = AnglePotential::CosineHarmonic {
+            i: 0,
+            j: 1,
+            k: 2,
+            k_half: 50.0,
+            cos0: 0.5,
+        };
+
+        match angle {
+            AnglePotential::CosineHarmonic {
+                i,
+                j,
+                k,
+                k_half,
+                cos0,
+            } => {
+                assert_eq!(i, 0);
+                assert_eq!(j, 1);
+                assert_eq!(k, 2);
+                assert_eq!(k_half, 50.0);
+                assert_eq!(cos0, 0.5);
+            }
+            _ => panic!("expected CosineHarmonic variant"),
+        }
+    }
+
+    #[test]
+    fn angle_theta_harmonic_construction() {
+        let angle = AnglePotential::ThetaHarmonic {
+            i: 3,
+            j: 4,
+            k: 5,
+            k_half: 50.0,
+            theta0: 1.911,
+        };
+
+        match angle {
+            AnglePotential::ThetaHarmonic {
+                i,
+                j,
+                k,
+                k_half,
+                theta0,
+            } => {
+                assert_eq!(i, 3);
+                assert_eq!(j, 4);
+                assert_eq!(k, 5);
+                assert_eq!(k_half, 50.0);
+                assert_eq!(theta0, 1.911);
+            }
+            _ => panic!("expected ThetaHarmonic variant"),
+        }
+    }
+
+    #[test]
+    fn angle_partial_eq() {
         let a1 = AnglePotential::CosineHarmonic {
             i: 0,
             j: 1,
             k: 2,
-            k_force: 50.0,
-            theta0: 109.5,
+            k_half: 50.0,
+            cos0: 0.5,
         };
-        let a2 = AnglePotential::ThetaHarmonic {
-            i: 2,
+        let a2 = AnglePotential::CosineHarmonic {
+            i: 0,
             j: 1,
-            k: 0,
-            k_force: 40.0,
-            theta0: 120.0,
+            k: 2,
+            k_half: 50.0,
+            cos0: 0.5,
         };
-        match a1 {
-            AnglePotential::CosineHarmonic {
-                k_force, theta0, ..
-            } => {
-                assert_eq!(k_force, 50.0);
-                assert_eq!(theta0, 109.5);
+        assert_eq!(a1, a2);
+    }
+
+    #[test]
+    fn dihedral_construction() {
+        let dihedral = DihedralPotential {
+            i: 0,
+            j: 1,
+            k: 2,
+            l: 3,
+            v_half: 1.0,
+            n: 3,
+            cos_n_phi0: -1.0,
+            sin_n_phi0: 0.0,
+        };
+
+        assert_eq!(dihedral.i, 0);
+        assert_eq!(dihedral.j, 1);
+        assert_eq!(dihedral.k, 2);
+        assert_eq!(dihedral.l, 3);
+        assert_eq!(dihedral.v_half, 1.0);
+        assert_eq!(dihedral.n, 3);
+        assert_eq!(dihedral.cos_n_phi0, -1.0);
+        assert_eq!(dihedral.sin_n_phi0, 0.0);
+    }
+
+    #[test]
+    fn dihedral_partial_eq() {
+        let d1 = DihedralPotential {
+            i: 0,
+            j: 1,
+            k: 2,
+            l: 3,
+            v_half: 1.0,
+            n: 3,
+            cos_n_phi0: -1.0,
+            sin_n_phi0: 0.0,
+        };
+        let d2 = DihedralPotential {
+            i: 0,
+            j: 1,
+            k: 2,
+            l: 3,
+            v_half: 1.0,
+            n: 3,
+            cos_n_phi0: -1.0,
+            sin_n_phi0: 0.0,
+        };
+        let d3 = DihedralPotential {
+            i: 0,
+            j: 1,
+            k: 2,
+            l: 3,
+            v_half: 2.0,
+            n: 3,
+            cos_n_phi0: -1.0,
+            sin_n_phi0: 0.0,
+        };
+
+        assert_eq!(d1, d2);
+        assert_ne!(d1, d3);
+    }
+
+    #[test]
+    fn dihedral_clone() {
+        let dihedral = DihedralPotential {
+            i: 5,
+            j: 6,
+            k: 7,
+            l: 8,
+            v_half: 22.5,
+            n: 2,
+            cos_n_phi0: 1.0,
+            sin_n_phi0: 0.0,
+        };
+        let cloned = dihedral.clone();
+        assert_eq!(dihedral, cloned);
+    }
+
+    #[test]
+    fn improper_planar_construction() {
+        let improper = ImproperPotential::Planar {
+            i: 0,
+            j: 1,
+            k: 2,
+            l: 3,
+            c_half: 20.0,
+        };
+
+        match improper {
+            ImproperPotential::Planar { i, j, k, l, c_half } => {
+                assert_eq!(i, 0);
+                assert_eq!(j, 1);
+                assert_eq!(k, 2);
+                assert_eq!(l, 3);
+                assert_eq!(c_half, 20.0);
             }
-            _ => panic!("expected CosineHarmonic"),
-        }
-        match a2 {
-            AnglePotential::ThetaHarmonic {
-                k_force, theta0, ..
-            } => {
-                assert_eq!(k_force, 40.0);
-                assert_eq!(theta0, 120.0);
-            }
-            _ => panic!("expected ThetaHarmonic"),
+            _ => panic!("expected Planar variant"),
         }
     }
 
     #[test]
-    fn dihedral_and_improper_variants() {
-        let d = DihedralPotential {
-            i: 0,
-            j: 1,
-            k: 2,
-            l: 3,
-            v_barrier: 2.5,
-            periodicity: 3,
-            phase_offset: 180.0,
+    fn improper_umbrella_construction() {
+        let improper = ImproperPotential::Umbrella {
+            center: 5,
+            p1: 6,
+            p2: 7,
+            p3: 8,
+            c_half: 13.33,
+            cos_psi0: 0.5774,
         };
-        assert_eq!(d.periodicity, 3);
-        assert!(d.v_barrier > 0.0);
 
-        let imp1 = ImproperPotential::Planar {
-            i: 0,
-            j: 1,
-            k: 2,
-            l: 3,
-            k_force: 10.0,
-            chi0: 0.0,
-        };
-        let imp2 = ImproperPotential::Umbrella {
-            center: 1,
-            p1: 2,
-            p2: 3,
-            p3: 4,
-            k_force: 5.0,
-            psi0: 180.0,
-        };
-        match imp1 {
-            ImproperPotential::Planar { k_force, chi0, .. } => {
-                assert_eq!(k_force, 10.0);
-                assert_eq!(chi0, 0.0);
-            }
-            _ => panic!("expected Planar"),
-        }
-        match imp2 {
+        match improper {
             ImproperPotential::Umbrella {
-                center, p1, p2, p3, ..
+                center,
+                p1,
+                p2,
+                p3,
+                c_half,
+                cos_psi0,
             } => {
-                assert_eq!(center, 1);
-                assert_eq!(p1, 2);
-                assert_eq!(p2, 3);
-                assert_eq!(p3, 4);
+                assert_eq!(center, 5);
+                assert_eq!(p1, 6);
+                assert_eq!(p2, 7);
+                assert_eq!(p3, 8);
+                assert_eq!(c_half, 13.33);
+                assert_eq!(cos_psi0, 0.5774);
             }
-            _ => panic!("expected Umbrella"),
+            _ => panic!("expected Umbrella variant"),
         }
     }
 
     #[test]
-    fn vdw_and_hbond_variants_and_potentials_container() {
-        let lj = VdwPairPotential::LennardJones {
+    fn improper_partial_eq() {
+        let i1 = ImproperPotential::Planar {
+            i: 0,
+            j: 1,
+            k: 2,
+            l: 3,
+            c_half: 20.0,
+        };
+        let i2 = ImproperPotential::Planar {
+            i: 0,
+            j: 1,
+            k: 2,
+            l: 3,
+            c_half: 20.0,
+        };
+        assert_eq!(i1, i2);
+    }
+
+    #[test]
+    fn vdw_lennard_jones_construction() {
+        let vdw = VdwPairPotential::LennardJones {
             type1_idx: 0,
             type2_idx: 1,
-            sigma: 3.5,
-            epsilon: 0.2,
+            d0: 0.0951,
+            r0_sq: 15.195,
         };
-        let ex6 = VdwPairPotential::Exponential6 {
-            type1_idx: 1,
-            type2_idx: 2,
-            a: 1000.0,
-            b: 50.0,
-            c: 2.0,
-        };
-        match lj {
-            VdwPairPotential::LennardJones { sigma, epsilon, .. } => {
-                assert_eq!(sigma, 3.5);
-                assert_eq!(epsilon, 0.2);
-            }
-            _ => panic!("expected LennardJones"),
-        }
-        match ex6 {
-            VdwPairPotential::Exponential6 { a, b, c, .. } => {
-                assert!(a > 0.0);
-                assert!(b > 0.0);
-                assert!(c > 0.0);
-            }
-            _ => panic!("expected Exponential6"),
-        }
 
-        let hb = HBondPotential {
+        match vdw {
+            VdwPairPotential::LennardJones {
+                type1_idx,
+                type2_idx,
+                d0,
+                r0_sq,
+            } => {
+                assert_eq!(type1_idx, 0);
+                assert_eq!(type2_idx, 1);
+                assert_eq!(d0, 0.0951);
+                assert_eq!(r0_sq, 15.195);
+            }
+            _ => panic!("expected LennardJones variant"),
+        }
+    }
+
+    #[test]
+    fn vdw_buckingham_construction() {
+        let vdw = VdwPairPotential::Buckingham {
+            type1_idx: 2,
+            type2_idx: 3,
+            a: 1000.0,
+            b: 3.08,
+            c: 500.0,
+            r_max_sq: 16.0,
+            two_e_max: 10.5,
+        };
+
+        match vdw {
+            VdwPairPotential::Buckingham {
+                type1_idx,
+                type2_idx,
+                a,
+                b,
+                c,
+                r_max_sq,
+                two_e_max,
+            } => {
+                assert_eq!(type1_idx, 2);
+                assert_eq!(type2_idx, 3);
+                assert_eq!(a, 1000.0);
+                assert_eq!(b, 3.08);
+                assert_eq!(c, 500.0);
+                assert_eq!(r_max_sq, 16.0);
+                assert_eq!(two_e_max, 10.5);
+            }
+            _ => panic!("expected Buckingham variant"),
+        }
+    }
+
+    #[test]
+    fn vdw_partial_eq() {
+        let v1 = VdwPairPotential::LennardJones {
+            type1_idx: 0,
+            type2_idx: 1,
+            d0: 0.0951,
+            r0_sq: 15.195,
+        };
+        let v2 = VdwPairPotential::LennardJones {
+            type1_idx: 0,
+            type2_idx: 1,
+            d0: 0.0951,
+            r0_sq: 15.195,
+        };
+        let v3 = VdwPairPotential::LennardJones {
+            type1_idx: 0,
+            type2_idx: 1,
+            d0: 0.1000,
+            r0_sq: 15.195,
+        };
+
+        assert_eq!(v1, v2);
+        assert_ne!(v1, v3);
+    }
+
+    #[test]
+    fn hbond_construction() {
+        let hbond = HBondPotential {
             donor_type_idx: 0,
             hydrogen_type_idx: 1,
             acceptor_type_idx: 2,
-            d0: 9.5,
-            r0: 2.75,
+            d_hb: 4.0,
+            r_hb_sq: 7.5625,
         };
-        assert_eq!(hb.donor_type_idx, 0);
-        assert_eq!(hb.hydrogen_type_idx, 1);
-        assert_eq!(hb.acceptor_type_idx, 2);
-        assert_eq!(hb.d0, 9.5);
-        assert_eq!(hb.r0, 2.75);
 
-        let mut pots = Potentials::default();
-        pots.vdw_pairs.push(lj.clone());
-        pots.vdw_pairs.push(ex6.clone());
-        pots.h_bonds.push(hb.clone());
-        assert_eq!(pots.vdw_pairs.len(), 2);
-        assert_eq!(pots.h_bonds.len(), 1);
+        assert_eq!(hbond.donor_type_idx, 0);
+        assert_eq!(hbond.hydrogen_type_idx, 1);
+        assert_eq!(hbond.acceptor_type_idx, 2);
+        assert_eq!(hbond.d_hb, 4.0);
+        assert_eq!(hbond.r_hb_sq, 7.5625);
     }
 
     #[test]
-    fn forged_system_basic_fields_and_debug() {
-        let sys = System::new();
-        let atom_types = vec!["C_3".to_string(), "O_2".to_string()];
-        let atom_props = vec![
-            AtomParam {
-                charge: -0.1,
-                mass: 12.0,
-                type_idx: 0,
-            },
-            AtomParam {
-                charge: -0.2,
-                mass: 16.0,
-                type_idx: 1,
-            },
-        ];
-        let pots = Potentials::default();
-        let fs = ForgedSystem {
-            system: sys.clone(),
-            atom_types: atom_types.clone(),
-            atom_properties: atom_props.clone(),
-            potentials: pots,
+    fn hbond_partial_eq() {
+        let h1 = HBondPotential {
+            donor_type_idx: 0,
+            hydrogen_type_idx: 1,
+            acceptor_type_idx: 2,
+            d_hb: 4.0,
+            r_hb_sq: 7.5625,
         };
-        assert_eq!(fs.atom_types.len(), 2);
-        assert_eq!(fs.atom_properties.len(), 2);
-        let s = format!("{:?}", fs);
-        assert!(s.contains("ForgedSystem"));
-        assert!(s.contains("atom_types"));
-        assert!(s.contains("atom_properties"));
+        let h2 = HBondPotential {
+            donor_type_idx: 0,
+            hydrogen_type_idx: 1,
+            acceptor_type_idx: 2,
+            d_hb: 4.0,
+            r_hb_sq: 7.5625,
+        };
+        let h3 = HBondPotential {
+            donor_type_idx: 0,
+            hydrogen_type_idx: 1,
+            acceptor_type_idx: 2,
+            d_hb: 5.0,
+            r_hb_sq: 7.5625,
+        };
+
+        assert_eq!(h1, h2);
+        assert_ne!(h1, h3);
+    }
+
+    #[test]
+    fn hbond_clone() {
+        let hbond = HBondPotential {
+            donor_type_idx: 3,
+            hydrogen_type_idx: 4,
+            acceptor_type_idx: 5,
+            d_hb: 7.0,
+            r_hb_sq: 7.5625,
+        };
+        let cloned = hbond.clone();
+        assert_eq!(hbond, cloned);
+    }
+
+    #[test]
+    fn atom_param_construction() {
+        let param = AtomParam {
+            charge: -0.5,
+            mass: 12.011,
+            type_idx: 2,
+        };
+
+        assert_eq!(param.charge, -0.5);
+        assert_eq!(param.mass, 12.011);
+        assert_eq!(param.type_idx, 2);
+    }
+
+    #[test]
+    fn atom_param_partial_eq() {
+        let p1 = AtomParam {
+            charge: 0.0,
+            mass: 1.008,
+            type_idx: 0,
+        };
+        let p2 = AtomParam {
+            charge: 0.0,
+            mass: 1.008,
+            type_idx: 0,
+        };
+        let p3 = AtomParam {
+            charge: 0.1,
+            mass: 1.008,
+            type_idx: 0,
+        };
+
+        assert_eq!(p1, p2);
+        assert_ne!(p1, p3);
+    }
+
+    #[test]
+    fn atom_param_clone() {
+        let param = AtomParam {
+            charge: -0.3,
+            mass: 15.999,
+            type_idx: 5,
+        };
+        let cloned = param.clone();
+        assert_eq!(param, cloned);
+    }
+
+    #[test]
+    fn potentials_default() {
+        let pots = Potentials::default();
+
+        assert_eq!(pots.bonds.len(), 0);
+        assert_eq!(pots.angles.len(), 0);
+        assert_eq!(pots.dihedrals.len(), 0);
+        assert_eq!(pots.impropers.len(), 0);
+        assert_eq!(pots.vdw_pairs.len(), 0);
+        assert_eq!(pots.h_bonds.len(), 0);
+    }
+
+    #[test]
+    fn potentials_add_elements() {
+        let mut pots = Potentials::default();
+
+        pots.bonds.push(BondPotential::Harmonic {
+            i: 0,
+            j: 1,
+            k_half: 350.0,
+            r0: 1.54,
+        });
+
+        pots.angles.push(AnglePotential::CosineHarmonic {
+            i: 0,
+            j: 1,
+            k: 2,
+            k_half: 50.0,
+            cos0: -0.333,
+        });
+
+        pots.dihedrals.push(DihedralPotential {
+            i: 0,
+            j: 1,
+            k: 2,
+            l: 3,
+            v_half: 1.0,
+            n: 3,
+            cos_n_phi0: -1.0,
+            sin_n_phi0: 0.0,
+        });
+
+        assert_eq!(pots.bonds.len(), 1);
+        assert_eq!(pots.angles.len(), 1);
+        assert_eq!(pots.dihedrals.len(), 1);
+    }
+
+    #[test]
+    fn potentials_clone() {
+        let mut pots = Potentials::default();
+        pots.bonds.push(BondPotential::Harmonic {
+            i: 0,
+            j: 1,
+            k_half: 350.0,
+            r0: 1.54,
+        });
+
+        let cloned = pots.clone();
+        assert_eq!(pots.bonds.len(), cloned.bonds.len());
     }
 }
