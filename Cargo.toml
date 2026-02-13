@@ -12,7 +12,7 @@ description = "A pure Rust library and CLI that automates DREIDING force field p
 keywords = [
     "force-field",
     "dreiding",
-    "chemoinformatics",
+    "cheminformatics",
     "bioinformatics",
     "molecular-dynamics",
 ]
