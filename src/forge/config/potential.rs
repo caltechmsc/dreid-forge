@@ -58,10 +58,7 @@ mod tests {
 
     #[test]
     fn angle_potential_default() {
-        assert_eq!(
-            AnglePotentialType::default(),
-            AnglePotentialType::ThetaHarmonic
-        );
+        assert_eq!(AnglePotentialType::default(), AnglePotentialType::Cosine);
     }
 
     #[test]
@@ -75,7 +72,7 @@ mod tests {
         let bond_copy = bond;
         assert_eq!(bond, bond_copy);
 
-        let angle = AnglePotentialType::CosineHarmonic;
+        let angle = AnglePotentialType::Cosine;
         let angle_copy = angle;
         assert_eq!(angle, angle_copy);
 
