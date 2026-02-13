@@ -25,12 +25,12 @@ pub enum BondPotentialType {
 /// angles.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum AnglePotentialType {
-    /// Cosine-harmonic angle potential (DREIDING original).
-    CosineHarmonic,
+    /// Cosine-harmonic or cosine-linear angle potential.
+    #[default]
+    Cosine,
 
     /// Theta-harmonic angle potential.
-    #[default]
-    ThetaHarmonic,
+    Theta,
 }
 
 /// Van der Waals non-bonded potential function type.
