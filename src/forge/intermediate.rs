@@ -292,8 +292,8 @@ mod tests {
         assert_eq!(int.bonds.len(), 2);
 
         assert!(int.angles.is_empty());
-        assert!(int.dihedrals.is_empty());
-        assert!(int.impropers.is_empty());
+        assert!(int.torsions.is_empty());
+        assert!(int.inversions.is_empty());
 
         assert!(int.bio_metadata.is_none());
         assert!(!int.has_bio_metadata());
@@ -313,8 +313,8 @@ mod tests {
         assert_eq!(int.bonds.len(), 7);
 
         assert!(int.angles.is_empty());
-        assert!(int.dihedrals.is_empty());
-        assert!(int.impropers.is_empty());
+        assert!(int.torsions.is_empty());
+        assert!(int.inversions.is_empty());
     }
 
     #[test]
