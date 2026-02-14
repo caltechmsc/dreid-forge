@@ -10,10 +10,10 @@
 //! The DREIDING force field supports several potential function types:
 //!
 //! - **Bonds**: [`BondPotential`] — Harmonic or Morse stretching
-//! - **Angles**: [`AnglePotential`] — Cosine-harmonic or theta-harmonic bending
-//! - **Dihedrals**: [`DihedralPotential`] — Periodic torsion potentials
-//! - **Impropers**: [`ImproperPotential`] — Out-of-plane (planar/umbrella)
-//! - **Van der Waals**: [`VdwPairPotential`] — LJ 12-6 or Exp-6
+//! - **Angles**: [`AnglePotential`] — Cosine-harmonic, cosine-linear, or theta-harmonic bending
+//! - **Torsions**: [`TorsionPotential`] — Periodic torsion potentials
+//! - **Inversions**: [`InversionPotential`] — Out-of-plane (planar/umbrella)
+//! - **Van der Waals**: [`VdwPairPotential`] — LJ 12-6 or Buckingham Exp-6
 //! - **Hydrogen bonds**: [`HBondPotential`] — Directional H-bond terms
 //!
 //! # Output Structure
@@ -49,10 +49,8 @@ pub struct AtomParam {
 pub enum BondPotential {
     /// Harmonic bond stretching potential.
     Harmonic {
-        /// First atom index.
-        i: usize,
-        /// Second atom index.
-        j: usize,
+        /// Atom indices (i, j).
+        atoms: (usize, usize),
         /// Half force constant (kcal/mol/Å²).
         k_half: f64,
         /// Equilibrium bond length (Å).
@@ -60,10 +58,8 @@ pub enum BondPotential {
     },
     /// Morse anharmonic bond potential.
     Morse {
-        /// First atom index.
-        i: usize,
-        /// Second atom index.
-        j: usize,
+        /// Atom indices (i, j).
+        atoms: (usize, usize),
         /// Dissociation energy (kcal/mol).
         de: f64,
         /// Equilibrium bond length (Å).
@@ -76,27 +72,26 @@ pub enum BondPotential {
 /// Angle bending potential functions.
 #[derive(Debug, Clone, PartialEq)]
 pub enum AnglePotential {
-    /// Cosine-harmonic angle potential (DREIDING default).
+    /// Cosine-harmonic angle potential (for θ₀ ≠ 180°).
     CosineHarmonic {
-        /// First atom index.
-        i: usize,
-        /// Central atom index.
-        j: usize,
-        /// Third atom index.
-        k: usize,
+        /// Atom indices (i, j, k) where j is the central atom.
+        atoms: (usize, usize, usize),
         /// Half force constant (kcal/mol/rad²).
         k_half: f64,
         /// Cosine of equilibrium angle.
         cos0: f64,
     },
+    /// Cosine-linear angle potential for linear geometries (θ₀ = 180°).
+    CosineLinear {
+        /// Atom indices (i, j, k) where j is the central atom.
+        atoms: (usize, usize, usize),
+        /// Force constant (kcal/mol/rad²).
+        k: f64,
+    },
     /// Simple theta-harmonic angle potential.
     ThetaHarmonic {
-        /// First atom index.
-        i: usize,
-        /// Central atom index.
-        j: usize,
-        /// Third atom index.
-        k: usize,
+        /// Atom indices (i, j, k) where j is the central atom.
+        atoms: (usize, usize, usize),
         /// Half force constant (kcal/mol/rad²).
         k_half: f64,
         /// Equilibrium angle (radians).
@@ -104,17 +99,11 @@ pub enum AnglePotential {
     },
 }
 
-/// Proper dihedral (torsion) potential.
+/// Torsion (proper dihedral) potential.
 #[derive(Debug, Clone, PartialEq)]
-pub struct DihedralPotential {
-    /// First atom index.
-    pub i: usize,
-    /// Second atom index (bond axis).
-    pub j: usize,
-    /// Third atom index (bond axis).
-    pub k: usize,
-    /// Fourth atom index.
-    pub l: usize,
+pub struct TorsionPotential {
+    /// Atom indices (i, j, k, l) where j-k is the central bond.
+    pub atoms: (usize, usize, usize, usize),
     /// Half barrier height (kcal/mol).
     pub v_half: f64,
     /// Periodicity (number of minima in 360°).
@@ -125,35 +114,25 @@ pub struct DihedralPotential {
     pub sin_n_phi0: f64,
 }
 
-/// Improper dihedral (out-of-plane) potential functions.
+/// Inversion (improper dihedral) potential functions.
 #[derive(Debug, Clone, PartialEq)]
-pub enum ImproperPotential {
-    /// Planar improper for sp² centers.
+pub enum InversionPotential {
+    /// Planar inversion for sp² centers.
     Planar {
-        /// First peripheral atom.
-        i: usize,
-        /// Central atom (sp² center).
-        j: usize,
-        /// Second peripheral atom.
-        k: usize,
-        /// Third peripheral atom.
-        l: usize,
+        /// Atom indices (center, axis, plane1, plane2) where center is the sp² atom,
+        /// axis is the out-of-plane neighbor, and plane1/plane2 are in-plane neighbors.
+        atoms: (usize, usize, usize, usize),
         /// Half force constant (kcal/mol/rad²).
         c_half: f64,
     },
-    /// Umbrella improper for pyramidal centers.
+    /// Umbrella inversion for pyramidal centers.
     Umbrella {
-        /// Central atom (pyramidal center).
-        center: usize,
-        /// First peripheral atom.
-        p1: usize,
-        /// Second peripheral atom.
-        p2: usize,
-        /// Third peripheral atom.
-        p3: usize,
+        /// Atom indices (center, axis, plane1, plane2) where center is the pyramidal atom,
+        /// axis is one neighbor defining the inversion axis, and plane1/plane2 are the other neighbors.
+        atoms: (usize, usize, usize, usize),
         /// Half force constant (kcal/mol/rad²).
         c_half: f64,
-        /// Cosine of equilibrium angle.
+        /// Cosine of equilibrium inversion angle.
         cos_psi0: f64,
     },
 }
@@ -216,10 +195,10 @@ pub struct Potentials {
     pub bonds: Vec<BondPotential>,
     /// Angle bending potentials.
     pub angles: Vec<AnglePotential>,
-    /// Proper dihedral (torsion) potentials.
-    pub dihedrals: Vec<DihedralPotential>,
-    /// Improper dihedral (out-of-plane) potentials.
-    pub impropers: Vec<ImproperPotential>,
+    /// Torsion (proper dihedral) potentials.
+    pub torsions: Vec<TorsionPotential>,
+    /// Inversion (improper dihedral) potentials.
+    pub inversions: Vec<InversionPotential>,
     /// Van der Waals pair potentials between atom types.
     pub vdw_pairs: Vec<VdwPairPotential>,
     /// Hydrogen bond potentials.
