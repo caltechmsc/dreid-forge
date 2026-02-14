@@ -219,8 +219,8 @@ mod tests {
         assign_atom_types(&mut int, None).unwrap();
 
         assert_eq!(int.angles.len(), 1);
-        assert!(int.dihedrals.is_empty());
-        assert!(int.impropers.is_empty());
+        assert!(int.torsions.is_empty());
+        assert!(int.inversions.is_empty());
     }
 
     #[test]
@@ -243,8 +243,8 @@ mod tests {
         assign_atom_types(&mut int, None).unwrap();
 
         assert!(!int.angles.is_empty());
-        assert_eq!(int.dihedrals.len(), 9);
-        assert!(int.impropers.is_empty());
+        assert_eq!(int.torsions.len(), 9);
+        assert!(int.inversions.is_empty());
     }
 
     #[test]
@@ -275,12 +275,12 @@ mod tests {
     }
 
     #[test]
-    fn generates_impropers_for_planar_centers() {
+    fn generates_inversions_for_planar_centers() {
         let benzene = make_benzene();
         let mut int = IntermediateSystem::from_system(&benzene).unwrap();
         assign_atom_types(&mut int, None).unwrap();
 
-        assert_eq!(int.impropers.len(), 6);
+        assert_eq!(int.inversions.len(), 18);
     }
 
     #[test]
