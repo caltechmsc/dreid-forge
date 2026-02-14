@@ -429,15 +429,15 @@ fn is_hbond_acceptor(element: Element) -> bool {
 mod tests {
     use super::*;
     use crate::forge::intermediate::{
-        IntermediateAngle, IntermediateDihedral, IntermediateImproper, IntermediateSystem,
-        PhysicalBondOrder,
+        Hybridization, IntermediateAngle, IntermediateInversion, IntermediateSystem,
+        IntermediateTorsion, PhysicalBondOrder,
     };
     use crate::model::atom::Atom;
-    use crate::model::system::{Bond, System as ModelSystem};
+    use crate::model::system::{Bond, System};
     use crate::model::types::{BondOrder, Element};
 
-    fn make_water() -> ModelSystem {
-        let mut sys = ModelSystem::new();
+    fn make_water() -> System {
+        let mut sys = System::new();
         sys.atoms.push(Atom::new(Element::O, [0.0, 0.0, 0.0]));
         sys.atoms.push(Atom::new(Element::H, [0.96, 0.0, 0.0]));
         sys.atoms.push(Atom::new(Element::H, [-0.24, 0.93, 0.0]));
@@ -460,9 +460,7 @@ mod tests {
     }
 
     fn make_typed_ethane() -> IntermediateSystem {
-        use super::super::intermediate::Hybridization;
-
-        let mut sys = ModelSystem::new();
+        let mut sys = System::new();
         sys.atoms.push(Atom::new(Element::C, [0.0, 0.0, 0.0]));
         sys.atoms.push(Atom::new(Element::C, [1.54, 0.0, 0.0]));
         sys.atoms.push(Atom::new(Element::H, [-0.36, 1.03, 0.0]));
@@ -485,7 +483,36 @@ mod tests {
         }
         int.angles.push(IntermediateAngle { i: 2, j: 0, k: 1 });
         int.angles.push(IntermediateAngle { i: 0, j: 1, k: 3 });
-        int.dihedrals.push(IntermediateDihedral {
+        int.torsions.push(IntermediateTorsion {
+            i: 2,
+            j: 0,
+            k: 1,
+            l: 3,
+        });
+        int
+    }
+
+    fn make_typed_ethylene() -> IntermediateSystem {
+        let mut sys = System::new();
+        sys.atoms.push(Atom::new(Element::C, [0.0, 0.0, 0.0]));
+        sys.atoms.push(Atom::new(Element::C, [1.34, 0.0, 0.0]));
+        sys.atoms.push(Atom::new(Element::H, [-0.51, 0.91, 0.0]));
+        sys.atoms.push(Atom::new(Element::H, [1.85, 0.91, 0.0]));
+        sys.bonds.push(Bond::new(0, 1, BondOrder::Double));
+        sys.bonds.push(Bond::new(0, 2, BondOrder::Single));
+        sys.bonds.push(Bond::new(1, 3, BondOrder::Single));
+
+        let mut int = IntermediateSystem::from_system(&sys).unwrap();
+        int.atoms[0].atom_type = "C_2".to_string();
+        int.atoms[0].hybridization = Hybridization::SP2;
+        int.atoms[1].atom_type = "C_2".to_string();
+        int.atoms[1].hybridization = Hybridization::SP2;
+        int.atoms[2].atom_type = "H_".to_string();
+        int.atoms[3].atom_type = "H_".to_string();
+        int.bonds[0].physical_order = Some(PhysicalBondOrder::Double);
+        int.bonds[1].physical_order = Some(PhysicalBondOrder::Single);
+        int.bonds[2].physical_order = Some(PhysicalBondOrder::Single);
+        int.torsions.push(IntermediateTorsion {
             i: 2,
             j: 0,
             k: 1,
@@ -495,7 +522,7 @@ mod tests {
     }
 
     fn make_typed_formaldehyde() -> IntermediateSystem {
-        let mut sys = ModelSystem::new();
+        let mut sys = System::new();
         sys.atoms.push(Atom::new(Element::C, [0.0, 0.0, 0.0]));
         sys.atoms.push(Atom::new(Element::O, [1.2, 0.0, 0.0]));
         sys.atoms.push(Atom::new(Element::H, [-0.5, 0.9, 0.0]));
@@ -506,23 +533,43 @@ mod tests {
 
         let mut int = IntermediateSystem::from_system(&sys).unwrap();
         int.atoms[0].atom_type = "C_2".to_string();
+        int.atoms[0].hybridization = Hybridization::SP2;
         int.atoms[1].atom_type = "O_2".to_string();
         int.atoms[2].atom_type = "H_".to_string();
         int.atoms[3].atom_type = "H_".to_string();
         int.bonds[0].physical_order = Some(PhysicalBondOrder::Double);
         int.bonds[1].physical_order = Some(PhysicalBondOrder::Single);
         int.bonds[2].physical_order = Some(PhysicalBondOrder::Single);
-        int.impropers.push(IntermediateImproper {
+        int.inversions.push(IntermediateInversion {
             center: 0,
-            p1: 1,
-            p2: 2,
-            p3: 3,
+            axis: 1,
+            plane1: 2,
+            plane2: 3,
         });
         int
     }
 
+    fn make_linear_molecule() -> IntermediateSystem {
+        let mut sys = System::new();
+        sys.atoms.push(Atom::new(Element::H, [-1.0, 0.0, 0.0]));
+        sys.atoms.push(Atom::new(Element::C, [0.0, 0.0, 0.0]));
+        sys.atoms.push(Atom::new(Element::H, [1.0, 0.0, 0.0]));
+        sys.bonds.push(Bond::new(0, 1, BondOrder::Single));
+        sys.bonds.push(Bond::new(1, 2, BondOrder::Single));
+
+        let mut int = IntermediateSystem::from_system(&sys).unwrap();
+        int.atoms[0].atom_type = "H_".to_string();
+        int.atoms[1].atom_type = "C_1".to_string();
+        int.atoms[2].atom_type = "H_".to_string();
+        for bond in &mut int.bonds {
+            bond.physical_order = Some(PhysicalBondOrder::Single);
+        }
+        int.angles.push(IntermediateAngle { i: 0, j: 1, k: 2 });
+        int
+    }
+
     #[test]
-    fn collects_unique_atom_types_sorted() {
+    fn atom_types_collected_and_sorted() {
         let int = make_typed_water();
         let (types, indices) = collect_atom_types(&int);
 
@@ -531,23 +578,62 @@ mod tests {
         assert!(types.contains(&H_BOND_DONOR_HYDROGEN_TYPE.to_string()));
         assert!(indices.contains_key("O_3"));
         assert!(indices.contains_key(H_BOND_DONOR_HYDROGEN_TYPE));
-        assert!(types[0] < types[1] || types[1] < types[0]);
+
+        for i in 0..types.len() - 1 {
+            assert!(types[i] < types[i + 1]);
+        }
     }
 
     #[test]
-    fn generates_atom_properties_with_correct_mass() {
+    fn atom_types_deduplicated() {
+        let int = make_typed_water();
+        let (types, _) = collect_atom_types(&int);
+
+        assert_eq!(types.len(), 2);
+    }
+
+    #[test]
+    fn atom_properties_correct_mass() {
         let int = make_typed_water();
         let (_, indices) = collect_atom_types(&int);
         let props = generate_atom_properties(&int, &indices).unwrap();
 
         assert_eq!(props.len(), 3);
-        assert!((props[0].mass - 15.999).abs() < 0.01);
-        assert!((props[1].mass - 1.008).abs() < 0.01);
-        assert!((props[2].mass - 1.008).abs() < 0.01);
+        assert!((props[0].mass - Element::O.atomic_mass()).abs() < 0.01);
+        assert!((props[1].mass - Element::H.atomic_mass()).abs() < 0.01);
+        assert!((props[2].mass - Element::H.atomic_mass()).abs() < 0.01);
     }
 
     #[test]
-    fn generates_harmonic_bond_potentials() {
+    fn atom_properties_preserve_charge() {
+        let mut int = make_typed_water();
+        int.atoms[0].charge = -0.82;
+        int.atoms[1].charge = 0.41;
+        int.atoms[2].charge = 0.41;
+
+        let (_, indices) = collect_atom_types(&int);
+        let props = generate_atom_properties(&int, &indices).unwrap();
+
+        assert!((props[0].charge - (-0.82)).abs() < 1e-6);
+        assert!((props[1].charge - 0.41).abs() < 1e-6);
+        assert!((props[2].charge - 0.41).abs() < 1e-6);
+    }
+
+    #[test]
+    fn atom_properties_correct_type_index() {
+        let int = make_typed_water();
+        let (types, indices) = collect_atom_types(&int);
+        let props = generate_atom_properties(&int, &indices).unwrap();
+
+        for (atom, prop) in int.atoms.iter().zip(props.iter()) {
+            let expected_idx = *indices.get(&atom.atom_type).unwrap();
+            assert_eq!(prop.type_idx, expected_idx);
+            assert_eq!(types[prop.type_idx], atom.atom_type);
+        }
+    }
+
+    #[test]
+    fn bond_harmonic_generated() {
         let int = make_typed_water();
         let params = super::super::params::get_default_parameters();
         let config = ForgeConfig::default();
@@ -556,17 +642,31 @@ mod tests {
         assert_eq!(bonds.len(), 2);
         for bond in &bonds {
             match bond {
-                BondPotential::Harmonic { k_force, r0, .. } => {
-                    assert!(*k_force > 0.0);
-                    assert!(*r0 > 0.0);
+                BondPotential::Harmonic { atoms, k_half, r0 } => {
+                    assert!(atoms.0 < 3 && atoms.1 < 3);
+                    assert!(*k_half > 0.0, "k_half must be positive");
+                    assert!(*r0 > 0.0, "r0 must be positive");
                 }
-                _ => panic!("Expected Harmonic potential"),
+                _ => panic!("expected Harmonic variant"),
             }
         }
     }
 
     #[test]
-    fn generates_morse_bond_potentials() {
+    fn bond_harmonic_precompute_correct() {
+        let int = make_typed_water();
+        let params = super::super::params::get_default_parameters();
+        let config = ForgeConfig::default();
+        let bonds = generate_bond_potentials(&int, params, &config).unwrap();
+
+        if let BondPotential::Harmonic { k_half, .. } = &bonds[0] {
+            let expected_k_half = params.global.bond_k / 2.0;
+            assert!((*k_half - expected_k_half).abs() < 1e-10);
+        }
+    }
+
+    #[test]
+    fn bond_morse_generated() {
         let int = make_typed_water();
         let params = super::super::params::get_default_parameters();
         let config = ForgeConfig {
@@ -578,42 +678,68 @@ mod tests {
         assert_eq!(bonds.len(), 2);
         for bond in &bonds {
             match bond {
-                BondPotential::Morse { r0, d0, alpha, .. } => {
-                    assert!(*r0 > 0.0);
-                    assert!(*d0 > 0.0);
-                    assert!(*alpha > 0.0);
+                BondPotential::Morse {
+                    atoms,
+                    r0,
+                    de,
+                    alpha,
+                } => {
+                    assert!(atoms.0 < 3 && atoms.1 < 3);
+                    assert!(*r0 > 0.0, "r0 must be positive");
+                    assert!(*de > 0.0, "de must be positive");
+                    assert!(*alpha > 0.0, "alpha must be positive");
                 }
-                _ => panic!("Expected Morse potential"),
+                _ => panic!("expected Morse variant"),
             }
         }
     }
 
     #[test]
-    fn generates_theta_harmonic_angle_potentials() {
-        let int = make_typed_water();
-        let params = super::super::params::get_default_parameters();
-        let config = ForgeConfig::default();
-        let angles = generate_angle_potentials(&int, params, &config).unwrap();
-
-        assert_eq!(angles.len(), 1);
-        match &angles[0] {
-            AnglePotential::ThetaHarmonic {
-                theta0, k_force, ..
-            } => {
-                let expected = 104.51_f64.to_radians();
-                assert!((theta0 - expected).abs() < 0.01);
-                assert!(*k_force > 0.0);
-            }
-            _ => panic!("Expected ThetaHarmonic potential"),
-        }
-    }
-
-    #[test]
-    fn generates_cosine_harmonic_angle_potentials() {
+    fn bond_morse_alpha_consistent() {
         let int = make_typed_water();
         let params = super::super::params::get_default_parameters();
         let config = ForgeConfig {
-            angle_potential: AnglePotentialType::CosineHarmonic,
+            bond_potential: BondPotentialType::Morse,
+            ..Default::default()
+        };
+        let bonds = generate_bond_potentials(&int, params, &config).unwrap();
+
+        if let BondPotential::Morse { de, alpha, .. } = &bonds[0] {
+            let k = params.global.bond_k;
+            let expected_alpha = (k / (2.0 * *de)).sqrt();
+            assert!((*alpha - expected_alpha).abs() < 1e-10);
+        }
+    }
+
+    #[test]
+    fn bond_order_multiplier_applied() {
+        let mut sys = System::new();
+        sys.atoms.push(Atom::new(Element::C, [0.0, 0.0, 0.0]));
+        sys.atoms.push(Atom::new(Element::O, [1.2, 0.0, 0.0]));
+        sys.bonds.push(Bond::new(0, 1, BondOrder::Double));
+
+        let mut int = IntermediateSystem::from_system(&sys).unwrap();
+        int.atoms[0].atom_type = "C_2".to_string();
+        int.atoms[1].atom_type = "O_2".to_string();
+        int.bonds[0].physical_order = Some(PhysicalBondOrder::Double);
+
+        let params = super::super::params::get_default_parameters();
+        let config = ForgeConfig::default();
+        let bonds = generate_bond_potentials(&int, params, &config).unwrap();
+
+        if let BondPotential::Harmonic { k_half, .. } = &bonds[0] {
+            let expected_k = params.global.bond_k * 2.0;
+            let expected_k_half = expected_k / 2.0;
+            assert!((*k_half - expected_k_half).abs() < 1e-10);
+        }
+    }
+
+    #[test]
+    fn angle_cosine_harmonic_generated() {
+        let int = make_typed_water();
+        let params = super::super::params::get_default_parameters();
+        let config = ForgeConfig {
+            angle_potential: AnglePotentialType::Cosine,
             ..Default::default()
         };
         let angles = generate_angle_potentials(&int, params, &config).unwrap();
@@ -621,44 +747,190 @@ mod tests {
         assert_eq!(angles.len(), 1);
         match &angles[0] {
             AnglePotential::CosineHarmonic {
-                theta0, k_force, ..
+                atoms,
+                k_half,
+                cos0,
             } => {
-                assert!(*theta0 > 0.0);
-                assert!(*k_force > 0.0);
+                assert_eq!(*atoms, (1, 0, 2));
+                assert!(*k_half > 0.0);
+                assert!(cos0.abs() <= 1.0, "cos0 must be in [-1, 1]");
             }
-            _ => panic!("Expected CosineHarmonic potential"),
+            _ => panic!("expected CosineHarmonic variant"),
         }
     }
 
     #[test]
-    fn generates_dihedral_potentials() {
+    fn angle_cosine_harmonic_sin_theta_scaling() {
+        let int = make_typed_water();
+        let params = super::super::params::get_default_parameters();
+        let config = ForgeConfig {
+            angle_potential: AnglePotentialType::Cosine,
+            ..Default::default()
+        };
+        let angles = generate_angle_potentials(&int, params, &config).unwrap();
+
+        if let AnglePotential::CosineHarmonic { k_half, cos0, .. } = &angles[0] {
+            let theta0_rad = cos0.acos();
+            let sin_theta0 = theta0_rad.sin();
+            let c = params.global.angle_k / (sin_theta0 * sin_theta0);
+            let expected_k_half = c / 2.0;
+            assert!((*k_half - expected_k_half).abs() < 1e-10);
+        }
+    }
+
+    #[test]
+    fn angle_cosine_linear_for_linear_geometry() {
+        let int = make_linear_molecule();
+        let params = super::super::params::get_default_parameters();
+        let config = ForgeConfig {
+            angle_potential: AnglePotentialType::Cosine,
+            ..Default::default()
+        };
+        let angles = generate_angle_potentials(&int, params, &config).unwrap();
+
+        assert_eq!(angles.len(), 1);
+        match &angles[0] {
+            AnglePotential::CosineLinear { atoms, k } => {
+                assert_eq!(*atoms, (0, 1, 2));
+                assert_eq!(*k, params.global.angle_k);
+            }
+            _ => panic!("expected CosineLinear for 180° equilibrium angle"),
+        }
+    }
+
+    #[test]
+    fn angle_theta_harmonic_generated() {
+        let int = make_typed_water();
+        let params = super::super::params::get_default_parameters();
+        let config = ForgeConfig {
+            angle_potential: AnglePotentialType::Theta,
+            ..Default::default()
+        };
+        let angles = generate_angle_potentials(&int, params, &config).unwrap();
+
+        assert_eq!(angles.len(), 1);
+        match &angles[0] {
+            AnglePotential::ThetaHarmonic {
+                atoms,
+                k_half,
+                theta0,
+            } => {
+                assert_eq!(*atoms, (1, 0, 2));
+                assert!(*k_half > 0.0);
+                assert!(*theta0 > 0.0 && *theta0 < std::f64::consts::PI);
+
+                let expected_k_half = params.global.angle_k / 2.0;
+                assert!((*k_half - expected_k_half).abs() < 1e-10);
+            }
+            _ => panic!("expected ThetaHarmonic variant"),
+        }
+    }
+
+    #[test]
+    fn angle_theta_harmonic_radians_conversion() {
+        let int = make_typed_water();
+        let params = super::super::params::get_default_parameters();
+        let config = ForgeConfig {
+            angle_potential: AnglePotentialType::Theta,
+            ..Default::default()
+        };
+        let angles = generate_angle_potentials(&int, params, &config).unwrap();
+
+        if let AnglePotential::ThetaHarmonic { theta0, .. } = &angles[0] {
+            let expected_rad = 104.51_f64.to_radians();
+            assert!((*theta0 - expected_rad).abs() < 0.01);
+        }
+    }
+
+    #[test]
+    fn torsion_sp3_sp3_generated() {
         let int = make_typed_ethane();
         let params = super::super::params::get_default_parameters();
-        let dihedrals = generate_dihedral_potentials(&int, params).unwrap();
+        let torsions = generate_torsion_potentials(&int, params).unwrap();
 
-        assert_eq!(dihedrals.len(), 1);
-        assert!(dihedrals[0].v_barrier > 0.0);
-        assert!(dihedrals[0].periodicity > 0);
+        assert_eq!(torsions.len(), 1);
+        let t = &torsions[0];
+        assert_eq!(t.atoms, (2, 0, 1, 3));
+        assert_eq!(t.n, 3, "SP3-SP3 should have n=3");
+        assert!(t.v_half > 0.0);
     }
 
     #[test]
-    fn generates_improper_potentials_for_planar_center() {
+    fn torsion_sp3_sp3_precompute_values() {
+        let int = make_typed_ethane();
+        let params = super::super::params::get_default_parameters();
+        let torsions = generate_torsion_potentials(&int, params).unwrap();
+
+        let t = &torsions[0];
+        assert!((t.v_half - 1.0).abs() < 1e-10, "v_half = V/2 = 1.0");
+        assert_eq!(t.n, 3);
+        assert!((t.cos_n_phi0 - (-1.0)).abs() < 1e-10, "cos(3×180°) = -1");
+        assert!(t.sin_n_phi0.abs() < 1e-10, "sin(3×180°) = 0");
+    }
+
+    #[test]
+    fn torsion_sp2_sp2_generated() {
+        let int = make_typed_ethylene();
+        let params = super::super::params::get_default_parameters();
+        let torsions = generate_torsion_potentials(&int, params).unwrap();
+
+        assert_eq!(torsions.len(), 1);
+        let t = &torsions[0];
+        assert_eq!(t.n, 2, "SP2-SP2 should have n=2");
+        assert!(
+            t.v_half > 1.0,
+            "SP2-SP2 barrier should be higher than SP3-SP3"
+        );
+    }
+
+    #[test]
+    fn torsion_sp2_sp2_precompute_values() {
+        let int = make_typed_ethylene();
+        let params = super::super::params::get_default_parameters();
+        let torsions = generate_torsion_potentials(&int, params).unwrap();
+
+        let t = &torsions[0];
+        assert!((t.v_half - 22.5).abs() < 1e-10, "v_half = 45.0/2 = 22.5");
+        assert_eq!(t.n, 2);
+        assert!((t.cos_n_phi0 - 1.0).abs() < 1e-10, "cos(2×180°) = 1");
+        assert!(t.sin_n_phi0.abs() < 1e-10, "sin(2×180°) = 0");
+    }
+
+    #[test]
+    fn inversion_planar_generated() {
         let int = make_typed_formaldehyde();
         let params = super::super::params::get_default_parameters();
-        let impropers = generate_improper_potentials(&int, params).unwrap();
+        let inversions = generate_inversion_potentials(&int, params).unwrap();
 
-        assert_eq!(impropers.len(), 1);
-        match &impropers[0] {
-            ImproperPotential::Planar { k_force, chi0, .. } => {
-                assert_eq!(*k_force, params.global.inversion_k);
-                assert_eq!(*chi0, 0.0);
+        assert_eq!(inversions.len(), 1);
+        match &inversions[0] {
+            InversionPotential::Planar { atoms, c_half } => {
+                assert_eq!(*atoms, (0, 1, 2, 3));
+                assert!(*c_half > 0.0);
             }
-            _ => panic!("Expected Planar improper potential"),
+            _ => panic!("expected Planar variant"),
         }
     }
 
     #[test]
-    fn generates_lj_vdw_potentials() {
+    fn inversion_planar_scaling_factor() {
+        let int = make_typed_formaldehyde();
+        let params = super::super::params::get_default_parameters();
+        let inversions = generate_inversion_potentials(&int, params).unwrap();
+
+        if let InversionPotential::Planar { c_half, .. } = &inversions[0] {
+            let expected = params.global.inversion_k / 6.0;
+            assert!(
+                (*c_half - expected).abs() < 1e-10,
+                "c_half={} expected={}",
+                c_half,
+                expected
+            );
+        }
+    }
+
+    #[test]
+    fn vdw_lennard_jones_generated() {
         let int = make_typed_water();
         let (atom_types, _) = collect_atom_types(&int);
         let params = super::super::params::get_default_parameters();
@@ -668,22 +940,48 @@ mod tests {
         assert_eq!(vdw.len(), 3);
         for pair in &vdw {
             match pair {
-                VdwPairPotential::LennardJones { sigma, epsilon, .. } => {
-                    assert!(*sigma > 0.0);
-                    assert!(*epsilon > 0.0);
+                VdwPairPotential::LennardJones {
+                    type1_idx,
+                    type2_idx,
+                    d0,
+                    r0_sq,
+                } => {
+                    assert!(*type1_idx <= *type2_idx);
+                    assert!(*d0 > 0.0);
+                    assert!(*r0_sq > 0.0);
                 }
-                _ => panic!("Expected LennardJones potential"),
+                _ => panic!("expected LennardJones variant"),
             }
         }
     }
 
     #[test]
-    fn generates_exp6_vdw_potentials() {
+    fn vdw_lennard_jones_r0_squared() {
+        let int = make_typed_water();
+        let (atom_types, _) = collect_atom_types(&int);
+        let params = super::super::params::get_default_parameters();
+        let config = ForgeConfig::default();
+        let vdw = generate_vdw_potentials(&atom_types, params, &config).unwrap();
+
+        if let VdwPairPotential::LennardJones { r0_sq, .. } = &vdw[0] {
+            assert!(*r0_sq > 0.0);
+            let type1 = &atom_types[0];
+            let type2 = &atom_types[0];
+            let p1 = params.atoms.get(type1).unwrap();
+            let p2 = params.atoms.get(type2).unwrap();
+            let r0_combined = 0.5 * (p1.vdw_r0 + p2.vdw_r0);
+            let expected_r0_sq = r0_combined * r0_combined;
+            assert!((*r0_sq - expected_r0_sq).abs() < 1e-10);
+        }
+    }
+
+    #[test]
+    fn vdw_buckingham_generated() {
         let int = make_typed_water();
         let (atom_types, _) = collect_atom_types(&int);
         let params = super::super::params::get_default_parameters();
         let config = ForgeConfig {
-            vdw_potential: VdwPotentialType::Exponential6,
+            vdw_potential: VdwPotentialType::Buckingham,
             ..Default::default()
         };
         let vdw = generate_vdw_potentials(&atom_types, params, &config).unwrap();
@@ -691,18 +989,29 @@ mod tests {
         assert_eq!(vdw.len(), 3);
         for pair in &vdw {
             match pair {
-                VdwPairPotential::Exponential6 { a, b, c, .. } => {
-                    assert!(*a > 0.0);
-                    assert!(*b > 0.0);
-                    assert!(*c > 0.0);
+                VdwPairPotential::Buckingham {
+                    type1_idx,
+                    type2_idx,
+                    a,
+                    b,
+                    c,
+                    r_max_sq,
+                    two_e_max,
+                } => {
+                    assert!(*type1_idx <= *type2_idx);
+                    assert!(*a > 0.0, "a must be positive");
+                    assert!(*b > 0.0, "b must be positive");
+                    assert!(*c > 0.0, "c must be positive");
+                    assert!(*r_max_sq > 0.0, "r_max_sq must be positive");
+                    assert!(*two_e_max != 0.0);
                 }
-                _ => panic!("Expected Exponential6 potential"),
+                _ => panic!("expected Buckingham variant"),
             }
         }
     }
 
     #[test]
-    fn generates_hbond_potentials_for_h_hb() {
+    fn hbond_generated_for_donor_hydrogen() {
         let int = make_typed_water();
         let (_, type_indices) = collect_atom_types(&int);
         let params = super::super::params::get_default_parameters();
@@ -711,61 +1020,148 @@ mod tests {
 
         assert!(!hbonds.is_empty());
         assert_eq!(hbonds.len(), 1);
-        for hb in &hbonds {
-            assert!(hb.d0 > 0.0);
-            assert!(hb.r0 > 0.0);
-        }
+
+        let hb = &hbonds[0];
+        assert!(hb.d_hb > 0.0);
+        assert!(hb.r_hb_sq > 0.0);
     }
 
     #[test]
-    fn hbond_d0_depends_on_charge_method() {
+    fn hbond_no_generation_without_h_hb() {
+        let int = make_typed_ethane();
+        let (_, type_indices) = collect_atom_types(&int);
+        let params = super::super::params::get_default_parameters();
+        let config = ForgeConfig::default();
+        let hbonds = generate_hbond_potentials(&int, &type_indices, params, &config).unwrap();
+
+        assert!(hbonds.is_empty(), "no H_HB atoms, no H-bonds");
+    }
+
+    #[test]
+    fn hbond_r_hb_sq_precomputed() {
         let int = make_typed_water();
         let (_, type_indices) = collect_atom_types(&int);
         let params = super::super::params::get_default_parameters();
+        let config = ForgeConfig::default();
+        let hbonds = generate_hbond_potentials(&int, &type_indices, params, &config).unwrap();
 
-        let config_no_charge = ForgeConfig::default();
-        let hbonds_no =
-            generate_hbond_potentials(&int, &type_indices, params, &config_no_charge).unwrap();
-
-        let config_qeq = ForgeConfig {
-            charge_method: ChargeMethod::Qeq(Default::default()),
-            ..Default::default()
-        };
-        let hbonds_qeq =
-            generate_hbond_potentials(&int, &type_indices, params, &config_qeq).unwrap();
-
-        let config_hybrid = ForgeConfig {
-            charge_method: ChargeMethod::Hybrid(Default::default()),
-            ..Default::default()
-        };
-        let hbonds_hybrid =
-            generate_hbond_potentials(&int, &type_indices, params, &config_hybrid).unwrap();
-
-        assert_ne!(hbonds_no[0].d0, hbonds_qeq[0].d0);
-        assert_eq!(hbonds_no[0].d0, params.hydrogen_bond.d0_no_charge);
-        assert_eq!(hbonds_qeq[0].d0, params.hydrogen_bond.d0_explicit);
-        assert_eq!(hbonds_hybrid[0].d0, params.hydrogen_bond.d0_explicit);
+        let hb = &hbonds[0];
+        let expected_r_hb_sq = params.hydrogen_bond.r0 * params.hydrogen_bond.r0;
+        assert!(
+            (hb.r_hb_sq - expected_r_hb_sq).abs() < 1e-10,
+            "r_hb_sq={} expected={}",
+            hb.r_hb_sq,
+            expected_r_hb_sq
+        );
     }
 
     #[test]
-    fn hbond_acceptor_detection_positive() {
+    fn hbond_depth_no_charge() {
+        let int = make_typed_water();
+        let (_, type_indices) = collect_atom_types(&int);
+        let params = super::super::params::get_default_parameters();
+        let config = ForgeConfig {
+            charge_method: ChargeMethod::None,
+            ..Default::default()
+        };
+        let hbonds = generate_hbond_potentials(&int, &type_indices, params, &config).unwrap();
+
+        assert_eq!(hbonds[0].d_hb, params.hydrogen_bond.d0_no_charge);
+    }
+
+    #[test]
+    fn hbond_depth_with_qeq() {
+        let int = make_typed_water();
+        let (_, type_indices) = collect_atom_types(&int);
+        let params = super::super::params::get_default_parameters();
+        let config = ForgeConfig {
+            charge_method: ChargeMethod::Qeq(Default::default()),
+            ..Default::default()
+        };
+        let hbonds = generate_hbond_potentials(&int, &type_indices, params, &config).unwrap();
+
+        assert_eq!(hbonds[0].d_hb, params.hydrogen_bond.d0_explicit);
+    }
+
+    #[test]
+    fn hbond_depth_with_hybrid() {
+        let int = make_typed_water();
+        let (_, type_indices) = collect_atom_types(&int);
+        let params = super::super::params::get_default_parameters();
+        let config = ForgeConfig {
+            charge_method: ChargeMethod::Hybrid(Default::default()),
+            ..Default::default()
+        };
+        let hbonds = generate_hbond_potentials(&int, &type_indices, params, &config).unwrap();
+
+        assert_eq!(hbonds[0].d_hb, params.hydrogen_bond.d0_explicit);
+    }
+
+    #[test]
+    fn hbond_acceptor_onf_detected() {
         assert!(is_hbond_acceptor(Element::O));
         assert!(is_hbond_acceptor(Element::N));
         assert!(is_hbond_acceptor(Element::F));
     }
 
     #[test]
-    fn hbond_acceptor_detection_negative() {
+    fn hbond_acceptor_others_rejected() {
         assert!(!is_hbond_acceptor(Element::C));
         assert!(!is_hbond_acceptor(Element::H));
         assert!(!is_hbond_acceptor(Element::S));
+        assert!(!is_hbond_acceptor(Element::P));
         assert!(!is_hbond_acceptor(Element::Cl));
+        assert!(!is_hbond_acceptor(Element::Br));
     }
 
     #[test]
-    fn errors_on_missing_atom_type_parameter() {
-        let water = make_water();
-        let mut int = IntermediateSystem::from_system(&water).unwrap();
+    fn full_parameterization_water() {
+        let sys = make_water();
+        let int = make_typed_water();
+        let params = super::super::params::get_default_parameters();
+        let config = ForgeConfig::default();
+
+        let forged = generate_parameters(&sys, &int, params, &config).unwrap();
+
+        assert_eq!(forged.atom_types.len(), 2);
+        assert_eq!(forged.atom_properties.len(), 3);
+        assert_eq!(forged.potentials.bonds.len(), 2);
+        assert_eq!(forged.potentials.angles.len(), 1);
+        assert!(forged.potentials.torsions.is_empty());
+        assert!(forged.potentials.inversions.is_empty());
+        assert_eq!(forged.potentials.vdw_pairs.len(), 3);
+        assert_eq!(forged.potentials.h_bonds.len(), 1);
+    }
+
+    #[test]
+    fn full_parameterization_ethane() {
+        let sys = System::new();
+        let int = make_typed_ethane();
+        let params = super::super::params::get_default_parameters();
+        let config = ForgeConfig::default();
+
+        let forged = generate_parameters(&sys, &int, params, &config).unwrap();
+
+        assert!(!forged.potentials.torsions.is_empty());
+        assert!(forged.potentials.inversions.is_empty());
+    }
+
+    #[test]
+    fn full_parameterization_formaldehyde() {
+        let sys = System::new();
+        let int = make_typed_formaldehyde();
+        let params = super::super::params::get_default_parameters();
+        let config = ForgeConfig::default();
+
+        let forged = generate_parameters(&sys, &int, params, &config).unwrap();
+
+        assert_eq!(forged.potentials.inversions.len(), 1);
+    }
+
+    #[test]
+    fn error_missing_atom_type_bond_param() {
+        let sys = make_water();
+        let mut int = IntermediateSystem::from_system(&sys).unwrap();
         int.atoms[0].atom_type = "Xx_UNKNOWN".to_string();
         int.atoms[1].atom_type = "H_".to_string();
         int.atoms[2].atom_type = "H_".to_string();
@@ -775,5 +1171,39 @@ mod tests {
         let result = generate_bond_potentials(&int, params, &config);
 
         assert!(matches!(result, Err(Error::MissingParameter { .. })));
+    }
+
+    #[test]
+    fn error_missing_atom_type_angle_param() {
+        let sys = make_water();
+        let mut int = IntermediateSystem::from_system(&sys).unwrap();
+        int.atoms[0].atom_type = "Yy_UNKNOWN".to_string();
+        int.atoms[1].atom_type = "H_".to_string();
+        int.atoms[2].atom_type = "H_".to_string();
+        for bond in &mut int.bonds {
+            bond.physical_order = Some(PhysicalBondOrder::Single);
+        }
+        int.angles.push(IntermediateAngle { i: 1, j: 0, k: 2 });
+
+        let params = super::super::params::get_default_parameters();
+        let config = ForgeConfig::default();
+        let result = generate_angle_potentials(&int, params, &config);
+
+        assert!(matches!(result, Err(Error::MissingParameter { .. })));
+    }
+
+    #[test]
+    fn error_missing_physical_bond_order() {
+        let sys = make_water();
+        let mut int = IntermediateSystem::from_system(&sys).unwrap();
+        int.atoms[0].atom_type = "O_3".to_string();
+        int.atoms[1].atom_type = "H_".to_string();
+        int.atoms[2].atom_type = "H_".to_string();
+
+        let params = super::super::params::get_default_parameters();
+        let config = ForgeConfig::default();
+        let result = generate_bond_potentials(&int, params, &config);
+
+        assert!(matches!(result, Err(Error::Conversion(_))));
     }
 }
