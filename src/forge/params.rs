@@ -183,7 +183,7 @@ pub struct TorsionParams {
     /// Barrier height (kcal/mol).
     pub v_barrier: f64,
     /// Periodicity (number of minima per 360°).
-    pub periodicity: i32,
+    pub periodicity: u8,
     /// Phase offset (degrees).
     pub phase_offset: f64,
 }
