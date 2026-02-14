@@ -16,7 +16,12 @@ keywords = [
     "bioinformatics",
     "molecular-dynamics",
 ]
-categories = ["science", "simulation", "command-line-utilities"]
+categories = [
+    "science::computational-chemistry::molecular-simulation",
+    "science::computational-chemistry::cheminformatics",
+    "science::computational-biology::structural-modeling",
+    "command-line-utilities",
+]
 readme = "README.md"
 exclude = ["examples/"]
 
