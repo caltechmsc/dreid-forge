@@ -351,6 +351,24 @@ mod tests {
     }
 
     #[test]
+    fn angle_cosine_linear_construction() {
+        let angle = AnglePotential::CosineLinear {
+            atoms: (6, 7, 8),
+            k: 100.0,
+        };
+
+        match angle {
+            AnglePotential::CosineLinear { atoms, k } => {
+                assert_eq!(atoms.0, 6);
+                assert_eq!(atoms.1, 7);
+                assert_eq!(atoms.2, 8);
+                assert_eq!(k, 100.0);
+            }
+            _ => panic!("expected CosineLinear variant"),
+        }
+    }
+
+    #[test]
     fn angle_theta_harmonic_construction() {
         let angle = AnglePotential::ThetaHarmonic {
             i: 3,
