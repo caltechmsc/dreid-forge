@@ -132,8 +132,8 @@ pub use model::system::{Bond, System};
 pub use model::types::{BondOrder, Element, ParseBondOrderError, ParseElementError};
 
 pub use model::topology::{
-    AnglePotential, AtomParam, BondPotential, DihedralPotential, ForgedSystem, HBondPotential,
-    ImproperPotential, Potentials, VdwPairPotential,
+    AnglePotential, AtomParam, BondPotential, ForgedSystem, HBondPotential, InversionPotential,
+    Potentials, TorsionPotential, VdwPairPotential,
 };
 
 pub use model::metadata::{
