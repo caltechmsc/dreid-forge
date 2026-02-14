@@ -2,7 +2,7 @@
 //!
 //! This module generates all potential energy function parameters from
 //! the typed and charged intermediate system. It produces bond, angle,
-//! dihedral, improper, van der Waals, and hydrogen bond potentials
+//! torsion, inversion, van der Waals, and hydrogen bond potentials
 //! according to DREIDING force field rules.
 
 use super::config::{
@@ -13,13 +13,17 @@ use super::intermediate::{IntermediateSystem, PhysicalBondOrderExt};
 use super::params::{ForceFieldParams, get_torsion_params, is_oxygen_column};
 use crate::model::system::System;
 use crate::model::topology::{
-    AnglePotential, AtomParam, BondPotential, DihedralPotential, ForgedSystem, HBondPotential,
-    ImproperPotential, Potentials, VdwPairPotential,
+    AnglePotential, AtomParam, BondPotential, ForgedSystem, HBondPotential, InversionPotential,
+    Potentials, TorsionPotential, VdwPairPotential,
 };
 use crate::model::types::Element;
+use dreid_kernel::potentials::bonded::{
+    CosineHarmonic, Harmonic, PlanarInversion, ThetaHarmonic, Torsion,
+};
+use dreid_kernel::potentials::nonbonded::{Buckingham, HydrogenBond, LennardJones};
 use std::collections::{HashMap, HashSet};
 
-/// Atom type for hydrogen bond donor hydrogens.
+/// DREIDING atom type for hydrogen bond donor hydrogens.
 const H_BOND_DONOR_HYDROGEN_TYPE: &str = "H_HB";
 
 /// Generates all force field parameters from the intermediate system.
@@ -57,9 +61,9 @@ pub fn generate_parameters(
 
     let angles = generate_angle_potentials(intermediate, params, config)?;
 
-    let dihedrals = generate_dihedral_potentials(intermediate, params)?;
+    let torsions = generate_torsion_potentials(intermediate, params)?;
 
-    let impropers = generate_improper_potentials(intermediate, params)?;
+    let inversions = generate_inversion_potentials(intermediate, params)?;
 
     let vdw_pairs = generate_vdw_potentials(&atom_types, params, config)?;
 
@@ -68,8 +72,8 @@ pub fn generate_parameters(
     let potentials = Potentials {
         bonds,
         angles,
-        dihedrals,
-        impropers,
+        torsions,
+        inversions,
         vdw_pairs,
         h_bonds,
     };
@@ -155,23 +159,21 @@ fn generate_bond_potentials(
             })?;
 
             let order_mult = physical_order.multiplier();
-            let k_force = params.global.bond_k * order_mult;
-            let d0 = params.global.bond_d * order_mult;
+            let k = params.global.bond_k * order_mult;
+            let de = params.global.bond_d * order_mult;
+            let atoms = (bond.i, bond.j);
 
             Ok(match config.bond_potential {
-                BondPotentialType::Harmonic => BondPotential::Harmonic {
-                    i: bond.i,
-                    j: bond.j,
-                    k_force,
-                    r0,
-                },
+                BondPotentialType::Harmonic => {
+                    let (k_half, r0) = Harmonic::precompute(k, r0);
+                    BondPotential::Harmonic { atoms, k_half, r0 }
+                }
                 BondPotentialType::Morse => {
-                    let alpha = (k_force / (2.0 * d0)).sqrt();
+                    let alpha = (k / (2.0 * de)).sqrt();
                     BondPotential::Morse {
-                        i: bond.i,
-                        j: bond.j,
+                        atoms,
+                        de,
                         r0,
-                        d0,
                         alpha,
                     }
                 }
@@ -180,7 +182,7 @@ fn generate_bond_potentials(
         .collect()
 }
 
-/// Generates angle bending potentials (ThetaHarmonic or CosineHarmonic).
+/// Generates angle bending potentials (Cosine-harmonic/linear or Theta-harmonic).
 fn generate_angle_potentials(
     intermediate: &IntermediateSystem,
     params: &ForceFieldParams,
@@ -197,35 +199,29 @@ fn generate_angle_potentials(
                 .ok_or_else(|| Error::missing_parameter(type_j, "bond angle"))?;
 
             let theta0_deg = params_j.bond_angle;
-            let theta0_rad = theta0_deg.to_radians();
-            let k_force = params.global.angle_k;
+            let k = params.global.angle_k;
+            let atoms = (angle.i, angle.j, angle.k);
 
             Ok(match config.angle_potential {
-                AnglePotentialType::ThetaHarmonic => AnglePotential::ThetaHarmonic {
-                    i: angle.i,
-                    j: angle.j,
-                    k: angle.k,
-                    k_force,
-                    theta0: theta0_rad,
-                },
-                AnglePotentialType::CosineHarmonic => {
+                AnglePotentialType::Theta => {
+                    let (k_half, theta0) = ThetaHarmonic::precompute(k, theta0_deg);
+                    AnglePotential::ThetaHarmonic {
+                        atoms,
+                        k_half,
+                        theta0,
+                    }
+                }
+                AnglePotentialType::Cosine => {
                     if (theta0_deg - 180.0).abs() < 1e-6 {
-                        AnglePotential::CosineHarmonic {
-                            i: angle.i,
-                            j: angle.j,
-                            k: angle.k,
-                            k_force,
-                            theta0: theta0_rad,
-                        }
+                        AnglePotential::CosineLinear { atoms, k }
                     } else {
-                        let sin_theta0 = theta0_rad.sin();
-                        let c_force = k_force / (sin_theta0 * sin_theta0);
+                        let sin_theta0 = theta0_deg.to_radians().sin();
+                        let c = k / (sin_theta0 * sin_theta0);
+                        let (k_half, cos0) = CosineHarmonic::precompute(c, theta0_deg);
                         AnglePotential::CosineHarmonic {
-                            i: angle.i,
-                            j: angle.j,
-                            k: angle.k,
-                            k_force: c_force,
-                            theta0: theta0_rad,
+                            atoms,
+                            k_half,
+                            cos0,
                         }
                     }
                 }
@@ -234,75 +230,78 @@ fn generate_angle_potentials(
         .collect()
 }
 
-/// Generates proper dihedral (torsion) potentials based on hybridization.
-fn generate_dihedral_potentials(
+/// Generates torsion potentials based on hybridization.
+fn generate_torsion_potentials(
     intermediate: &IntermediateSystem,
     _params: &ForceFieldParams,
-) -> Result<Vec<DihedralPotential>, Error> {
-    let mut dihedrals = Vec::new();
+) -> Result<Vec<TorsionPotential>, Error> {
+    let mut torsions = Vec::new();
 
     let mut bond_torsion_counts: HashMap<(usize, usize), usize> = HashMap::new();
-    for dih in &intermediate.dihedrals {
-        let key = (dih.j.min(dih.k), dih.j.max(dih.k));
+    for tor in &intermediate.torsions {
+        let key = (tor.j.min(tor.k), tor.j.max(tor.k));
         *bond_torsion_counts.entry(key).or_insert(0) += 1;
     }
 
-    for dih in &intermediate.dihedrals {
-        let atom_i = &intermediate.atoms[dih.i];
-        let atom_j = &intermediate.atoms[dih.j];
-        let atom_k = &intermediate.atoms[dih.k];
+    for tor in &intermediate.torsions {
+        let atom_i = &intermediate.atoms[tor.i];
+        let atom_j = &intermediate.atoms[tor.j];
+        let atom_k = &intermediate.atoms[tor.k];
 
         let j_is_o_column = is_oxygen_column(atom_j.element);
         let k_is_o_column = is_oxygen_column(atom_k.element);
 
-        if let Some(torsion) = get_torsion_params(
+        if let Some(torsion_params) = get_torsion_params(
             atom_j.hybridization,
             atom_k.hybridization,
             j_is_o_column,
             k_is_o_column,
             atom_i.hybridization,
         ) {
-            let key = (dih.j.min(dih.k), dih.j.max(dih.k));
+            let key = (tor.j.min(tor.k), tor.j.max(tor.k));
             let count = *bond_torsion_counts.get(&key).unwrap_or(&1) as f64;
-            let v_normalized = torsion.v_barrier / count;
+            let v_barrier = torsion_params.v_barrier / count;
 
-            dihedrals.push(DihedralPotential {
-                i: dih.i,
-                j: dih.j,
-                k: dih.k,
-                l: dih.l,
-                v_barrier: v_normalized,
-                periodicity: torsion.periodicity,
-                phase_offset: torsion.phase_offset,
+            let (v_half, n, cos_n_phi0, sin_n_phi0) = Torsion::precompute(
+                v_barrier,
+                torsion_params.periodicity,
+                torsion_params.phase_offset,
+            );
+
+            torsions.push(TorsionPotential {
+                atoms: (tor.i, tor.j, tor.k, tor.l),
+                v_half,
+                n,
+                cos_n_phi0,
+                sin_n_phi0,
             });
         }
     }
 
-    Ok(dihedrals)
+    Ok(torsions)
 }
 
-/// Generates improper dihedral (out-of-plane) potentials for sp² centers.
-fn generate_improper_potentials(
+/// Generates inversion (out-of-plane) potentials for sp² and resonant centers.
+fn generate_inversion_potentials(
     intermediate: &IntermediateSystem,
     params: &ForceFieldParams,
-) -> Result<Vec<ImproperPotential>, Error> {
-    let impropers = intermediate
-        .impropers
+) -> Result<Vec<InversionPotential>, Error> {
+    let inversions = intermediate
+        .inversions
         .iter()
-        .map(|imp| ImproperPotential::Planar {
-            i: imp.p1,
-            j: imp.center,
-            k: imp.p2,
-            l: imp.p3,
-            k_force: params.global.inversion_k,
-            chi0: 0.0,
+        .map(|inv| {
+            let atoms = (inv.center, inv.axis, inv.plane1, inv.plane2);
+            // Scale by 1/3: each sp² center generates 3 terms
+            let k_scaled = params.global.inversion_k / 3.0;
+            let c_half = PlanarInversion::precompute(k_scaled);
+            InversionPotential::Planar { atoms, c_half }
         })
         .collect();
 
-    Ok(impropers)
+    Ok(inversions)
 }
 
-/// Generates van der Waals pair potentials (LJ or Exp-6).
+/// Generates van der Waals pair potentials (Lennard-Jones or Buckingham).
 fn generate_vdw_potentials(
     atom_types: &[String],
     params: &ForceFieldParams,
@@ -326,27 +325,26 @@ fn generate_vdw_potentials(
 
             vdw_pairs.push(match config.vdw_potential {
                 VdwPotentialType::LennardJones => {
-                    let sigma = r0_combined / 2.0_f64.powf(1.0 / 6.0);
+                    let (d0, r0_sq) = LennardJones::precompute(d0_combined, r0_combined);
                     VdwPairPotential::LennardJones {
                         type1_idx: idx1,
                         type2_idx: idx2,
-                        sigma,
-                        epsilon: d0_combined,
+                        d0,
+                        r0_sq,
                     }
                 }
-                VdwPotentialType::Exponential6 => {
+                VdwPotentialType::Buckingham => {
                     let zeta = 0.5 * (params1.vdw_zeta + params2.vdw_zeta);
-
-                    let a = d0_combined * 6.0 * (zeta / (zeta - 6.0)).exp() / (zeta - 6.0);
-                    let b = zeta / r0_combined;
-                    let c = d0_combined * zeta * r0_combined.powi(6) / (zeta - 6.0);
-
-                    VdwPairPotential::Exponential6 {
+                    let (a, b, c, r_max_sq, two_e_max) =
+                        Buckingham::precompute(d0_combined, r0_combined, zeta);
+                    VdwPairPotential::Buckingham {
                         type1_idx: idx1,
                         type2_idx: idx2,
                         a,
                         b,
                         c,
+                        r_max_sq,
+                        two_e_max,
                     }
                 }
             });
@@ -359,7 +357,7 @@ fn generate_vdw_potentials(
 /// Generates directional hydrogen bond potentials.
 ///
 /// Creates H-bond terms for all unique donor-hydrogen-acceptor triplets
-/// where the hydrogen is of type H_HB and the acceptor is N, O, or F.
+/// where the hydrogen is of type `H_HB` and the acceptor is N, O, or F.
 fn generate_hbond_potentials(
     intermediate: &IntermediateSystem,
     type_indices: &HashMap<String, usize>,
@@ -369,11 +367,13 @@ fn generate_hbond_potentials(
     let mut h_bonds = Vec::new();
     let mut seen_triplets = HashSet::new();
 
-    let d0 = match &config.charge_method {
+    let d_hb_raw = match &config.charge_method {
         ChargeMethod::None => params.hydrogen_bond.d0_no_charge,
         ChargeMethod::Qeq(_) | ChargeMethod::Hybrid(_) => params.hydrogen_bond.d0_explicit,
     };
-    let r0 = params.hydrogen_bond.r0;
+    let r_hb_raw = params.hydrogen_bond.r0;
+
+    let (d_hb, r_hb_sq) = HydrogenBond::<4>::precompute(d_hb_raw, r_hb_raw);
 
     let hydrogen_type_idx = match type_indices.get(H_BOND_DONOR_HYDROGEN_TYPE) {
         Some(&idx) => idx,
@@ -409,8 +409,8 @@ fn generate_hbond_potentials(
                         donor_type_idx,
                         hydrogen_type_idx,
                         acceptor_type_idx,
-                        d0,
-                        r0,
+                        d_hb,
+                        r_hb_sq,
                     });
                 }
             }
