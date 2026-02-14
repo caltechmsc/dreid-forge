@@ -43,8 +43,8 @@ pub enum VdwPotentialType {
     #[default]
     LennardJones,
 
-    /// Exponential-6 (Buckingham) potential.
-    Exponential6,
+    /// Buckingham (Exponential-6) potential.
+    Buckingham,
 }
 
 #[cfg(test)]
@@ -76,7 +76,7 @@ mod tests {
         let angle_copy = angle;
         assert_eq!(angle, angle_copy);
 
-        let vdw = VdwPotentialType::Exponential6;
+        let vdw = VdwPotentialType::Buckingham;
         let vdw_copy = vdw;
         assert_eq!(vdw, vdw_copy);
     }
