@@ -295,7 +295,7 @@ impl From<cli::VdwPotential> for VdwPotentialType {
     fn from(p: cli::VdwPotential) -> Self {
         match p {
             cli::VdwPotential::Lj => Self::LennardJones,
-            cli::VdwPotential::Exp6 => Self::Exponential6,
+            cli::VdwPotential::Exp6 => Self::Buckingham,
         }
     }
 }
