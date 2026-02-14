@@ -285,8 +285,8 @@ impl From<cli::BondPotential> for BondPotentialType {
 impl From<cli::AnglePotential> for AnglePotentialType {
     fn from(p: cli::AnglePotential) -> Self {
         match p {
-            cli::AnglePotential::Cosine => Self::CosineHarmonic,
-            cli::AnglePotential::ThetaHarmonic => Self::ThetaHarmonic,
+            cli::AnglePotential::Cosine => Self::Cosine,
+            cli::AnglePotential::Theta => Self::Theta,
         }
     }
 }
@@ -383,7 +383,7 @@ pub fn potential_display_names(
     };
     let angle = match potential.angle_potential {
         cli::AnglePotential::Cosine => "Cosine",
-        cli::AnglePotential::ThetaHarmonic => "θ-Harm",
+        cli::AnglePotential::Theta => "θ-Harm",
     };
     let vdw = match potential.vdw_potential {
         cli::VdwPotential::Lj => "LJ 12-6",
