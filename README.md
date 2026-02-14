@@ -181,12 +181,13 @@ For detailed usage instructions and configuration options, refer to the [API Doc
 
 `dreid-forge` builds on several specialized crates:
 
-| Crate                                                 | Purpose                                                                         |
-| ----------------------------------------------------- | ------------------------------------------------------------------------------- |
-| [`dreid-typer`](https://crates.io/crates/dreid-typer) | DREIDING atom type assignment and topology enumeration                          |
-| [`cheq`](https://crates.io/crates/cheq)               | Charge equilibration (QEq) solver with embedded field support                   |
-| [`ffcharge`](https://crates.io/crates/ffcharge)       | Classical force field charges for proteins, nucleic acids, water, and ions      |
-| [`bio-forge`](https://crates.io/crates/bio-forge)     | Biomolecular structure preparation (cleaning, protonation, solvation, topology) |
+| Crate                                                   | Purpose                                                                         |
+| ------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| [`dreid-typer`](https://crates.io/crates/dreid-typer)   | DREIDING atom type assignment and topology enumeration                          |
+| [`cheq`](https://crates.io/crates/cheq)                 | Charge equilibration (QEq) solver with embedded field support                   |
+| [`ffcharge`](https://crates.io/crates/ffcharge)         | Classical force field charges for proteins, nucleic acids, water, and ions      |
+| [`dreid-kernel`](https://crates.io/crates/dreid-kernel) | Stateless DREIDING energy/force kernels with precomputed parameters             |
+| [`bio-forge`](https://crates.io/crates/bio-forge)       | Biomolecular structure preparation (cleaning, protonation, solvation, topology) |
 
 ## License
 
