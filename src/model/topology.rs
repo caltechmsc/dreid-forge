@@ -240,16 +240,15 @@ mod tests {
     #[test]
     fn bond_harmonic_construction() {
         let bond = BondPotential::Harmonic {
-            i: 0,
-            j: 1,
+            atoms: (0, 1),
             k_half: 350.0,
             r0: 1.54,
         };
 
         match bond {
-            BondPotential::Harmonic { i, j, k_half, r0 } => {
-                assert_eq!(i, 0);
-                assert_eq!(j, 1);
+            BondPotential::Harmonic { atoms, k_half, r0 } => {
+                assert_eq!(atoms.0, 0);
+                assert_eq!(atoms.1, 1);
                 assert_eq!(k_half, 350.0);
                 assert_eq!(r0, 1.54);
             }
@@ -260,8 +259,7 @@ mod tests {
     #[test]
     fn bond_morse_construction() {
         let bond = BondPotential::Morse {
-            i: 2,
-            j: 3,
+            atoms: (2, 3),
             de: 70.0,
             r0: 1.10,
             alpha: 2.0,
@@ -269,14 +267,13 @@ mod tests {
 
         match bond {
             BondPotential::Morse {
-                i,
-                j,
+                atoms,
                 de,
                 r0,
                 alpha,
             } => {
-                assert_eq!(i, 2);
-                assert_eq!(j, 3);
+                assert_eq!(atoms.0, 2);
+                assert_eq!(atoms.1, 3);
                 assert_eq!(de, 70.0);
                 assert_eq!(r0, 1.10);
                 assert_eq!(alpha, 2.0);
@@ -288,20 +285,17 @@ mod tests {
     #[test]
     fn bond_partial_eq() {
         let b1 = BondPotential::Harmonic {
-            i: 0,
-            j: 1,
+            atoms: (0, 1),
             k_half: 350.0,
             r0: 1.54,
         };
         let b2 = BondPotential::Harmonic {
-            i: 0,
-            j: 1,
+            atoms: (0, 1),
             k_half: 350.0,
             r0: 1.54,
         };
         let b3 = BondPotential::Harmonic {
-            i: 0,
-            j: 1,
+            atoms: (0, 1),
             k_half: 400.0,
             r0: 1.54,
         };
@@ -313,8 +307,7 @@ mod tests {
     #[test]
     fn bond_clone() {
         let bond = BondPotential::Harmonic {
-            i: 5,
-            j: 6,
+            atoms: (5, 6),
             k_half: 350.0,
             r0: 1.09,
         };
@@ -325,24 +318,20 @@ mod tests {
     #[test]
     fn angle_cosine_harmonic_construction() {
         let angle = AnglePotential::CosineHarmonic {
-            i: 0,
-            j: 1,
-            k: 2,
+            atoms: (0, 1, 2),
             k_half: 50.0,
             cos0: 0.5,
         };
 
         match angle {
             AnglePotential::CosineHarmonic {
-                i,
-                j,
-                k,
+                atoms,
                 k_half,
                 cos0,
             } => {
-                assert_eq!(i, 0);
-                assert_eq!(j, 1);
-                assert_eq!(k, 2);
+                assert_eq!(atoms.0, 0);
+                assert_eq!(atoms.1, 1);
+                assert_eq!(atoms.2, 2);
                 assert_eq!(k_half, 50.0);
                 assert_eq!(cos0, 0.5);
             }
@@ -371,24 +360,20 @@ mod tests {
     #[test]
     fn angle_theta_harmonic_construction() {
         let angle = AnglePotential::ThetaHarmonic {
-            i: 3,
-            j: 4,
-            k: 5,
+            atoms: (3, 4, 5),
             k_half: 50.0,
             theta0: 1.911,
         };
 
         match angle {
             AnglePotential::ThetaHarmonic {
-                i,
-                j,
-                k,
+                atoms,
                 k_half,
                 theta0,
             } => {
-                assert_eq!(i, 3);
-                assert_eq!(j, 4);
-                assert_eq!(k, 5);
+                assert_eq!(atoms.0, 3);
+                assert_eq!(atoms.1, 4);
+                assert_eq!(atoms.2, 5);
                 assert_eq!(k_half, 50.0);
                 assert_eq!(theta0, 1.911);
             }
@@ -399,16 +384,12 @@ mod tests {
     #[test]
     fn angle_partial_eq() {
         let a1 = AnglePotential::CosineHarmonic {
-            i: 0,
-            j: 1,
-            k: 2,
+            atoms: (0, 1, 2),
             k_half: 50.0,
             cos0: 0.5,
         };
         let a2 = AnglePotential::CosineHarmonic {
-            i: 0,
-            j: 1,
-            k: 2,
+            atoms: (0, 1, 2),
             k_half: 50.0,
             cos0: 0.5,
         };
@@ -416,97 +397,79 @@ mod tests {
     }
 
     #[test]
-    fn dihedral_construction() {
-        let dihedral = DihedralPotential {
-            i: 0,
-            j: 1,
-            k: 2,
-            l: 3,
+    fn torsion_construction() {
+        let torsion = TorsionPotential {
+            atoms: (0, 1, 2, 3),
             v_half: 1.0,
             n: 3,
             cos_n_phi0: -1.0,
             sin_n_phi0: 0.0,
         };
 
-        assert_eq!(dihedral.i, 0);
-        assert_eq!(dihedral.j, 1);
-        assert_eq!(dihedral.k, 2);
-        assert_eq!(dihedral.l, 3);
-        assert_eq!(dihedral.v_half, 1.0);
-        assert_eq!(dihedral.n, 3);
-        assert_eq!(dihedral.cos_n_phi0, -1.0);
-        assert_eq!(dihedral.sin_n_phi0, 0.0);
+        assert_eq!(torsion.atoms.0, 0);
+        assert_eq!(torsion.atoms.1, 1);
+        assert_eq!(torsion.atoms.2, 2);
+        assert_eq!(torsion.atoms.3, 3);
+        assert_eq!(torsion.v_half, 1.0);
+        assert_eq!(torsion.n, 3);
+        assert_eq!(torsion.cos_n_phi0, -1.0);
+        assert_eq!(torsion.sin_n_phi0, 0.0);
     }
 
     #[test]
-    fn dihedral_partial_eq() {
-        let d1 = DihedralPotential {
-            i: 0,
-            j: 1,
-            k: 2,
-            l: 3,
+    fn torsion_partial_eq() {
+        let t1 = TorsionPotential {
+            atoms: (0, 1, 2, 3),
             v_half: 1.0,
             n: 3,
             cos_n_phi0: -1.0,
             sin_n_phi0: 0.0,
         };
-        let d2 = DihedralPotential {
-            i: 0,
-            j: 1,
-            k: 2,
-            l: 3,
+        let t2 = TorsionPotential {
+            atoms: (0, 1, 2, 3),
             v_half: 1.0,
             n: 3,
             cos_n_phi0: -1.0,
             sin_n_phi0: 0.0,
         };
-        let d3 = DihedralPotential {
-            i: 0,
-            j: 1,
-            k: 2,
-            l: 3,
+        let t3 = TorsionPotential {
+            atoms: (0, 1, 2, 3),
             v_half: 2.0,
             n: 3,
             cos_n_phi0: -1.0,
             sin_n_phi0: 0.0,
         };
 
-        assert_eq!(d1, d2);
-        assert_ne!(d1, d3);
+        assert_eq!(t1, t2);
+        assert_ne!(t1, t3);
     }
 
     #[test]
-    fn dihedral_clone() {
-        let dihedral = DihedralPotential {
-            i: 5,
-            j: 6,
-            k: 7,
-            l: 8,
+    fn torsion_clone() {
+        let torsion = TorsionPotential {
+            atoms: (5, 6, 7, 8),
             v_half: 22.5,
             n: 2,
             cos_n_phi0: 1.0,
             sin_n_phi0: 0.0,
         };
-        let cloned = dihedral.clone();
-        assert_eq!(dihedral, cloned);
+        let cloned = torsion.clone();
+        assert_eq!(torsion, cloned);
     }
 
     #[test]
-    fn improper_planar_construction() {
-        let improper = ImproperPotential::Planar {
-            i: 0,
-            j: 1,
-            k: 2,
-            l: 3,
+    fn inversion_planar_construction() {
+        let inversion = InversionPotential::Planar {
+            atoms: (1, 0, 2, 3),
             c_half: 20.0,
         };
 
-        match improper {
-            ImproperPotential::Planar { i, j, k, l, c_half } => {
-                assert_eq!(i, 0);
-                assert_eq!(j, 1);
-                assert_eq!(k, 2);
-                assert_eq!(l, 3);
+        match inversion {
+            InversionPotential::Planar { atoms, c_half } => {
+                assert_eq!(atoms.0, 1);
+                assert_eq!(atoms.1, 0);
+                assert_eq!(atoms.2, 2);
+                assert_eq!(atoms.3, 3);
                 assert_eq!(c_half, 20.0);
             }
             _ => panic!("expected Planar variant"),
@@ -514,29 +477,23 @@ mod tests {
     }
 
     #[test]
-    fn improper_umbrella_construction() {
-        let improper = ImproperPotential::Umbrella {
-            center: 5,
-            p1: 6,
-            p2: 7,
-            p3: 8,
+    fn inversion_umbrella_construction() {
+        let inversion = InversionPotential::Umbrella {
+            atoms: (5, 6, 7, 8),
             c_half: 13.33,
             cos_psi0: 0.5774,
         };
 
-        match improper {
-            ImproperPotential::Umbrella {
-                center,
-                p1,
-                p2,
-                p3,
+        match inversion {
+            InversionPotential::Umbrella {
+                atoms,
                 c_half,
                 cos_psi0,
             } => {
-                assert_eq!(center, 5);
-                assert_eq!(p1, 6);
-                assert_eq!(p2, 7);
-                assert_eq!(p3, 8);
+                assert_eq!(atoms.0, 5);
+                assert_eq!(atoms.1, 6);
+                assert_eq!(atoms.2, 7);
+                assert_eq!(atoms.3, 8);
                 assert_eq!(c_half, 13.33);
                 assert_eq!(cos_psi0, 0.5774);
             }
@@ -545,19 +502,13 @@ mod tests {
     }
 
     #[test]
-    fn improper_partial_eq() {
-        let i1 = ImproperPotential::Planar {
-            i: 0,
-            j: 1,
-            k: 2,
-            l: 3,
+    fn inversion_partial_eq() {
+        let i1 = InversionPotential::Planar {
+            atoms: (1, 0, 2, 3),
             c_half: 20.0,
         };
-        let i2 = ImproperPotential::Planar {
-            i: 0,
-            j: 1,
-            k: 2,
-            l: 3,
+        let i2 = InversionPotential::Planar {
+            atoms: (1, 0, 2, 3),
             c_half: 20.0,
         };
         assert_eq!(i1, i2);
@@ -757,8 +708,8 @@ mod tests {
 
         assert_eq!(pots.bonds.len(), 0);
         assert_eq!(pots.angles.len(), 0);
-        assert_eq!(pots.dihedrals.len(), 0);
-        assert_eq!(pots.impropers.len(), 0);
+        assert_eq!(pots.torsions.len(), 0);
+        assert_eq!(pots.inversions.len(), 0);
         assert_eq!(pots.vdw_pairs.len(), 0);
         assert_eq!(pots.h_bonds.len(), 0);
     }
@@ -768,25 +719,19 @@ mod tests {
         let mut pots = Potentials::default();
 
         pots.bonds.push(BondPotential::Harmonic {
-            i: 0,
-            j: 1,
+            atoms: (0, 1),
             k_half: 350.0,
             r0: 1.54,
         });
 
         pots.angles.push(AnglePotential::CosineHarmonic {
-            i: 0,
-            j: 1,
-            k: 2,
+            atoms: (0, 1, 2),
             k_half: 50.0,
             cos0: -0.333,
         });
 
-        pots.dihedrals.push(DihedralPotential {
-            i: 0,
-            j: 1,
-            k: 2,
-            l: 3,
+        pots.torsions.push(TorsionPotential {
+            atoms: (0, 1, 2, 3),
             v_half: 1.0,
             n: 3,
             cos_n_phi0: -1.0,
@@ -795,15 +740,14 @@ mod tests {
 
         assert_eq!(pots.bonds.len(), 1);
         assert_eq!(pots.angles.len(), 1);
-        assert_eq!(pots.dihedrals.len(), 1);
+        assert_eq!(pots.torsions.len(), 1);
     }
 
     #[test]
     fn potentials_clone() {
         let mut pots = Potentials::default();
         pots.bonds.push(BondPotential::Harmonic {
-            i: 0,
-            j: 1,
+            atoms: (0, 1),
             k_half: 350.0,
             r0: 1.54,
         });
