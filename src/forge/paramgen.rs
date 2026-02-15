@@ -213,14 +213,14 @@ fn generate_angle_potentials(
                 }
                 AnglePotentialType::Cosine => {
                     if (theta0_deg - 180.0).abs() < 1e-6 {
-                        AnglePotential::CosineLinear { atoms, k }
+                        AnglePotential::CosineLinear { atoms, c: k }
                     } else {
                         let sin_theta0 = theta0_deg.to_radians().sin();
                         let c = k / (sin_theta0 * sin_theta0);
-                        let (k_half, cos0) = CosineHarmonic::precompute(c, theta0_deg);
+                        let (c_half, cos0) = CosineHarmonic::precompute(c, theta0_deg);
                         AnglePotential::CosineHarmonic {
                             atoms,
-                            k_half,
+                            c_half,
                             cos0,
                         }
                     }
@@ -748,11 +748,11 @@ mod tests {
         match &angles[0] {
             AnglePotential::CosineHarmonic {
                 atoms,
-                k_half,
+                c_half,
                 cos0,
             } => {
                 assert_eq!(*atoms, (1, 0, 2));
-                assert!(*k_half > 0.0);
+                assert!(*c_half > 0.0);
                 assert!(cos0.abs() <= 1.0, "cos0 must be in [-1, 1]");
             }
             _ => panic!("expected CosineHarmonic variant"),
@@ -769,12 +769,12 @@ mod tests {
         };
         let angles = generate_angle_potentials(&int, params, &config).unwrap();
 
-        if let AnglePotential::CosineHarmonic { k_half, cos0, .. } = &angles[0] {
+        if let AnglePotential::CosineHarmonic { c_half, cos0, .. } = &angles[0] {
             let theta0_rad = cos0.acos();
             let sin_theta0 = theta0_rad.sin();
             let c = params.global.angle_k / (sin_theta0 * sin_theta0);
-            let expected_k_half = c / 2.0;
-            assert!((*k_half - expected_k_half).abs() < 1e-10);
+            let expected_c_half = c / 2.0;
+            assert!((*c_half - expected_c_half).abs() < 1e-10);
         }
     }
 
@@ -790,9 +790,9 @@ mod tests {
 
         assert_eq!(angles.len(), 1);
         match &angles[0] {
-            AnglePotential::CosineLinear { atoms, k } => {
+            AnglePotential::CosineLinear { atoms, c } => {
                 assert_eq!(*atoms, (0, 1, 2));
-                assert_eq!(*k, params.global.angle_k);
+                assert_eq!(*c, params.global.angle_k);
             }
             _ => panic!("expected CosineLinear for 180° equilibrium angle"),
         }

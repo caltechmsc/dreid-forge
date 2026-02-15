@@ -76,8 +76,8 @@ pub enum AnglePotential {
     CosineHarmonic {
         /// Atom indices (i, j, k) where j is the central atom.
         atoms: (usize, usize, usize),
-        /// Half force constant (kcal/mol/rad²).
-        k_half: f64,
+        /// Half cosine-harmonic constant (kcal/mol).
+        c_half: f64,
         /// Cosine of equilibrium angle.
         cos0: f64,
     },
@@ -85,8 +85,8 @@ pub enum AnglePotential {
     CosineLinear {
         /// Atom indices (i, j, k) where j is the central atom.
         atoms: (usize, usize, usize),
-        /// Force constant (kcal/mol/rad²).
-        k: f64,
+        /// Cosine-linear constant (kcal/mol).
+        c: f64,
     },
     /// Simple theta-harmonic angle potential.
     ThetaHarmonic {
@@ -114,7 +114,7 @@ pub struct TorsionPotential {
     pub sin_n_phi0: f64,
 }
 
-/// Inversion (improper dihedral) potential functions.
+/// Inversion (out-of-plane) potential functions.
 #[derive(Debug, Clone, PartialEq)]
 pub enum InversionPotential {
     /// Planar inversion for sp² centers.
@@ -122,7 +122,7 @@ pub enum InversionPotential {
         /// Atom indices (center, axis, plane1, plane2) where center is the sp² atom,
         /// axis is the out-of-plane neighbor, and plane1/plane2 are in-plane neighbors.
         atoms: (usize, usize, usize, usize),
-        /// Half force constant (kcal/mol/rad²).
+        /// Half inversion constant (kcal/mol).
         c_half: f64,
     },
     /// Umbrella inversion for pyramidal centers.
@@ -130,7 +130,7 @@ pub enum InversionPotential {
         /// Atom indices (center, axis, plane1, plane2) where center is the pyramidal atom,
         /// axis is one neighbor defining the inversion axis, and plane1/plane2 are the other neighbors.
         atoms: (usize, usize, usize, usize),
-        /// Half force constant (kcal/mol/rad²).
+        /// Half inversion constant (kcal/mol).
         c_half: f64,
         /// Cosine of equilibrium inversion angle.
         cos_psi0: f64,
@@ -197,7 +197,7 @@ pub struct Potentials {
     pub angles: Vec<AnglePotential>,
     /// Torsion (proper dihedral) potentials.
     pub torsions: Vec<TorsionPotential>,
-    /// Inversion (improper dihedral) potentials.
+    /// Inversion (out-of-plane) potentials.
     pub inversions: Vec<InversionPotential>,
     /// Van der Waals pair potentials between atom types.
     pub vdw_pairs: Vec<VdwPairPotential>,
@@ -319,20 +319,20 @@ mod tests {
     fn angle_cosine_harmonic_construction() {
         let angle = AnglePotential::CosineHarmonic {
             atoms: (0, 1, 2),
-            k_half: 50.0,
+            c_half: 50.0,
             cos0: 0.5,
         };
 
         match angle {
             AnglePotential::CosineHarmonic {
                 atoms,
-                k_half,
+                c_half,
                 cos0,
             } => {
                 assert_eq!(atoms.0, 0);
                 assert_eq!(atoms.1, 1);
                 assert_eq!(atoms.2, 2);
-                assert_eq!(k_half, 50.0);
+                assert_eq!(c_half, 50.0);
                 assert_eq!(cos0, 0.5);
             }
             _ => panic!("expected CosineHarmonic variant"),
@@ -343,15 +343,15 @@ mod tests {
     fn angle_cosine_linear_construction() {
         let angle = AnglePotential::CosineLinear {
             atoms: (6, 7, 8),
-            k: 100.0,
+            c: 100.0,
         };
 
         match angle {
-            AnglePotential::CosineLinear { atoms, k } => {
+            AnglePotential::CosineLinear { atoms, c } => {
                 assert_eq!(atoms.0, 6);
                 assert_eq!(atoms.1, 7);
                 assert_eq!(atoms.2, 8);
-                assert_eq!(k, 100.0);
+                assert_eq!(c, 100.0);
             }
             _ => panic!("expected CosineLinear variant"),
         }
@@ -385,12 +385,12 @@ mod tests {
     fn angle_partial_eq() {
         let a1 = AnglePotential::CosineHarmonic {
             atoms: (0, 1, 2),
-            k_half: 50.0,
+            c_half: 50.0,
             cos0: 0.5,
         };
         let a2 = AnglePotential::CosineHarmonic {
             atoms: (0, 1, 2),
-            k_half: 50.0,
+            c_half: 50.0,
             cos0: 0.5,
         };
         assert_eq!(a1, a2);
@@ -726,7 +726,7 @@ mod tests {
 
         pots.angles.push(AnglePotential::CosineHarmonic {
             atoms: (0, 1, 2),
-            k_half: 50.0,
+            c_half: 50.0,
             cos0: -0.333,
         });
 
