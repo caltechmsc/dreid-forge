@@ -50,7 +50,7 @@ pub struct GlobalParams {
     /// Angle bending force constant (kcal/mol/rad²).
     #[serde(default = "default_angle_k")]
     pub angle_k: f64,
-    /// Inversion (improper) force constant (kcal/mol/rad²).
+    /// Inversion (out-of-plane) force constant (kcal/mol/rad²).
     #[serde(default = "default_inversion_k")]
     pub inversion_k: f64,
     /// Bond length correction for covalent radii sum (Å).
@@ -192,7 +192,7 @@ pub struct TorsionParams {
 ///
 /// Implements the DREIDING torsion parameter rules based on the
 /// hybridization states of the two central atoms (j and k) in the
-/// i-j-k-l dihedral.
+/// i-j-k-l torsion.
 ///
 /// # Arguments
 ///
