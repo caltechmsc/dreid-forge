@@ -100,13 +100,8 @@ pub struct AtomTypeParams {
     pub vdw_r0: f64,
     /// Van der Waals well depth (kcal/mol).
     pub vdw_d0: f64,
-    /// Exponential-6 zeta parameter (dimensionless).
-    #[serde(default = "default_vdw_zeta")]
+    /// Exponential-6 steepness parameter ζ (dimensionless, must be > 6).
     pub vdw_zeta: f64,
-}
-
-fn default_vdw_zeta() -> f64 {
-    12.0
 }
 
 /// Hydrogen bond potential parameters.
@@ -314,6 +309,7 @@ mod tests {
             bond_angle = 109.47
             vdw_r0 = 3.90
             vdw_d0 = 0.095
+            vdw_zeta = 14.034
         "#;
         let params = load_parameters(Some(custom)).unwrap();
         assert_eq!(params.global.bond_k, 800.0);
