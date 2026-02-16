@@ -168,7 +168,7 @@ pub fn load_parameters(custom_toml: Option<&str>) -> Result<ForceFieldParams, Er
 pub fn get_default_parameters() -> &'static ForceFieldParams {
     DEFAULT_PARAMS.get_or_init(|| {
         toml::from_str(DEFAULT_PARAMS_TOML)
-            .expect("Failed to parse embedded default parameters. This is a library bug.")
+            .expect("failed to parse embedded default parameters (this is a library bug)")
     })
 }
 
