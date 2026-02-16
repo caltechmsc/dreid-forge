@@ -234,7 +234,7 @@ mod tests {
     }
 
     #[test]
-    fn forges_with_exp6_vdw() {
+    fn forges_with_buckingham_vdw() {
         let water = make_water();
         let config = ForgeConfig {
             vdw_potential: VdwPotentialType::Buckingham,

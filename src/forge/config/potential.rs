@@ -1,7 +1,7 @@
 //! Potential energy function type configurations.
 //!
 //! This module defines the available (configurable) functional forms
-//! of potential energy term in the DREIDING force field.
+//! of potential energy terms in the DREIDING force field.
 
 /// Bond stretching potential function type.
 ///

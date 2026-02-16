@@ -111,8 +111,8 @@
 //! - [`QeqConfig`] — QEq solver settings (total charge, convergence)
 //! - [`HybridConfig`] — Hybrid biological/QEq charge assignment settings
 //! - [`BondPotentialType`] — Harmonic vs Morse selection
-//! - [`AnglePotentialType`] — Cosine-harmonic vs theta-harmonic
-//! - [`VdwPotentialType`] — Lennard-Jones vs Buckingham
+//! - [`AnglePotentialType`] — Cosine vs theta-harmonic selection
+//! - [`VdwPotentialType`] — Lennard-Jones vs Buckingham selection
 //!
 //! ## Biological Metadata
 //!
