@@ -171,9 +171,9 @@ pub struct ProtonationConfig {
     pub his_strategy: HisStrategy,
     /// Enable context-aware histidine protonation via salt bridge detection.
     ///
-    /// When `true`, histidine residues near negatively charged residues
-    /// (ASP, GLU within ~4 Å) are assigned the doubly-protonated HIP form
-    /// to model the stabilizing salt bridge interaction. This refinement
+    /// When `true`, histidine residues near carboxylate anions
+    /// (ASP⁻, GLU⁻, C-terminal COO⁻) are assigned the doubly-protonated HIP
+    /// form to model the stabilizing salt bridge interaction. This refinement
     /// is applied **before** the [`HisStrategy`] tautomer selection.
     pub his_salt_bridge: bool,
 }

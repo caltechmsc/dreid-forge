@@ -146,10 +146,11 @@ Notes:
 
 ### Protonation
 
-| Flag               | Type  | Default                        | Meaning                                     |
-| ------------------ | ----- | ------------------------------ | ------------------------------------------- |
-| `--ph <PH>`        | float | **N/A** (by each residue name) | Target pH for protonation state assignment. |
-| `--his <STRATEGY>` | enum  | `network`                      | Histidine tautomer strategy.                |
+| Flag                   | Type  | Default                        | Meaning                                                                                         |
+| ---------------------- | ----- | ------------------------------ | ----------------------------------------------------------------------------------------------- |
+| `--ph <PH>`            | float | **N/A** (by each residue name) | Target pH for protonation state assignment.                                                     |
+| `--his <STRATEGY>`     | enum  | `network`                      | Histidine tautomer strategy.                                                                    |
+| `--no-his-salt-bridge` | flag  | off (salt bridge detection on) | Disable context-aware HIS→HIP assignment near carboxylate anions (ASP⁻, GLU⁻, C-terminal COO⁻). |
 
 `--his` values:
 
