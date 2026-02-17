@@ -1098,12 +1098,12 @@ pub struct ResidueSelector {
 
 ### 7.8 I/O Configurations
 
-| Config              | Purpose                            |
-| ------------------- | ---------------------------------- |
-| `CleanConfig`       | Control water/ion/hydrogen removal |
-| `ProtonationConfig` | pH, histidine strategy             |
-| `SolvateConfig`     | Water box margin, ion types        |
-| `TopologyConfig`    | Hetero templates, disulfide cutoff |
+| Config              | Purpose                                       |
+| ------------------- | --------------------------------------------- |
+| `CleanConfig`       | Control water/ion/hydrogen removal            |
+| `ProtonationConfig` | pH, histidine strategy, salt bridge detection |
+| `SolvateConfig`     | Water box margin, ion types                   |
+| `TopologyConfig`    | Hetero templates, disulfide cutoff            |
 
 ---
 
@@ -1112,7 +1112,7 @@ pub struct ResidueSelector {
 ```mermaid
 flowchart BT
     subgraph "External Crates"
-        BF["bio-forge v0.3<br><i>structure preparation</i>"]
+        BF["bio-forge v0.4<br><i>structure preparation</i>"]
         DT["dreid-typer v0.5<br><i>atom typing</i>"]
         DK["dreid-kernel v0.4<br><i>potential precomputation</i>"]
         CQ["cheq v0.5<br><i>QEq charges</i>"]
@@ -1146,7 +1146,7 @@ flowchart BT
 
 | Crate          | Version | Integration Module                            | Key Types Exchanged                                                                      |
 | -------------- | ------- | --------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| `bio-forge`    | 0.3     | `io::util`, `io::pdb`, `io::mmcif`            | `Structure`, `Topology`, `Template`, `CleanConfig`, `ProtonationConfig`, `SolvateConfig` |
+| `bio-forge`    | 0.4     | `io::util`, `io::pdb`, `io::mmcif`            | `Structure`, `Topology`, `Template`, `CleanConfig`, `ProtonationConfig`, `SolvateConfig` |
 | `dreid-typer`  | 0.5     | `forge::typer`                                | `MolecularGraph`, `MolecularTopology`, `Hybridization`                                   |
 | `dreid-kernel` | 0.4     | `forge::paramgen`                             | `Harmonic`, `Morse`, `CosineHarmonic`, `Torsion`, `LennardJones`, etc.                   |
 | `cheq`         | 0.5     | `forge::charge::qeq`, `forge::charge::hybrid` | `QEqSolver`, `ExternalPotential`, `PointCharge`                                          |

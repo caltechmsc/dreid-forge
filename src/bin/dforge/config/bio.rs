@@ -26,6 +26,7 @@ pub fn build_protonate_config(opts: &ProtonationOptions) -> ProtonationConfig {
         target_ph: opts.ph,
         remove_existing_h: true,
         his_strategy: opts.his.into(),
+        his_salt_bridge: !opts.no_his_salt_bridge,
     }
 }
 

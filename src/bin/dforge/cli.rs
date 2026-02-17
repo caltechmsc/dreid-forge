@@ -240,6 +240,12 @@ pub struct ProtonationOptions {
     /// Histidine tautomer selection strategy
     #[arg(long, value_name = "STRATEGY", default_value = "network")]
     pub his: HisStrategy,
+
+    /// Disable context-aware histidine salt bridge detection.
+    /// By default, histidines near carboxylate anions (ASP⁻, GLU⁻, C-terminal COO⁻)
+    /// are assigned the doubly-protonated HIP form.
+    #[arg(long)]
+    pub no_his_salt_bridge: bool,
 }
 
 #[derive(Args)]

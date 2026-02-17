@@ -113,9 +113,14 @@ fn build_prep_substeps(args: &BioArgs, format: Format) -> Vec<String> {
         .ph
         .map(|p| format!("{:.1}", p))
         .unwrap_or_else(|| "by residue name".to_string());
+    let salt_bridge_str = if args.protonation.no_his_salt_bridge {
+        ""
+    } else {
+        ", salt bridge: on"
+    };
     steps.push(format!(
-        "Add hydrogens (pH: {}, HIS: {})",
-        ph_str, his_method
+        "Add hydrogens (pH: {}, HIS: {}{})",
+        ph_str, his_method, salt_bridge_str
     ));
 
     if args.solvation.solvate {
