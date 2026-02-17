@@ -152,11 +152,11 @@ mod tests {
         assert_eq!(forged.atom_types.len(), 2);
         assert_eq!(forged.potentials.bonds.len(), 2);
         assert_eq!(forged.potentials.angles.len(), 1);
-        assert!(forged.potentials.dihedrals.is_empty());
+        assert!(forged.potentials.torsions.is_empty());
     }
 
     #[test]
-    fn forges_ethane_with_dihedrals() {
+    fn forges_ethane_with_torsions() {
         let ethane = make_ethane();
         let config = ForgeConfig::default();
         let forged = forge(&ethane, &config).expect("should forge ethane");
@@ -164,18 +164,18 @@ mod tests {
         assert_eq!(forged.atom_properties.len(), 8);
         assert_eq!(forged.potentials.bonds.len(), 7);
         assert!(!forged.potentials.angles.is_empty());
-        assert!(!forged.potentials.dihedrals.is_empty());
+        assert!(!forged.potentials.torsions.is_empty());
     }
 
     #[test]
-    fn forges_benzene_with_impropers() {
+    fn forges_benzene_with_inversions() {
         let benzene = make_benzene();
         let config = ForgeConfig::default();
         let forged = forge(&benzene, &config).expect("should forge benzene");
 
         assert_eq!(forged.atom_properties.len(), 12);
         assert!(forged.atom_types.contains(&"C_R".to_string()));
-        assert!(!forged.potentials.impropers.is_empty());
+        assert!(!forged.potentials.inversions.is_empty());
     }
 
     #[test]
@@ -217,13 +217,13 @@ mod tests {
     }
 
     #[test]
-    fn forges_with_cosine_harmonic_angles() {
+    fn forges_with_cosine_angles() {
         let water = make_water();
         let config = ForgeConfig {
-            angle_potential: AnglePotentialType::CosineHarmonic,
+            angle_potential: AnglePotentialType::Cosine,
             ..Default::default()
         };
-        let forged = forge(&water, &config).expect("should forge with CosineHarmonic");
+        let forged = forge(&water, &config).expect("should forge with Cosine");
 
         for angle in &forged.potentials.angles {
             assert!(matches!(
@@ -234,18 +234,18 @@ mod tests {
     }
 
     #[test]
-    fn forges_with_exp6_vdw() {
+    fn forges_with_buckingham_vdw() {
         let water = make_water();
         let config = ForgeConfig {
-            vdw_potential: VdwPotentialType::Exponential6,
+            vdw_potential: VdwPotentialType::Buckingham,
             ..Default::default()
         };
-        let forged = forge(&water, &config).expect("should forge with Exp6");
+        let forged = forge(&water, &config).expect("should forge with Buckingham");
 
         for vdw in &forged.potentials.vdw_pairs {
             assert!(matches!(
                 vdw,
-                crate::model::topology::VdwPairPotential::Exponential6 { .. }
+                crate::model::topology::VdwPairPotential::Buckingham { .. }
             ));
         }
     }

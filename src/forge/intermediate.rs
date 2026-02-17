@@ -3,7 +3,7 @@
 //! This module defines the internal data structures used during the
 //! DREIDING parameterization process. The [`IntermediateSystem`] holds
 //! atoms with assigned types and charges, bonds with physical orders,
-//! and enumerated angles, dihedrals, and impropers.
+//! and enumerated angles, torsions, and inversions.
 //!
 //! These structures are not part of the public API and are used only
 //! within the forge module to pass data between pipeline stages.
@@ -117,9 +117,9 @@ pub struct IntermediateAngle {
     pub k: usize,
 }
 
-/// Intermediate proper dihedral (four-atom torsion) representation.
+/// Intermediate torsion (proper dihedral) representation.
 #[derive(Debug, Clone)]
-pub struct IntermediateDihedral {
+pub struct IntermediateTorsion {
     /// First atom index.
     pub i: usize,
     /// Second atom index (part of central bond).
@@ -130,23 +130,23 @@ pub struct IntermediateDihedral {
     pub l: usize,
 }
 
-/// Intermediate improper dihedral (out-of-plane) representation.
+/// Intermediate inversion (out-of-plane) representation.
 #[derive(Debug, Clone)]
-pub struct IntermediateImproper {
-    /// Central atom (typically sp² center).
+pub struct IntermediateInversion {
+    /// Central atom (sp² or pyramidal center) index.
     pub center: usize,
-    /// First peripheral atom.
-    pub p1: usize,
-    /// Second peripheral atom.
-    pub p2: usize,
-    /// Third peripheral atom.
-    pub p3: usize,
+    /// Axis-defining neighbor index.
+    pub axis: usize,
+    /// First in-plane neighbor index.
+    pub plane1: usize,
+    /// Second in-plane neighbor index.
+    pub plane2: usize,
 }
 
 /// Complete intermediate system for parameterization pipeline.
 ///
 /// Contains all atoms, bonds, enumerated internal coordinates
-/// (angles, dihedrals, impropers), and optional biological metadata
+/// (angles, torsions, inversions), and optional biological metadata
 /// needed for parameter generation.
 #[derive(Debug, Clone)]
 pub struct IntermediateSystem {
@@ -156,10 +156,10 @@ pub struct IntermediateSystem {
     pub bonds: Vec<IntermediateBond>,
     /// All angle bend terms.
     pub angles: Vec<IntermediateAngle>,
-    /// All proper dihedral (torsion) terms.
-    pub dihedrals: Vec<IntermediateDihedral>,
-    /// All improper dihedral (out-of-plane) terms.
-    pub impropers: Vec<IntermediateImproper>,
+    /// All torsion (proper dihedral) terms.
+    pub torsions: Vec<IntermediateTorsion>,
+    /// All inversion (out-of-plane) terms.
+    pub inversions: Vec<IntermediateInversion>,
     /// Optional biological metadata.
     pub bio_metadata: Option<BioMetadata>,
 }
@@ -168,7 +168,7 @@ impl IntermediateSystem {
     /// Creates an intermediate system from a molecular [`System`].
     ///
     /// Converts atoms and bonds from the input system, building the
-    /// neighbor lists for each atom. Angles, dihedrals, and impropers
+    /// neighbor lists for each atom. Angles, torsions, and inversions
     /// are left empty to be populated by the typer. Biological metadata
     /// is preserved if present.
     ///
@@ -219,8 +219,8 @@ impl IntermediateSystem {
             atoms,
             bonds,
             angles: Vec::new(),
-            dihedrals: Vec::new(),
-            impropers: Vec::new(),
+            torsions: Vec::new(),
+            inversions: Vec::new(),
             bio_metadata: system.bio_metadata.clone(),
         })
     }
@@ -292,8 +292,8 @@ mod tests {
         assert_eq!(int.bonds.len(), 2);
 
         assert!(int.angles.is_empty());
-        assert!(int.dihedrals.is_empty());
-        assert!(int.impropers.is_empty());
+        assert!(int.torsions.is_empty());
+        assert!(int.inversions.is_empty());
 
         assert!(int.bio_metadata.is_none());
         assert!(!int.has_bio_metadata());
@@ -313,8 +313,8 @@ mod tests {
         assert_eq!(int.bonds.len(), 7);
 
         assert!(int.angles.is_empty());
-        assert!(int.dihedrals.is_empty());
-        assert!(int.impropers.is_empty());
+        assert!(int.torsions.is_empty());
+        assert!(int.inversions.is_empty());
     }
 
     #[test]

@@ -147,7 +147,7 @@ pub struct PotentialOptions {
     pub bond_potential: BondPotential,
 
     /// Angle potential functional form
-    #[arg(long, value_name = "TYPE", default_value = "theta-harmonic")]
+    #[arg(long, value_name = "TYPE", default_value = "cosine")]
     pub angle_potential: AnglePotential,
 
     /// Van der Waals potential functional form
@@ -484,12 +484,11 @@ pub enum BondPotential {
 
 #[derive(Clone, Copy, ValueEnum, Default)]
 pub enum AnglePotential {
-    /// Cosine-harmonic (DREIDING original)
-    Cosine,
-    /// Theta-harmonic (simple harmonic in angle)
+    /// Cosine-based angle potential
     #[default]
-    #[value(name = "theta-harmonic", alias = "theta")]
-    ThetaHarmonic,
+    Cosine,
+    /// Theta-based harmonic angle potential
+    Theta,
 }
 
 #[derive(Clone, Copy, ValueEnum, Default)]

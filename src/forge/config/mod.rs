@@ -79,7 +79,7 @@ impl Default for ForgeConfig {
             params: None,
             charge_method: ChargeMethod::None,
             bond_potential: BondPotentialType::Harmonic,
-            angle_potential: AnglePotentialType::ThetaHarmonic,
+            angle_potential: AnglePotentialType::Cosine,
             vdw_potential: VdwPotentialType::LennardJones,
         }
     }
@@ -96,7 +96,7 @@ mod tests {
         assert!(config.params.is_none());
         assert!(matches!(config.charge_method, ChargeMethod::None));
         assert_eq!(config.bond_potential, BondPotentialType::Harmonic);
-        assert_eq!(config.angle_potential, AnglePotentialType::ThetaHarmonic);
+        assert_eq!(config.angle_potential, AnglePotentialType::Cosine);
         assert_eq!(config.vdw_potential, VdwPotentialType::LennardJones);
     }
 }

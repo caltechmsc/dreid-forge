@@ -196,13 +196,13 @@ pub fn print_parameters(forged: &ForgedSystem, bond_type: &str, angle_type: &str
             "terms",
         ),
         (
-            "Dihedrals".to_string(),
-            format!("{}", forged.potentials.dihedrals.len()),
+            "Torsions".to_string(),
+            format!("{}", forged.potentials.torsions.len()),
             "terms",
         ),
         (
-            "Impropers".to_string(),
-            format!("{}", forged.potentials.impropers.len()),
+            "Inversions".to_string(),
+            format!("{}", forged.potentials.inversions.len()),
             "terms",
         ),
         (

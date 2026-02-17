@@ -50,7 +50,7 @@ pub struct GlobalParams {
     /// Angle bending force constant (kcal/mol/rad²).
     #[serde(default = "default_angle_k")]
     pub angle_k: f64,
-    /// Inversion (improper) force constant (kcal/mol/rad²).
+    /// Inversion (out-of-plane) force constant (kcal/mol/rad²).
     #[serde(default = "default_inversion_k")]
     pub inversion_k: f64,
     /// Bond length correction for covalent radii sum (Å).
@@ -100,13 +100,8 @@ pub struct AtomTypeParams {
     pub vdw_r0: f64,
     /// Van der Waals well depth (kcal/mol).
     pub vdw_d0: f64,
-    /// Exponential-6 zeta parameter (dimensionless).
-    #[serde(default = "default_vdw_zeta")]
+    /// Exponential-6 steepness parameter ζ (dimensionless, must be > 6).
     pub vdw_zeta: f64,
-}
-
-fn default_vdw_zeta() -> f64 {
-    12.0
 }
 
 /// Hydrogen bond potential parameters.
@@ -173,7 +168,7 @@ pub fn load_parameters(custom_toml: Option<&str>) -> Result<ForceFieldParams, Er
 pub fn get_default_parameters() -> &'static ForceFieldParams {
     DEFAULT_PARAMS.get_or_init(|| {
         toml::from_str(DEFAULT_PARAMS_TOML)
-            .expect("Failed to parse embedded default parameters. This is a library bug.")
+            .expect("failed to parse embedded default parameters (this is a library bug)")
     })
 }
 
@@ -183,7 +178,7 @@ pub struct TorsionParams {
     /// Barrier height (kcal/mol).
     pub v_barrier: f64,
     /// Periodicity (number of minima per 360°).
-    pub periodicity: i32,
+    pub periodicity: u8,
     /// Phase offset (degrees).
     pub phase_offset: f64,
 }
@@ -192,7 +187,7 @@ pub struct TorsionParams {
 ///
 /// Implements the DREIDING torsion parameter rules based on the
 /// hybridization states of the two central atoms (j and k) in the
-/// i-j-k-l dihedral.
+/// i-j-k-l torsion.
 ///
 /// # Arguments
 ///
@@ -314,6 +309,7 @@ mod tests {
             bond_angle = 109.47
             vdw_r0 = 3.90
             vdw_d0 = 0.095
+            vdw_zeta = 14.034
         "#;
         let params = load_parameters(Some(custom)).unwrap();
         assert_eq!(params.global.bond_k, 800.0);

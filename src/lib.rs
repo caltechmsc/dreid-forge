@@ -8,7 +8,7 @@
 //!   element, hybridization, and local bonding environment
 //! - **Flexible charge calculation** — Global QEq, hybrid (classical + QEq), or
 //!   embedded QEq with environment polarization for ligands in protein complexes
-//! - **Parameter generation** — Bond, angle, dihedral, improper, van der Waals,
+//! - **Parameter generation** — Bond, angle, torsion, inversion, van der Waals,
 //!   and hydrogen bond potentials with multiple functional forms
 //! - **Flexible I/O** — Read/write PDB, mmCIF, MOL2, SDF formats; export to BGF
 //!
@@ -63,11 +63,11 @@
 //! // Angle potentials: all angles around sp³ centers
 //! assert_eq!(forged.potentials.angles.len(), 13);
 //!
-//! // Dihedral potentials: H-C-C-H, H-C-C-O, C-C-O-H, H-C-O-H
-//! assert_eq!(forged.potentials.dihedrals.len(), 12);
+//! // Torsion potentials: H-C-C-H, H-C-C-O, C-C-O-H, H-C-O-H
+//! assert_eq!(forged.potentials.torsions.len(), 12);
 //!
-//! // Improper potentials: none for all-sp³ molecule
-//! assert!(forged.potentials.impropers.is_empty());
+//! // Inversion potentials: none for all-sp³ molecule
+//! assert!(forged.potentials.inversions.is_empty());
 //!
 //! // VdW pair potentials: n(n+1)/2 = 4×5/2 = 10 pairs
 //! assert_eq!(forged.potentials.vdw_pairs.len(), 10);
@@ -99,10 +99,10 @@
 //! - [`AtomParam`] — Per-atom charge, mass, and type index
 //! - [`Potentials`] — Collection of all potential energy functions
 //! - [`BondPotential`] — Harmonic or Morse bond stretching
-//! - [`AnglePotential`] — Cosine-harmonic or theta-harmonic bending
-//! - [`DihedralPotential`] — Periodic torsion potentials
-//! - [`ImproperPotential`] — Planar or umbrella out-of-plane terms
-//! - [`VdwPairPotential`] — Lennard-Jones or Exponential-6 dispersion
+//! - [`AnglePotential`] — Cosine-harmonic, cosine-linear, or theta-harmonic bending
+//! - [`TorsionPotential`] — Periodic torsion potentials
+//! - [`InversionPotential`] — Planar or umbrella out-of-plane terms
+//! - [`VdwPairPotential`] — Lennard-Jones or Buckingham dispersion
 //! - [`HBondPotential`] — Directional hydrogen bond terms
 //!
 //! ## Configuration
@@ -111,8 +111,8 @@
 //! - [`QeqConfig`] — QEq solver settings (total charge, convergence)
 //! - [`HybridConfig`] — Hybrid biological/QEq charge assignment settings
 //! - [`BondPotentialType`] — Harmonic vs Morse selection
-//! - [`AnglePotentialType`] — Cosine-harmonic vs theta-harmonic
-//! - [`VdwPotentialType`] — Lennard-Jones vs Exponential-6
+//! - [`AnglePotentialType`] — Cosine vs theta-harmonic selection
+//! - [`VdwPotentialType`] — Lennard-Jones vs Buckingham selection
 //!
 //! ## Biological Metadata
 //!
@@ -132,8 +132,8 @@ pub use model::system::{Bond, System};
 pub use model::types::{BondOrder, Element, ParseBondOrderError, ParseElementError};
 
 pub use model::topology::{
-    AnglePotential, AtomParam, BondPotential, DihedralPotential, ForgedSystem, HBondPotential,
-    ImproperPotential, Potentials, VdwPairPotential,
+    AnglePotential, AtomParam, BondPotential, ForgedSystem, HBondPotential, InversionPotential,
+    Potentials, TorsionPotential, VdwPairPotential,
 };
 
 pub use model::metadata::{

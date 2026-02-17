@@ -352,7 +352,7 @@ mod tests {
             assert_eq!(embedded.cutoff_radius, 8.0);
             assert_eq!(embedded.qeq.total_charge, -1.0);
         } else {
-            panic!("Expected Embedded variant");
+            panic!("expected Embedded variant");
         }
     }
 }

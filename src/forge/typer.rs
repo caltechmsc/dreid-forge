@@ -2,7 +2,7 @@
 //!
 //! This module handles the assignment of DREIDING atom types to atoms
 //! based on their element, hybridization, and bonding environment. It
-//! also populates the angle, dihedral, and improper lists in the
+//! also populates the angle, torsion, and inversion lists in the
 //! intermediate system.
 //!
 //! Atom typing is delegated to the `dreid-typer` crate which implements
@@ -10,7 +10,7 @@
 
 use super::error::Error;
 use super::intermediate::{
-    IntermediateAngle, IntermediateDihedral, IntermediateImproper, IntermediateSystem,
+    IntermediateAngle, IntermediateInversion, IntermediateSystem, IntermediateTorsion,
 };
 use crate::model::types::BondOrder;
 use dreid_typer::{
@@ -22,8 +22,8 @@ use dreid_typer::{
 ///
 /// Uses the `dreid-typer` crate to analyze the molecular graph and assign
 /// atom types (e.g., "C_3", "O_2", "N_R") based on element, hybridization,
-/// and bonding environment. Also populates the angles, dihedrals, and
-/// impropers lists.
+/// and bonding environment. Also populates the angles, torsions, and
+/// inversions lists.
 ///
 /// # Arguments
 ///
@@ -76,25 +76,25 @@ fn apply_topology(system: &mut IntermediateSystem, topology: &MolecularTopology)
         })
         .collect();
 
-    system.dihedrals = topology
-        .propers
+    system.torsions = topology
+        .torsions
         .iter()
-        .map(|d| IntermediateDihedral {
-            i: d.atom_ids.0,
-            j: d.atom_ids.1,
-            k: d.atom_ids.2,
-            l: d.atom_ids.3,
+        .map(|t| IntermediateTorsion {
+            i: t.atom_ids.0,
+            j: t.atom_ids.1,
+            k: t.atom_ids.2,
+            l: t.atom_ids.3,
         })
         .collect();
 
-    system.impropers = topology
-        .impropers
+    system.inversions = topology
+        .inversions
         .iter()
-        .map(|imp| IntermediateImproper {
-            p1: imp.atom_ids.0,
-            p2: imp.atom_ids.1,
-            center: imp.atom_ids.2,
-            p3: imp.atom_ids.3,
+        .map(|inv| IntermediateInversion {
+            center: inv.atom_ids.0,
+            axis: inv.atom_ids.1,
+            plane1: inv.atom_ids.2,
+            plane2: inv.atom_ids.3,
         })
         .collect();
 }
@@ -219,8 +219,8 @@ mod tests {
         assign_atom_types(&mut int, None).unwrap();
 
         assert_eq!(int.angles.len(), 1);
-        assert!(int.dihedrals.is_empty());
-        assert!(int.impropers.is_empty());
+        assert!(int.torsions.is_empty());
+        assert!(int.inversions.is_empty());
     }
 
     #[test]
@@ -243,8 +243,8 @@ mod tests {
         assign_atom_types(&mut int, None).unwrap();
 
         assert!(!int.angles.is_empty());
-        assert_eq!(int.dihedrals.len(), 9);
-        assert!(int.impropers.is_empty());
+        assert_eq!(int.torsions.len(), 9);
+        assert!(int.inversions.is_empty());
     }
 
     #[test]
@@ -275,12 +275,12 @@ mod tests {
     }
 
     #[test]
-    fn generates_impropers_for_planar_centers() {
+    fn generates_inversions_for_planar_centers() {
         let benzene = make_benzene();
         let mut int = IntermediateSystem::from_system(&benzene).unwrap();
         assign_atom_types(&mut int, None).unwrap();
 
-        assert_eq!(int.impropers.len(), 6);
+        assert_eq!(int.inversions.len(), 18);
     }
 
     #[test]

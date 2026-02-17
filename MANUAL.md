@@ -278,13 +278,13 @@ These options tune the QEq solver and apply to both `qeq` and `hybrid` charge me
 
 These affect the DREIDING parameterization stage.
 
-| Flag                       | Values / Type              | Default          | Meaning                                                                                           |
-| -------------------------- | -------------------------- | ---------------- | ------------------------------------------------------------------------------------------------- |
-| `--bond-potential <TYPE>`  | `harmonic`, `morse`        | `harmonic`       | Bond potential functional form.                                                                   |
-| `--angle-potential <TYPE>` | `cosine`, `theta-harmonic` | `theta-harmonic` | Angle potential functional form. (`theta` is accepted as an alias.)                               |
-| `--vdw-potential <TYPE>`   | `lj`, `exp6`               | `lj`             | van der Waals potential functional form. (`lennard-jones` and `buckingham` are accepted aliases.) |
-| `--rules <FILE>`           | path                       | none             | Custom typing rules (TOML file).                                                                  |
-| `--params <FILE>`          | path                       | none             | Custom force field parameters (TOML file).                                                        |
+| Flag                       | Values / Type       | Default    | Meaning                                                                                           |
+| -------------------------- | ------------------- | ---------- | ------------------------------------------------------------------------------------------------- |
+| `--bond-potential <TYPE>`  | `harmonic`, `morse` | `harmonic` | Bond potential functional form.                                                                   |
+| `--angle-potential <TYPE>` | `cosine`, `theta`   | `cosine`   | Angle potential functional form.                                                                  |
+| `--vdw-potential <TYPE>`   | `lj`, `exp6`        | `lj`       | van der Waals potential functional form. (`lennard-jones` and `buckingham` are accepted aliases.) |
+| `--rules <FILE>`           | path                | none       | Custom typing rules (TOML file).                                                                  |
+| `--params <FILE>`          | path                | none       | Custom force field parameters (TOML file).                                                        |
 
 ---
 
@@ -324,13 +324,13 @@ Same as `dforge bio` — see above.
 
 These affect the DREIDING parameterization stage.
 
-| Flag                       | Values / Type              | Default          | Meaning                                                                                           |
-| -------------------------- | -------------------------- | ---------------- | ------------------------------------------------------------------------------------------------- |
-| `--bond-potential <TYPE>`  | `harmonic`, `morse`        | `harmonic`       | Bond potential functional form.                                                                   |
-| `--angle-potential <TYPE>` | `cosine`, `theta-harmonic` | `theta-harmonic` | Angle potential functional form. (`theta` is accepted as an alias.)                               |
-| `--vdw-potential <TYPE>`   | `lj`, `exp6`               | `lj`             | van der Waals potential functional form. (`lennard-jones` and `buckingham` are accepted aliases.) |
-| `--rules <FILE>`           | path                       | none             | Custom typing rules (TOML file).                                                                  |
-| `--params <FILE>`          | path                       | none             | Custom force field parameters (TOML file).                                                        |
+| Flag                       | Values / Type       | Default    | Meaning                                                                                           |
+| -------------------------- | ------------------- | ---------- | ------------------------------------------------------------------------------------------------- |
+| `--bond-potential <TYPE>`  | `harmonic`, `morse` | `harmonic` | Bond potential functional form.                                                                   |
+| `--angle-potential <TYPE>` | `cosine`, `theta`   | `cosine`   | Angle potential functional form.                                                                  |
+| `--vdw-potential <TYPE>`   | `lj`, `exp6`        | `lj`       | van der Waals potential functional form. (`lennard-jones` and `buckingham` are accepted aliases.) |
+| `--rules <FILE>`           | path                | none       | Custom typing rules (TOML file).                                                                  |
+| `--params <FILE>`          | path                | none       | Custom force field parameters (TOML file).                                                        |
 
 ### Output Format Constraints
 

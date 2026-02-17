@@ -1,7 +1,7 @@
 //! Potential energy function type configurations.
 //!
 //! This module defines the available (configurable) functional forms
-//! of potential energy term in the DREIDING force field.
+//! of potential energy terms in the DREIDING force field.
 
 /// Bond stretching potential function type.
 ///
@@ -25,12 +25,12 @@ pub enum BondPotentialType {
 /// angles.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum AnglePotentialType {
-    /// Cosine-harmonic angle potential (DREIDING original).
-    CosineHarmonic,
+    /// Cosine-harmonic or cosine-linear angle potential.
+    #[default]
+    Cosine,
 
     /// Theta-harmonic angle potential.
-    #[default]
-    ThetaHarmonic,
+    Theta,
 }
 
 /// Van der Waals non-bonded potential function type.
@@ -43,8 +43,8 @@ pub enum VdwPotentialType {
     #[default]
     LennardJones,
 
-    /// Exponential-6 (Buckingham) potential.
-    Exponential6,
+    /// Buckingham (Exponential-6) potential.
+    Buckingham,
 }
 
 #[cfg(test)]
@@ -58,10 +58,7 @@ mod tests {
 
     #[test]
     fn angle_potential_default() {
-        assert_eq!(
-            AnglePotentialType::default(),
-            AnglePotentialType::ThetaHarmonic
-        );
+        assert_eq!(AnglePotentialType::default(), AnglePotentialType::Cosine);
     }
 
     #[test]
@@ -75,11 +72,11 @@ mod tests {
         let bond_copy = bond;
         assert_eq!(bond, bond_copy);
 
-        let angle = AnglePotentialType::CosineHarmonic;
+        let angle = AnglePotentialType::Cosine;
         let angle_copy = angle;
         assert_eq!(angle, angle_copy);
 
-        let vdw = VdwPotentialType::Exponential6;
+        let vdw = VdwPotentialType::Buckingham;
         let vdw_copy = vdw;
         assert_eq!(vdw, vdw_copy);
     }

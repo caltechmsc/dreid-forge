@@ -106,7 +106,7 @@ fn build_param_substeps(args: &ChemArgs) -> Vec<String> {
     };
     let angle_type = match args.potential.angle_potential {
         AnglePotential::Cosine => "cosine",
-        AnglePotential::ThetaHarmonic => "θ-harmonic",
+        AnglePotential::Theta => "θ-harmonic",
     };
     let vdw_type = match args.potential.vdw_potential {
         VdwPotential::Lj => "LJ 12-6",

@@ -4,7 +4,7 @@ This document provides a comprehensive guide to the internal design, data flow, 
 
 ## 1. System Overview
 
-DREID-Forge is architected as a **multi-stage transformation pipeline** that converts raw molecular geometry into simulation-ready force field parameters. The system integrates four external crates (`bio-forge`, `dreid-typer`, `cheq`, `ffcharge`) and orchestrates them through a unified API.
+DREID-Forge is architected as a **multi-stage transformation pipeline** that converts raw molecular geometry into simulation-ready force field parameters. The system integrates five external crates (`bio-forge`, `dreid-typer`, `dreid-kernel`, `cheq`, `ffcharge`) and orchestrates them through a unified API.
 
 ```mermaid
 flowchart TD
@@ -43,7 +43,7 @@ flowchart TD
         INT["IntermediateSystem"]
         TYPER["Atom Typing<br><i>(dreid-typer)</i>"]
         CHARGE["Charge Calculation<br><i>(cheq/ffcharge)</i>"]
-        PGEN["Parameter Generation"]
+        PGEN["Parameter Generation<br><i>(dreid-kernel)</i>"]
     end
 
     subgraph "Output"
@@ -81,19 +81,18 @@ flowchart TD
     PGEN --> FS
 
     FS --> W_BGF
-    FS --> W_LAM
     SYS --> W_PDB
     SYS --> W_CHEM
 ```
 
 ### Core Components
 
-| Component           | Description                                                                                                     |
-| ------------------- | --------------------------------------------------------------------------------------------------------------- |
-| **I/O Layer**       | Readers and writers for molecular structure file formats                                                        |
-| **Model Layer**     | Neutral data structures (`System`, `Atom`, `Bond`, `BioMetadata`)                                               |
-| **Forge Pipeline**  | The parameterization engine: typing → charging → parameter generation                                           |
-| **External Crates** | `bio-forge` (structure prep), `dreid-typer` (atom typing), `cheq` (QEq charges), `ffcharge` (classical charges) |
+| Component           | Description                                                                                                                                                |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **I/O Layer**       | Readers and writers for molecular structure file formats                                                                                                   |
+| **Model Layer**     | Neutral data structures (`System`, `Atom`, `Bond`, `BioMetadata`)                                                                                          |
+| **Forge Pipeline**  | The parameterization engine: typing → charging → parameter generation                                                                                      |
+| **External Crates** | `bio-forge` (structure prep), `dreid-typer` (atom typing), `dreid-kernel` (potential precomputation), `cheq` (QEq charges), `ffcharge` (classical charges) |
 
 ---
 
@@ -268,7 +267,7 @@ flowchart TD
         subgraph "dreid-typer"
             DT_P["Perception<br><i>rings, aromaticity, hybridization</i>"]
             DT_T["Typing Engine<br><i>rule evaluation</i>"]
-            DT_B["Topology Builder<br><i>angles, dihedrals, impropers</i>"]
+            DT_B["Topology Builder<br><i>angles, torsions, inversions</i>"]
         end
     end
 
@@ -286,8 +285,8 @@ flowchart TD
         PG_AT["Collect Atom Types"]
         PG_BP["Generate Bond Potentials"]
         PG_AP["Generate Angle Potentials"]
-        PG_DP["Generate Dihedral Potentials"]
-        PG_IP["Generate Improper Potentials"]
+        PG_TP["Generate Torsion Potentials"]
+        PG_IP["Generate Inversion Potentials"]
         PG_VDW["Generate VdW Potentials"]
         PG_HB["Generate H-Bond Potentials"]
     end
@@ -307,7 +306,7 @@ flowchart TD
     S3 --> CQ_B --> CQ_S --> CQ_R
 
     CQ_R --> S4
-    S4 --> PG_AT --> PG_BP --> PG_AP --> PG_DP --> PG_IP --> PG_VDW --> PG_HB
+    S4 --> PG_AT --> PG_BP --> PG_AP --> PG_TP --> PG_IP --> PG_VDW --> PG_HB
 
     PG_HB --> FS
 ```
@@ -384,7 +383,7 @@ flowchart TD
 
         subgraph "Phase 3: Building"
             TB["TopologyBuilder"]
-            TERMS["Angles, Dihedrals, Impropers"]
+            TERMS["Angles, Torsions, Inversions"]
         end
 
         MT["MolecularTopology"]
@@ -427,8 +426,8 @@ flowchart TD
 - `IntermediateAtom.hybridization` ← `Hybridization` enum
 - `IntermediateBond.physical_order` ← `PhysicalBondOrder` (Single/Double/Triple/Resonant)
 - `IntermediateSystem.angles` ← enumerated angle terms
-- `IntermediateSystem.dihedrals` ← enumerated proper dihedral terms
-- `IntermediateSystem.impropers` ← enumerated improper dihedral terms
+- `IntermediateSystem.torsions` ← enumerated torsion (dihedral) terms
+- `IntermediateSystem.inversions` ← enumerated inversion (out-of-plane) terms
 
 ### 3.3 Stage 3: Charge Calculation
 
@@ -500,7 +499,6 @@ flowchart TD
 **QEq algorithm summary:**
 
 1. **Build system:** Construct matrix $A$ and vector $b$ where:
-
    - Diagonal: $A_{ii} = J_i$ (atomic hardness)
    - Off-diagonal: $A_{ij} = J_{ij}(r_{ij})$ (screened Coulomb)
    - Constraint row: charge conservation
@@ -612,11 +610,11 @@ The `SpatialGrid` data structure provides O(1) amortized neighbor lookups:
 
 **Why fixed charges only as environment:**
 
-Only atoms with pre-assigned fixed charges (proteins, nucleic acids, water, ions) are included in the external potential. Including other ligands would create mutual dependencies requiring self-consistent iteration, adding complexity without significant accuracy improvement for typical drug-protein systems
+Only atoms with pre-assigned fixed charges (proteins, nucleic acids, water, ions) are included in the external potential. Including other ligands would create mutual dependencies requiring self-consistent iteration, adding complexity without significant accuracy improvement for typical drug-protein systems.
 
 ### 3.4 Stage 4: Parameter Generation
 
-The final stage generates all force field parameters from the typed and charged system:
+The final stage generates all force field parameters from the typed and charged system. Each potential type is computed using `dreid-kernel` precomputation functions that convert physical constants into optimized kernel-ready parameters.
 
 ```mermaid
 flowchart TD
@@ -633,13 +631,13 @@ flowchart TD
 
     subgraph "Bonded Terms"
         BP["BondPotential[]<br><i>Harmonic or Morse</i>"]
-        ANG["AnglePotential[]<br><i>CosineHarmonic or ThetaHarmonic</i>"]
-        DIH["DihedralPotential[]<br><i>periodic torsion</i>"]
-        IMP["ImproperPotential[]<br><i>Planar or Umbrella</i>"]
+        ANG["AnglePotential[]<br><i>CosineHarmonic, CosineLinear,<br>or ThetaHarmonic</i>"]
+        TOR["TorsionPotential[]<br><i>periodic torsion</i>"]
+        INV["InversionPotential[]<br><i>Planar or Umbrella</i>"]
     end
 
     subgraph "Non-Bonded Terms"
-        VDW["VdwPairPotential[]<br><i>LJ or Exp-6</i>"]
+        VDW["VdwPairPotential[]<br><i>LJ 12-6 or Buckingham</i>"]
         HB["HBondPotential[]<br><i>directional H-bonds</i>"]
     end
 
@@ -650,12 +648,12 @@ flowchart TD
     INT --> AT --> AP
     INT --> BP
     INT --> ANG
-    INT --> DIH
-    INT --> IMP
+    INT --> TOR
+    INT --> INV
     FFP --> BP
     FFP --> ANG
-    FFP --> DIH
-    FFP --> IMP
+    FFP --> TOR
+    FFP --> INV
     FFP --> VDW
     FFP --> HB
     CFG --> BP
@@ -665,8 +663,8 @@ flowchart TD
     AP --> FS
     BP --> FS
     ANG --> FS
-    DIH --> FS
-    IMP --> FS
+    TOR --> FS
+    INV --> FS
     VDW --> FS
     HB --> FS
 ```
@@ -745,8 +743,8 @@ classDiagram
     class Potentials {
         +bonds: Vec~BondPotential~
         +angles: Vec~AnglePotential~
-        +dihedrals: Vec~DihedralPotential~
-        +impropers: Vec~ImproperPotential~
+        +torsions: Vec~TorsionPotential~
+        +inversions: Vec~InversionPotential~
         +vdw_pairs: Vec~VdwPairPotential~
         +h_bonds: Vec~HBondPotential~
     }
@@ -758,48 +756,49 @@ classDiagram
 
 ### 4.3 Potential Types
 
+All potential data structures store **precomputed kernel-ready parameters** aligned with the `dreid-kernel` API. Physical constants from the TOML parameter file are converted via `dreid-kernel` precompute functions before storage.
+
 ```mermaid
 classDiagram
     class BondPotential {
         <<enumeration>>
-        Harmonic(i, j, k_force, r0)
-        Morse(i, j, r0, d0, alpha)
+        Harmonic(atoms, k_half, r0)
+        Morse(atoms, de, r0, alpha)
     }
 
     class AnglePotential {
         <<enumeration>>
-        CosineHarmonic(i, j, k, k_force, theta0)
-        ThetaHarmonic(i, j, k, k_force, theta0)
+        CosineHarmonic(atoms, c_half, cos0)
+        CosineLinear(atoms, c)
+        ThetaHarmonic(atoms, k_half, theta0)
     }
 
-    class DihedralPotential {
-        +i: usize
-        +j: usize
-        +k: usize
-        +l: usize
-        +v_barrier: f64
-        +periodicity: i32
-        +phase_offset: f64
+    class TorsionPotential {
+        +atoms: (usize, usize, usize, usize)
+        +v_half: f64
+        +n: u8
+        +cos_n_phi0: f64
+        +sin_n_phi0: f64
     }
 
-    class ImproperPotential {
+    class InversionPotential {
         <<enumeration>>
-        Planar(i, j, k, l, k_force, chi0)
-        Umbrella(center, p1, p2, p3, k_force, psi0)
+        Planar(atoms, c_half)
+        Umbrella(atoms, c_half, cos_psi0)
     }
 
     class VdwPairPotential {
         <<enumeration>>
-        LennardJones(type1_idx, type2_idx, sigma, epsilon)
-        Exponential6(type1_idx, type2_idx, a, b, c)
+        LennardJones(type1_idx, type2_idx, d0, r0_sq)
+        Buckingham(type1_idx, type2_idx, a, b, c, r_max_sq, two_e_max)
     }
 
     class HBondPotential {
         +donor_type_idx: usize
         +hydrogen_type_idx: usize
         +acceptor_type_idx: usize
-        +d0: f64
-        +r0: f64
+        +d_hb: f64
+        +r_hb_sq: f64
     }
 ```
 
@@ -811,19 +810,19 @@ classDiagram
 
 The typing engine uses a priority-based rule system. Key atom types:
 
-| Atom Type | Description        | Hybridization   | Priority |
-| --------- | ------------------ | --------------- | -------- |
-| `C_3`     | sp³ carbon         | SP3             | 100      |
-| `C_2`     | sp² carbon         | SP2             | 200      |
-| `C_R`     | Resonant carbon    | Resonant        | 400      |
-| `C_1`     | sp carbon          | SP              | 300      |
-| `N_3`     | sp³ nitrogen       | SP3             | 100      |
-| `N_R`     | Resonant nitrogen  | Resonant        | 400      |
-| `O_3`     | sp³ oxygen         | SP3             | 100      |
-| `O_2`     | sp² oxygen         | SP2             | 200      |
-| `O_R`     | Resonant oxygen    | Resonant        | 400      |
-| `H_`      | Generic hydrogen   | —               | 1        |
-| `H_HB`    | H-bonding hydrogen | neighbor O or N | 78-80    |
+| Atom Type | Description        | Hybridization       | Priority |
+| --------- | ------------------ | ------------------- | -------- |
+| `C_3`     | sp³ carbon         | SP3                 | 100      |
+| `C_2`     | sp² carbon         | SP2                 | 200      |
+| `C_R`     | Resonant carbon    | Resonant            | 400      |
+| `C_1`     | sp carbon          | SP                  | 300      |
+| `N_3`     | sp³ nitrogen       | SP3                 | 100      |
+| `N_R`     | Resonant nitrogen  | Resonant            | 400      |
+| `O_3`     | sp³ oxygen         | SP3                 | 100      |
+| `O_2`     | sp² oxygen         | SP2                 | 200      |
+| `O_R`     | Resonant oxygen    | Resonant            | 400      |
+| `H_`      | Generic hydrogen   | —                   | 1        |
+| `H_HB`    | H-bonding hydrogen | neighbor O, N, or S | 78-80    |
 
 **Fixed-point iteration:**
 
@@ -854,31 +853,45 @@ $$J_{ij}(r_{ij}) = \frac{14.4}{\sqrt{r_{ij}^2 + \frac{1}{\lambda^2}(r_i r_j)^{n_
 
 ### 5.3 Bond Potential Calculation
 
-**Equilibrium bond length:**
+**Equilibrium bond length** (from `paramgen.rs`):
 $$r_0 = R_i + R_j - \delta$$
 
-where $R_i$, $R_j$ are covalent radii and $\delta = 0.01$ Å.
+where $R_i$, $R_j$ are covalent radii (`bond_radius` in TOML) and $\delta = 0.01$ Å (`bond_delta`).
 
-**Force constant scaling by bond order:**
+**Force constant scaling by bond order** (`PhysicalBondOrder::multiplier()`):
 
-| Bond Order | Multiplier |
-| ---------- | ---------- |
-| Single     | 1.0        |
-| Resonant   | 1.5        |
-| Double     | 2.0        |
-| Triple     | 3.0        |
+| Bond Order | Multiplier $n$ |
+| ---------- | -------------- |
+| Single     | 1.0            |
+| Resonant   | 1.5            |
+| Double     | 2.0            |
+| Triple     | 3.0            |
 
-**Harmonic potential:**
-$$V_{bond}(r) = \frac{1}{2} k_b \cdot n \cdot (r - r_0)^2$$
+**Harmonic potential** (kernel: `Harmonic`):
+$$E(r) = K_{half} \cdot (r - r_0)^2$$
 
-**Morse potential:**
-$$V_{bond}(r) = D_0 \cdot n \cdot \left[1 - e^{-\alpha(r - r_0)}\right]^2$$
+**Morse potential** (kernel: `Morse`):
+$$E(r) = D_e \left[ e^{-\alpha(r - r_0)} - 1 \right]^2$$
 
-where $\alpha = \sqrt{k_b / (2 D_0)}$.
+### 5.4 Angle Potential Calculation
 
-### 5.4 Torsion Parameter Rules
+**Cosine-harmonic** (kernel: `CosineHarmonic`, for $\theta_0 \neq 180°$):
+$$E(\theta) = C_{half} \cdot (\cos\theta - \cos\theta_0)^2$$
 
-Dihedral parameters depend on the hybridization of the central bond atoms:
+**Cosine-linear** (kernel: `CosineLinear`, for $\theta_0 = 180°$):
+$$E(\theta) = C \cdot (1 + \cos\theta)$$
+
+**Theta-harmonic** (kernel: `ThetaHarmonic`):
+$$E(\theta) = K_{half} \cdot (\theta - \theta_0)^2$$
+
+**Angle potential dispatch** (in `paramgen.rs`):
+
+- `AnglePotentialType::Cosine` → if $|\theta_0 - 180°| < 10^{-6}$: `CosineLinear`, otherwise: `CosineHarmonic`
+- `AnglePotentialType::Theta` → always `ThetaHarmonic`
+
+### 5.5 Torsion Parameter Rules
+
+Torsion parameters depend on the hybridization of the central bond atoms:
 
 ```mermaid
 flowchart TD
@@ -895,7 +908,7 @@ flowchart TD
         P2["V=45.0, n=2, φ=180°"]
         P3["V=25.0, n=2, φ=180°"]
         P4["V=5.0, n=2, φ=180°"]
-        P5["V=2.0, n=2/3/6, varies"]
+        P5["V=2.0|1.0, n=2|3|6, varies"]
     end
 
     SP3_SP3 --> P1
@@ -907,24 +920,51 @@ flowchart TD
 
 **Special case:** When both central atoms are in the oxygen column (O, S, Se, Te), SP3-SP3 torsions use $n=2$, $\phi=90°$.
 
-### 5.5 Van der Waals Mixing Rules
+**Kernel energy** (kernel: `Torsion`):
+$$E(\phi) = V_{half} \left[1 - (\cos(n\phi)\cos_{n\phi_0} + \sin(n\phi)\sin_{n\phi_0})\right]$$
 
-**Lennard-Jones 12-6:**
-$$\sigma_{ij} = \frac{\sigma_i + \sigma_j}{2}$$
-$$\epsilon_{ij} = \sqrt{\epsilon_i \cdot \epsilon_j}$$
+### 5.6 Inversion Potential Calculation
 
-**Exponential-6:**
-$$A_{ij} = \sqrt{A_i \cdot A_j}$$
-$$B_{ij} = \frac{B_i + B_j}{2}$$
-$$C_{ij} = \sqrt{C_i \cdot C_j}$$
+**Planar inversion** (kernel: `PlanarInversion`):
+$$E(\psi) = C_{half} \cdot \cos^2\psi$$
 
-### 5.6 Hydrogen Bond Detection
+**Umbrella inversion** (kernel: `UmbrellaInversion`, not currently used by forge):
+$$E(\psi) = C_{half} \cdot (\cos\psi - \cos\psi_0)^2$$
 
-H-bond potentials are generated when:
+**1/3 splitting:** Each sp² center generates three permutations of `(center, axis, plane1, plane2)`. The force constant is split equally: $C = K_{inv} / 3$.
 
-1. Hydrogen has type `H_HB` (bonded to O or N)
-2. An acceptor atom element is O, N, F
-3. The acceptor is not the hydrogen's bonded atom
+### 5.7 Van der Waals Potential Generation
+
+**Mixing rules** (arithmetic mean for distance, geometric mean for energy):
+$$R_{0,ij} = \frac{R_{0,i} + R_{0,j}}{2}, \quad D_{0,ij} = \sqrt{D_{0,i} \cdot D_{0,j}}$$
+
+Per-type parameters `vdw_r0` and `vdw_d0` come from the TOML parameter file.
+
+**Lennard-Jones 12-6** (kernel: `LennardJones`):
+$$E(r) = D_0 \left[ \left(\frac{R_0}{r}\right)^{12} - 2\left(\frac{R_0}{r}\right)^6 \right]$$
+
+**Buckingham (Exponential-6)** (kernel: `Buckingham`):
+$$E(r) = D_0 \left[ \frac{6}{\zeta-6} \exp\left(\zeta\left(1 - \frac{r}{R_0}\right)\right) - \frac{\zeta}{\zeta-6} \left(\frac{R_0}{r}\right)^6 \right]$$
+
+### 5.8 Hydrogen Bond Potential Generation
+
+**H-bond energy** (kernel: `HydrogenBond<4>`):
+$$E(r, \theta) = D_{hb} \left[ 5\left(\frac{R_{hb}}{r}\right)^{12} - 6\left(\frac{R_{hb}}{r}\right)^{10} \right] \cos^4\theta$$
+
+**Detection rules** (in `paramgen.rs`):
+
+1. Hydrogen must have type `H_HB` (bonded to O, N, or S — see typing rules)
+2. Acceptor atom element is O, N, or F (`is_hbond_acceptor()`)
+3. The (donor_type, hydrogen_type, acceptor_type) triplet must be unique
+
+**Charge-dependent well depth:**
+
+| Charge Method        | $D_{hb}$ (kcal/mol) | Source         |
+| -------------------- | ------------------- | -------------- |
+| `ChargeMethod::None` | 9.0                 | `d0_no_charge` |
+| `Qeq` or `Hybrid`    | 4.0                 | `d0_explicit`  |
+
+When explicit charges are present, the Coulomb interaction already captures part of the H-bond stabilization, so the 12-10 well depth is reduced.
 
 ---
 
@@ -954,6 +994,7 @@ flowchart TD
         IE_UW["UnsupportedWriteFormat"]
         IE_MM["MissingMetadata<br><i>bio_metadata required</i>"]
         IE_BF["BioForgePreparation"]
+        IE_BI["BioForgeIo<br><i>bio-forge I/O layer</i>"]
         IE_CV["Conversion"]
     end
 ```
@@ -977,25 +1018,30 @@ pub struct ForgeConfig {
     pub params: Option<String>,       // Custom FF params (TOML)
     pub charge_method: ChargeMethod,  // None, Qeq, or Hybrid
     pub bond_potential: BondPotentialType,   // Harmonic or Morse
-    pub angle_potential: AnglePotentialType, // ThetaHarmonic or CosineHarmonic
-    pub vdw_potential: VdwPotentialType,     // LennardJones or Exponential6
+    pub angle_potential: AnglePotentialType, // Cosine or Theta
+    pub vdw_potential: VdwPotentialType,     // LennardJones or Buckingham
 }
 ```
 
 ### 7.2 Potential Type Selection
 
-| Config Field      | Options                           | DREIDING Default |
-| ----------------- | --------------------------------- | ---------------- |
-| `bond_potential`  | `Harmonic`, `Morse`               | `Harmonic`       |
-| `angle_potential` | `ThetaHarmonic`, `CosineHarmonic` | `ThetaHarmonic`  |
-| `vdw_potential`   | `LennardJones`, `Exponential6`    | `LennardJones`   |
+| Config Field      | Options                      | Default        |
+| ----------------- | ---------------------------- | -------------- |
+| `bond_potential`  | `Harmonic`, `Morse`          | `Harmonic`     |
+| `angle_potential` | `Cosine`, `Theta`            | `Cosine`       |
+| `vdw_potential`   | `LennardJones`, `Buckingham` | `LennardJones` |
+
+**Angle potential dispatch:**
+
+- `AnglePotentialType::Cosine` produces `CosineHarmonic` for non-linear angles and `CosineLinear` for θ₀ = 180°
+- `AnglePotentialType::Theta` produces `ThetaHarmonic` for all angles
 
 ### 7.3 Charge Method Configuration
 
 ```rust
 pub enum ChargeMethod {
-    None,              // All charges = 0.0
-    Qeq(QeqConfig),    // Global QEq for all atoms
+    None,                 // All charges = 0.0
+    Qeq(QeqConfig),       // Global QEq for all atoms
     Hybrid(HybridConfig), // Classical + QEq (requires BioMetadata)
 }
 ```
@@ -1030,7 +1076,7 @@ pub struct LigandChargeConfig {
 }
 
 pub enum LigandQeqMethod {
-    Vacuum(QeqConfig),        // Isolated QEq calculation
+    Vacuum(QeqConfig),           // Isolated QEq calculation
     Embedded(EmbeddedQeqConfig), // QEq polarized by environment
 }
 
@@ -1067,7 +1113,8 @@ pub struct ResidueSelector {
 flowchart BT
     subgraph "External Crates"
         BF["bio-forge v0.3<br><i>structure preparation</i>"]
-        DT["dreid-typer v0.4<br><i>atom typing</i>"]
+        DT["dreid-typer v0.5<br><i>atom typing</i>"]
+        DK["dreid-kernel v0.4<br><i>potential precomputation</i>"]
         CQ["cheq v0.5<br><i>QEq charges</i>"]
         FF["ffcharge v0.2<br><i>classical FF charges</i>"]
     end
@@ -1085,6 +1132,7 @@ flowchart BT
 
     BF --> IO
     DT --> FORGE
+    DK --> FORGE
     CQ --> FORGE
     FF --> FORGE
     SERDE --> BF
@@ -1096,38 +1144,10 @@ flowchart BT
 
 ### Integration Points
 
-| Crate         | Version | Integration Module                            | Key Types Exchanged                                          |
-| ------------- | ------- | --------------------------------------------- | ------------------------------------------------------------ |
-| `bio-forge`   | 0.3     | `io::util`, `io::pdb`, `io::mmcif`            | `Structure`, `Topology`, `Template`                          |
-| `dreid-typer` | 0.4     | `forge::typer`                                | `MolecularGraph`, `MolecularTopology`, `Hybridization`       |
-| `cheq`        | 0.5     | `forge::charge::qeq`, `forge::charge::hybrid` | `QEqSolver`, `ExternalPotential`, `PointCharge`              |
-| `ffcharge`    | 0.2     | `forge::charge::hybrid`                       | `ProteinScheme`, `NucleicScheme`, `WaterScheme`, `IonScheme` |
-
----
-
-## 9. Performance Considerations
-
-### 9.1 Computational Complexity
-
-| Stage                | Complexity            | Dominant Operation         |
-| -------------------- | --------------------- | -------------------------- |
-| System conversion    | O(A + B)              | Neighbor list construction |
-| Ring detection       | O(B × R)              | SSSR enumeration           |
-| Aromaticity          | O(R)                  | π-electron counting        |
-| Typing               | O(A × Rules × Rounds) | Rule matching              |
-| QEq                  | O(A³)                 | Matrix solve               |
-| Parameter generation | O(B + Ang + Dih)      | Term enumeration           |
-
-Where A = atoms, B = bonds, R = rings.
-
-### 9.2 Memory Layout
-
-- **IntermediateSystem:** Owned data, heap-allocated vectors
-- **ForgedSystem:** Clones input System, owns all generated parameters
-- **Potentials:** Flat vectors with no internal pointers
-
-### 9.3 Parallelization Opportunities
-
-- **cheq:** Coulomb matrix construction is parallelized via `rayon`
-- **dreid-typer:** Perception passes are sequential but O(A)
-- **Parameter generation:** Each potential type can be generated independently
+| Crate          | Version | Integration Module                            | Key Types Exchanged                                                                      |
+| -------------- | ------- | --------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `bio-forge`    | 0.3     | `io::util`, `io::pdb`, `io::mmcif`            | `Structure`, `Topology`, `Template`, `CleanConfig`, `ProtonationConfig`, `SolvateConfig` |
+| `dreid-typer`  | 0.5     | `forge::typer`                                | `MolecularGraph`, `MolecularTopology`, `Hybridization`                                   |
+| `dreid-kernel` | 0.4     | `forge::paramgen`                             | `Harmonic`, `Morse`, `CosineHarmonic`, `Torsion`, `LennardJones`, etc.                   |
+| `cheq`         | 0.5     | `forge::charge::qeq`, `forge::charge::hybrid` | `QEqSolver`, `ExternalPotential`, `PointCharge`                                          |
+| `ffcharge`     | 0.2     | `forge::charge::hybrid`                       | `ProteinScheme`, `NucleicScheme`, `WaterScheme`, `IonScheme`                             |

@@ -7,7 +7,7 @@
 - **Automated atom typing** — assigns DREIDING atom types (e.g., `C_3`, `O_R`, `N_2`) based on element, hybridization, and local bonding environment via the `dreid-typer` crate.
 - **Flexible charge assignment** — supports global QEq charge equilibration via `cheq`, or hybrid mode combining classical force field charges for biomolecules (AMBER/CHARMM) with QEq for ligands via `ffcharge`.
 - **Embedded QEq for ligands** — polarizes ligand charges based on the surrounding protein electrostatic environment using efficient spatial indexing.
-- **Comprehensive potential generation** — produces bond (harmonic/Morse), angle (theta-harmonic/cosine-harmonic), dihedral, improper, van der Waals (LJ 12-6/Exp-6), and hydrogen bond potentials.
+- **Comprehensive potential generation** — produces bond (harmonic/Morse), angle (cosine/theta-harmonic), torsion, inversion, van der Waals (LJ 12-6/Buckingham), and hydrogen bond potentials.
 - **Format interoperability** — reads PDB, mmCIF, MOL2, and SDF structures with optional biomolecular preparation (cleaning, protonation, solvation); exports to BGF format.
 - **Rust-first ergonomics** — no FFI, no global mutable state, edition 2024, and a carefully designed public API with comprehensive RustDoc documentation.
 
@@ -23,7 +23,7 @@ flowchart LR
 ```
 
 1. **Convert** — `IntermediateSystem::from_system` builds neighbor lists and prepares bonds for physical order assignment.
-2. **Type** — `assign_atom_types` delegates to `dreid-typer` to assign DREIDING atom types and enumerate angles, dihedrals, and impropers.
+2. **Type** — `assign_atom_types` delegates to `dreid-typer` to assign DREIDING atom types and enumerate angles, torsions, and inversions.
 3. **Charge** — `assign_charges` computes partial charges using QEq (global or embedded) or classical force field parameters.
 4. **Generate** — `generate_parameters` produces all bonded and non-bonded potential parameters according to DREIDING rules.
 5. **Output** — The resulting `ForgedSystem` is ready for export to BGF format.
@@ -181,12 +181,13 @@ For detailed usage instructions and configuration options, refer to the [API Doc
 
 `dreid-forge` builds on several specialized crates:
 
-| Crate                                                 | Purpose                                                                         |
-| ----------------------------------------------------- | ------------------------------------------------------------------------------- |
-| [`dreid-typer`](https://crates.io/crates/dreid-typer) | DREIDING atom type assignment and topology enumeration                          |
-| [`cheq`](https://crates.io/crates/cheq)               | Charge equilibration (QEq) solver with embedded field support                   |
-| [`ffcharge`](https://crates.io/crates/ffcharge)       | Classical force field charges for proteins, nucleic acids, water, and ions      |
-| [`bio-forge`](https://crates.io/crates/bio-forge)     | Biomolecular structure preparation (cleaning, protonation, solvation, topology) |
+| Crate                                                   | Purpose                                                                         |
+| ------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| [`dreid-typer`](https://crates.io/crates/dreid-typer)   | DREIDING atom type assignment and topology enumeration                          |
+| [`cheq`](https://crates.io/crates/cheq)                 | Charge equilibration (QEq) solver with embedded field support                   |
+| [`ffcharge`](https://crates.io/crates/ffcharge)         | Classical force field charges for proteins, nucleic acids, water, and ions      |
+| [`dreid-kernel`](https://crates.io/crates/dreid-kernel) | Stateless DREIDING energy/force kernels with precomputed parameters             |
+| [`bio-forge`](https://crates.io/crates/bio-forge)       | Biomolecular structure preparation (cleaning, protonation, solvation, topology) |
 
 ## License
 
