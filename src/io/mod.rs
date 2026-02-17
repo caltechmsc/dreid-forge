@@ -156,6 +156,7 @@ pub enum HisStrategy {
 ///     target_ph: Some(7.4),
 ///     remove_existing_h: true,
 ///     his_strategy: HisStrategy::HbNetwork,
+///     his_salt_bridge: true,
 /// };
 /// ```
 #[derive(Debug, Clone)]
@@ -168,6 +169,13 @@ pub struct ProtonationConfig {
     pub remove_existing_h: bool,
     /// Strategy for selecting histidine tautomers.
     pub his_strategy: HisStrategy,
+    /// Enable context-aware histidine protonation via salt bridge detection.
+    ///
+    /// When `true`, histidine residues near negatively charged residues
+    /// (ASP, GLU within ~4 Å) are assigned the doubly-protonated HIP form
+    /// to model the stabilizing salt bridge interaction. This refinement
+    /// is applied **before** the [`HisStrategy`] tautomer selection.
+    pub his_salt_bridge: bool,
 }
 
 impl Default for ProtonationConfig {
@@ -176,6 +184,7 @@ impl Default for ProtonationConfig {
             target_ph: None,
             remove_existing_h: true,
             his_strategy: HisStrategy::default(),
+            his_salt_bridge: true,
         }
     }
 }

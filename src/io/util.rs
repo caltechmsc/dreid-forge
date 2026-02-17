@@ -68,6 +68,7 @@ pub fn to_bf_hydro_config(config: ProtonationConfig) -> bf::ops::HydroConfig {
             HisStrategy::Random => bf::ops::HisStrategy::Random,
             HisStrategy::HbNetwork => bf::ops::HisStrategy::HbNetwork,
         },
+        his_salt_bridge_protonation: config.his_salt_bridge,
     }
 }
 
@@ -602,6 +603,7 @@ mod tests {
             target_ph: Some(7.4),
             remove_existing_h: false,
             his_strategy: HisStrategy::DirectHIE,
+            his_salt_bridge: false,
         };
 
         let bf_cfg = to_bf_hydro_config(cfg);
@@ -611,6 +613,7 @@ mod tests {
             bf_cfg.his_strategy,
             bf::ops::HisStrategy::DirectHIE
         ));
+        assert!(!bf_cfg.his_salt_bridge_protonation);
     }
 
     #[test]
