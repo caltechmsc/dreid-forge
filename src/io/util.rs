@@ -186,7 +186,14 @@ pub fn to_bio_topology(system: &System) -> Result<bf::Topology, ConversionError>
     type ResidueKey = (String, i32, Option<char>);
     let mut chains: IndexMap<String, IndexMap<ResidueKey, bf::Residue>> = IndexMap::new();
 
-    for (atom, info) in system.atoms.iter().zip(metadata.atom_info.iter()) {
+    let mut residue_members: IndexMap<ResidueKey, Vec<usize>> = IndexMap::new();
+
+    for (i, (atom, info)) in system
+        .atoms
+        .iter()
+        .zip(metadata.atom_info.iter())
+        .enumerate()
+    {
         let bio_atom = bf::Atom::new(
             &info.atom_name,
             convert_element_to_bf(atom.element)?,
@@ -196,7 +203,7 @@ pub fn to_bio_topology(system: &System) -> Result<bf::Topology, ConversionError>
         let residue_key = (info.chain_id.clone(), info.residue_id, info.insertion_code);
         let residues = chains.entry(info.chain_id.clone()).or_default();
 
-        let residue = match residues.entry(residue_key) {
+        let residue = match residues.entry(residue_key.clone()) {
             Entry::Occupied(e) => e.into_mut(),
             Entry::Vacant(e) => {
                 let mut res = bf::Residue::new(
@@ -212,6 +219,18 @@ pub fn to_bio_topology(system: &System) -> Result<bf::Topology, ConversionError>
         };
 
         residue.add_atom(bio_atom);
+        residue_members.entry(residue_key).or_default().push(i);
+    }
+
+    let mut old_to_new = vec![0usize; system.atoms.len()];
+    let mut flat = 0usize;
+    for chain_residues in chains.values() {
+        for key in chain_residues.keys() {
+            for &orig in &residue_members[key] {
+                old_to_new[orig] = flat;
+                flat += 1;
+            }
+        }
     }
 
     let mut bio_struct = bf::Structure::new();
@@ -230,8 +249,8 @@ pub fn to_bio_topology(system: &System) -> Result<bf::Topology, ConversionError>
         .iter()
         .map(|bond| {
             Ok(bf::Bond::new(
-                bond.i,
-                bond.j,
+                old_to_new[bond.i],
+                old_to_new[bond.j],
                 convert_bond_order_to_bf(bond.order)?,
             ))
         })
@@ -570,6 +589,49 @@ mod tests {
         assert_eq!(roundtrip.bonds, bonds);
         assert_eq!(roundtrip.box_vectors, box_vectors);
         assert_eq!(roundtrip.bio_metadata.as_ref(), Some(&metadata));
+    }
+
+    #[test]
+    fn to_bio_topology_remaps_bonds_for_non_contiguous_atoms() {
+        let atoms = vec![
+            Atom::new(Element::C, [0.0, 0.0, 0.0]),
+            Atom::new(Element::N, [3.0, 0.0, 0.0]),
+            Atom::new(Element::C, [0.0, 1.5, 0.0]),
+            Atom::new(Element::C, [3.0, 1.5, 0.0]),
+        ];
+        let metadata = BioMetadata {
+            atom_info: vec![
+                AtomResidueInfo::builder("CA", "ALA", 1, "A").build(),
+                AtomResidueInfo::builder("N", "ALA", 1, "B").build(),
+                AtomResidueInfo::builder("CB", "ALA", 1, "A").build(),
+                AtomResidueInfo::builder("CA", "ALA", 1, "B").build(),
+            ],
+            target_ph: None,
+        };
+        let bonds = vec![
+            Bond::new(0, 2, BondOrder::Single),
+            Bond::new(1, 3, BondOrder::Single),
+        ];
+        let system = System {
+            atoms,
+            bonds,
+            box_vectors: None,
+            bio_metadata: Some(metadata),
+        };
+
+        let bio_topo = to_bio_topology(&system).expect("conversion should succeed");
+
+        let bio_bonds = bio_topo.bonds();
+        assert_eq!(bio_bonds.len(), 2);
+
+        let find = |a: usize, b: usize| {
+            let (lo, hi) = if a <= b { (a, b) } else { (b, a) };
+            bio_bonds
+                .iter()
+                .any(|bond| bond.a1_idx == lo && bond.a2_idx == hi)
+        };
+        assert!(find(0, 1), "A.CA-A.CB should map to flat (0, 1)");
+        assert!(find(2, 3), "B.N-B.CA should map to flat (2, 3)");
     }
 
     #[test]
