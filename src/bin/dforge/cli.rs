@@ -138,6 +138,20 @@ pub struct QeqSolverOptions {
     pub damping: DampingStrategy,
 }
 
+/// MPSim compatibility options shared by bio and chem commands.
+#[derive(Args)]
+#[command(next_help_heading = "MPSim Compatibility")]
+pub struct MpsimOptions {
+    /// Emit input for the legacy MPSim EM/MM engine.
+    ///
+    /// Renames the DREIDING `H_HB` hydrogen type to MPSim's `H___A` and, for
+    /// protein systems, forces neutral N/C termini (–NH₂ / –COOH) in both
+    /// topology and charge, independent of pH. For `bio`, this selects the
+    /// hybrid charge method unless `--charge` is set explicitly.
+    #[arg(long = "mpsim")]
+    pub enabled: bool,
+}
+
 /// Potential function options shared by bio and chem commands.
 #[derive(Args)]
 #[command(next_help_heading = "Potential Functions")]
@@ -199,6 +213,9 @@ pub struct BioArgs {
 
     #[command(flatten)]
     pub potential: PotentialOptions,
+
+    #[command(flatten)]
+    pub mpsim: MpsimOptions,
 }
 
 #[derive(Args)]
@@ -322,6 +339,9 @@ pub struct ChemArgs {
 
     #[command(flatten)]
     pub potential: PotentialOptions,
+
+    #[command(flatten)]
+    pub mpsim: MpsimOptions,
 }
 
 #[derive(Clone, Copy, ValueEnum)]
