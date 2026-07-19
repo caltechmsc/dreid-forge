@@ -24,6 +24,7 @@ pub fn build_bio_forge_config(
         bond_potential: potential.bond_potential.into(),
         angle_potential: potential.angle_potential.into(),
         vdw_potential: potential.vdw_potential.into(),
+        mpsim: None,
     })
 }
 
@@ -42,6 +43,7 @@ pub fn build_chem_forge_config(
         bond_potential: potential.bond_potential.into(),
         angle_potential: potential.angle_potential.into(),
         vdw_potential: potential.vdw_potential.into(),
+        mpsim: None,
     })
 }
 

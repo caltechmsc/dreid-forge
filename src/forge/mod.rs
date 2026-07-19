@@ -9,13 +9,14 @@ mod charge;
 mod config;
 mod error;
 mod intermediate;
+mod mpsim;
 mod paramgen;
 mod params;
 mod typer;
 
 pub use config::{
     AnglePotentialType, BasisType, BondPotentialType, ChargeMethod, DampingStrategy,
-    EmbeddedQeqConfig, ForgeConfig, HybridConfig, LigandChargeConfig, LigandQeqMethod,
+    EmbeddedQeqConfig, ForgeConfig, HybridConfig, LigandChargeConfig, LigandQeqMethod, MpsimConfig,
     NucleicScheme, ProteinScheme, QeqConfig, ResidueSelector, SolverOptions, VdwPotentialType,
     WaterScheme,
 };
@@ -69,13 +70,32 @@ use crate::model::topology::ForgedSystem;
 pub fn forge(system: &System, config: &ForgeConfig) -> Result<ForgedSystem, Error> {
     let ff_params = params::load_parameters(config.params.as_deref())?;
 
+    let neutral_termini = config.mpsim.as_ref().is_some_and(|m| m.neutral_termini);
+
+    // MPSim neutral-termini requires the terminal topology (NH2 / COOH) to match
+    // the neutral charge sets, so normalize a working copy up front. The
+    // normalized structure is also what the ForgedSystem carries into output.
+    let owned_system;
+    let system: &System = if neutral_termini {
+        let mut normalized = system.clone();
+        mpsim::normalize_terminal_hydrogens(&mut normalized);
+        owned_system = normalized;
+        &owned_system
+    } else {
+        system
+    };
+
     let mut intermediate = intermediate::IntermediateSystem::from_system(system)?;
 
     typer::assign_atom_types(&mut intermediate, config.rules.as_deref())?;
 
-    charge::assign_charges(&mut intermediate, &config.charge_method)?;
+    charge::assign_charges(&mut intermediate, &config.charge_method, neutral_termini)?;
 
-    let forged = paramgen::generate_parameters(system, &intermediate, &ff_params, config)?;
+    let mut forged = paramgen::generate_parameters(system, &intermediate, &ff_params, config)?;
+
+    if config.mpsim.as_ref().is_some_and(|m| m.rename_hb_hydrogen) {
+        mpsim::rename_hb_hydrogens(&mut forged.atom_types);
+    }
 
     Ok(forged)
 }
@@ -257,6 +277,49 @@ mod tests {
         let result = forge(&empty, &config);
 
         assert!(matches!(result, Err(Error::EmptySystem)));
+    }
+
+    #[test]
+    fn mpsim_renames_hb_hydrogen_to_h_a() {
+        use crate::forge::config::MpsimConfig;
+        let water = make_water();
+
+        // Baseline: default DREIDING emits H_HB for the polar hydrogens.
+        let baseline = forge(&water, &ForgeConfig::default()).unwrap();
+        assert!(baseline.atom_types.contains(&"H_HB".to_string()));
+        assert!(!baseline.atom_types.contains(&"H___A".to_string()));
+
+        // MPSim mode renames H_HB -> H___A in the emitted type table.
+        let config = ForgeConfig {
+            mpsim: Some(MpsimConfig::default()),
+            ..Default::default()
+        };
+        let forged = forge(&water, &config).unwrap();
+        assert!(forged.atom_types.contains(&"H___A".to_string()));
+        assert!(!forged.atom_types.contains(&"H_HB".to_string()));
+
+        // Type indexing stays consistent and H-bond terms still generate.
+        assert_eq!(forged.atom_types.len(), baseline.atom_types.len());
+        assert_eq!(
+            forged.potentials.h_bonds.len(),
+            baseline.potentials.h_bonds.len()
+        );
+    }
+
+    #[test]
+    fn mpsim_rename_can_be_disabled() {
+        use crate::forge::config::MpsimConfig;
+        let water = make_water();
+        let config = ForgeConfig {
+            mpsim: Some(MpsimConfig {
+                rename_hb_hydrogen: false,
+                neutral_termini: true,
+            }),
+            ..Default::default()
+        };
+        let forged = forge(&water, &config).unwrap();
+        assert!(forged.atom_types.contains(&"H_HB".to_string()));
+        assert!(!forged.atom_types.contains(&"H___A".to_string()));
     }
 
     #[test]

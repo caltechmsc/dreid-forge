@@ -143,7 +143,7 @@ pub use model::metadata::{
 
 pub use forge::{
     AnglePotentialType, BasisType, BondPotentialType, ChargeMethod, DampingStrategy,
-    EmbeddedQeqConfig, ForgeConfig, HybridConfig, LigandChargeConfig, LigandQeqMethod,
+    EmbeddedQeqConfig, ForgeConfig, HybridConfig, LigandChargeConfig, LigandQeqMethod, MpsimConfig,
     NucleicScheme, ProteinScheme, QeqConfig, ResidueSelector, SolverOptions, VdwPotentialType,
     WaterScheme, forge,
 };
