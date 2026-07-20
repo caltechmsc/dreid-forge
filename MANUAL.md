@@ -287,6 +287,36 @@ These affect the DREIDING parameterization stage.
 | `--rules <FILE>`           | path                | none       | Custom typing rules (TOML file).                                                                  |
 | `--params <FILE>`          | path                | none       | Custom force field parameters (TOML file).                                                        |
 
+### MPSim Compatibility
+
+| Flag      | Type | Default | Meaning                                       |
+| --------- | ---- | ------- | --------------------------------------------- |
+| `--mpsim` | flag | off     | Emit input for the legacy MPSim EM/MM engine. |
+
+`--mpsim` adapts the output to MPSim's DREIDING conventions:
+
+- **Atom types** — the hydrogen-bond hydrogen type `H_HB` is renamed to `H___A`.
+  This is a pure naming change; parameter lookup and H-bond terms are unaffected.
+- **Protein termini** — both chain termini are forced into their neutral,
+  uncharged protonation state, independent of pH: the N-terminus becomes `–NH₂`
+  (the extra `H3` is removed) and the C-terminus becomes `–COOH` (the `HOXT`
+  proton is built onto `OXT`). The matching neutral terminal charge sets are
+  applied, so each terminal residue's backbone carries no net formal charge.
+  Nucleic-acid 5′/3′ termini are untouched.
+
+Because the neutral terminal charges live in the force-field (hybrid) charge
+path, `--mpsim` selects `--charge hybrid` automatically when `--charge` is left
+unset. An explicit `--charge` value is respected — the terminal _topology_ is
+still normalized, but the charges come from the method you chose.
+
+```bash
+# Protein → MPSim-ready BGF in one step (hybrid charges, neutral termini, H___A)
+dforge bio -i protein.pdb -o protein.bgf --mpsim
+```
+
+For `dforge chem`, `--mpsim` only applies the `H_HB → H___A` rename (small
+molecules have no protein termini).
+
 ---
 
 ## Command: `dforge chem`

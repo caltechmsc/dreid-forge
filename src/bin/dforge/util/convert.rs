@@ -31,8 +31,18 @@ pub fn build_bio_charge_method(
     charge: &cli::ChargeOptions,
     hybrid: &cli::HybridChargeOptions,
     qeq: &cli::QeqSolverOptions,
+    mpsim: bool,
 ) -> LibChargeMethod {
-    match charge.method {
+    // MPSim's neutral-termini charges only exist in the hybrid (force-field)
+    // path. When --mpsim is set and no charge method was chosen, default to
+    // hybrid so the requested neutral termini are actually assigned.
+    let method = if mpsim && matches!(charge.method, cli::ChargeMethod::None) {
+        cli::ChargeMethod::Hybrid
+    } else {
+        charge.method
+    };
+
+    match method {
         cli::ChargeMethod::None => LibChargeMethod::None,
         cli::ChargeMethod::Qeq => LibChargeMethod::Qeq(QeqConfig {
             total_charge: charge.total_charge,

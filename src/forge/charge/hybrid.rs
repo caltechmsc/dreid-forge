@@ -26,6 +26,8 @@ const C_TERMINAL_PKA: f64 = 3.1;
 ///
 /// * `system` — Mutable reference to the intermediate system
 /// * `config` — Hybrid charge configuration
+/// * `neutral_termini` — When `true` (MPSim mode), protein N/C termini use the
+///   neutral charge sets (`NH₂` / `COOH`) regardless of pH
 ///
 /// # Errors
 ///
@@ -35,6 +37,7 @@ const C_TERMINAL_PKA: f64 = 3.1;
 pub fn assign_hybrid_charges(
     system: &mut IntermediateSystem,
     config: &HybridConfig,
+    neutral_termini: bool,
 ) -> Result<(), Error> {
     if !system.has_bio_metadata() {
         return Err(Error::MissingBioMetadata);
@@ -44,7 +47,14 @@ pub fn assign_hybrid_charges(
     let metadata = system.bio_metadata.as_ref().unwrap().clone();
 
     let classification = classify_atoms(&metadata);
-    assign_fixed_charges(system, &metadata, config, ph, &classification)?;
+    assign_fixed_charges(
+        system,
+        &metadata,
+        config,
+        ph,
+        &classification,
+        neutral_termini,
+    )?;
 
     let ligand_groups = identify_ligand_groups(&metadata, &classification);
     if !ligand_groups.is_empty() {
@@ -130,10 +140,11 @@ fn assign_fixed_charges(
     config: &HybridConfig,
     ph: f64,
     classification: &[AtomClass],
+    neutral_termini: bool,
 ) -> Result<(), Error> {
     for (idx, (&class, info)) in classification.iter().zip(&metadata.atom_info).enumerate() {
         let charge = match class {
-            AtomClass::Protein => lookup_protein_charge(config, info, ph)?,
+            AtomClass::Protein => lookup_protein_charge(config, info, ph, neutral_termini)?,
             AtomClass::NucleicAcid => lookup_nucleic_charge(config, info)?,
             AtomClass::Water => lookup_water_charge(config, info)?,
             AtomClass::Ion => lookup_ion_charge(info)?,
@@ -145,20 +156,25 @@ fn assign_fixed_charges(
 }
 
 /// Maps our ResiduePosition to ffcharge::Position for proteins.
-fn map_residue_position(info: &AtomResidueInfo, ph: f64) -> FfPosition {
+///
+/// When `neutral_termini` is `true` (MPSim mode), protein N/C termini map to
+/// their neutral charge sets (`NH₂` / `COOH`) regardless of pH. This must be
+/// paired with the matching neutral terminal topology (see
+/// [`crate::forge::mpsim`]) so every terminal residue stays net-neutral.
+fn map_residue_position(info: &AtomResidueInfo, ph: f64, neutral_termini: bool) -> FfPosition {
     use crate::model::metadata::ResiduePosition;
 
     match info.position {
         ResiduePosition::NTerminal => {
-            if ph < N_TERMINAL_PKA {
-                FfPosition::NTerminal // Protonated NH3+
-            } else {
+            if neutral_termini || ph >= N_TERMINAL_PKA {
                 FfPosition::NTerminalDeprotonated // Neutral NH2
+            } else {
+                FfPosition::NTerminal // Protonated NH3+
             }
         }
         ResiduePosition::CTerminal => {
-            if ph < C_TERMINAL_PKA {
-                FfPosition::CTerminalProtonated // Protonated COOH
+            if neutral_termini || ph < C_TERMINAL_PKA {
+                FfPosition::CTerminalProtonated // Protonated COOH (neutral)
             } else {
                 FfPosition::CTerminal // Deprotonated COO-
             }
@@ -174,8 +190,9 @@ fn lookup_protein_charge(
     config: &HybridConfig,
     info: &AtomResidueInfo,
     ph: f64,
+    neutral_termini: bool,
 ) -> Result<f64, Error> {
-    let position = map_residue_position(info, ph);
+    let position = map_residue_position(info, ph, neutral_termini);
 
     config
         .protein_scheme
@@ -196,7 +213,8 @@ fn lookup_protein_charge(
 
 /// Looks up nucleic acid charge from ffcharge.
 fn lookup_nucleic_charge(config: &HybridConfig, info: &AtomResidueInfo) -> Result<f64, Error> {
-    let position = map_residue_position(info, 7.0); // Assuming pH 7.0 for nucleic acids (no effect)
+    // Nucleic acids only use 5'/3' positions, which neutral_termini does not affect.
+    let position = map_residue_position(info, 7.0, false);
 
     config
         .nucleic_scheme
@@ -479,7 +497,7 @@ mod tests {
         let info = AtomResidueInfo::builder("N", "ALA", 1, "A")
             .position(ResiduePosition::NTerminal)
             .build();
-        let pos = map_residue_position(&info, 7.0);
+        let pos = map_residue_position(&info, 7.0, false);
         assert_eq!(pos, FfPosition::NTerminal);
     }
 
@@ -488,7 +506,7 @@ mod tests {
         let info = AtomResidueInfo::builder("N", "ALA", 1, "A")
             .position(ResiduePosition::NTerminal)
             .build();
-        let pos = map_residue_position(&info, 9.0);
+        let pos = map_residue_position(&info, 9.0, false);
         assert_eq!(pos, FfPosition::NTerminalDeprotonated);
     }
 
@@ -497,7 +515,7 @@ mod tests {
         let info = AtomResidueInfo::builder("C", "ALA", 1, "A")
             .position(ResiduePosition::CTerminal)
             .build();
-        let pos = map_residue_position(&info, 7.0);
+        let pos = map_residue_position(&info, 7.0, false);
         assert_eq!(pos, FfPosition::CTerminal);
     }
 
@@ -506,8 +524,37 @@ mod tests {
         let info = AtomResidueInfo::builder("C", "ALA", 1, "A")
             .position(ResiduePosition::CTerminal)
             .build();
-        let pos = map_residue_position(&info, 2.0);
+        let pos = map_residue_position(&info, 2.0, false);
         assert_eq!(pos, FfPosition::CTerminalProtonated);
+    }
+
+    #[test]
+    fn map_protein_termini_neutral_regardless_of_ph_in_mpsim_mode() {
+        let n_info = AtomResidueInfo::builder("N", "ALA", 1, "A")
+            .position(ResiduePosition::NTerminal)
+            .build();
+        let c_info = AtomResidueInfo::builder("C", "ALA", 1, "A")
+            .position(ResiduePosition::CTerminal)
+            .build();
+
+        // At physiological pH, neutral_termini forces the neutral charge sets.
+        assert_eq!(
+            map_residue_position(&n_info, 7.0, true),
+            FfPosition::NTerminalDeprotonated
+        );
+        assert_eq!(
+            map_residue_position(&c_info, 7.0, true),
+            FfPosition::CTerminalProtonated
+        );
+        // Even at extreme pH values the neutral state is kept.
+        assert_eq!(
+            map_residue_position(&n_info, 1.0, true),
+            FfPosition::NTerminalDeprotonated
+        );
+        assert_eq!(
+            map_residue_position(&c_info, 13.0, true),
+            FfPosition::CTerminalProtonated
+        );
     }
 
     #[test]
@@ -515,7 +562,7 @@ mod tests {
         let info = AtomResidueInfo::builder("P", "DA", 1, "B")
             .position(ResiduePosition::FivePrime)
             .build();
-        let pos = map_residue_position(&info, 7.0);
+        let pos = map_residue_position(&info, 7.0, false);
         assert_eq!(pos, FfPosition::FivePrime);
     }
 
@@ -524,7 +571,7 @@ mod tests {
         let info = AtomResidueInfo::builder("O3'", "DA", 1, "B")
             .position(ResiduePosition::ThreePrime)
             .build();
-        let pos = map_residue_position(&info, 7.0);
+        let pos = map_residue_position(&info, 7.0, false);
         assert_eq!(pos, FfPosition::ThreePrime);
     }
 
