@@ -11,7 +11,18 @@ use std::io::Write;
 
 const DEFAULT_HEADERS: [&str; 2] = ["BIOGRF  332", "FORCEFIELD DREIDING"];
 const FORMAT_ATOM: &str =
-    "FORMAT ATOM   (a6,1x,i5,1x,a5,1x,a3,1x,a1,1x,a5,3f10.5,1x,a5,i3,i2,1x,f8.5,f10.5)";
+    "FORMAT ATOM   (a6,1x,i5,1x,a5,1x,a3,1x,a1,1x,a5,3f10.5,1x,a5,i3,i2,1x,f8.5,i2,i4,f10.5)";
+
+/// Mobility flags occupying the two integer fields between the charge and the
+/// atomic mass.
+///
+/// Biograf reserves these for per-atom fixed/movable state used by the
+/// minimiser. DREID-Forge parameterizes structures without pinning atoms, so
+/// both are always emitted as zero — every atom free to move. They are not
+/// optional padding: a reader following the declared `FORMAT ATOM` record
+/// consumes them before the mass, so omitting them shifts the mass into these
+/// columns and corrupts it.
+const MOBILITY_FLAGS: (i32, i32) = (0, 0);
 const FORMAT_CONECT: &str = "FORMAT CONECT (a6,12i6)";
 
 /// Writes a parameterized system to BGF format.
@@ -141,7 +152,7 @@ pub fn write<W: Write>(mut writer: W, forged: &ForgedSystem) -> Result<(), Error
 
         writeln!(
             writer,
-            "{:<6} {:>5} {:<5} {:<3} {:1} {:>5}{:>10.5}{:>10.5}{:>10.5} {:<5}{:>3}{:>2} {:>8.5}{:>10.5}",
+            "{:<6} {:>5} {:<5} {:<3} {:1} {:>5}{:>10.5}{:>10.5}{:>10.5} {:<5}{:>3}{:>2} {:>8.5}{:>2}{:>4}{:>10.5}",
             fit_left(record, 6),
             serial + 1,
             fit_left(&info.atom_name, 5),
@@ -155,6 +166,8 @@ pub fn write<W: Write>(mut writer: W, forged: &ForgedSystem) -> Result<(), Error
             atoms_connected,
             lone_pairs,
             props.charge,
+            MOBILITY_FLAGS.0,
+            MOBILITY_FLAGS.1,
             atom.element.atomic_mass(),
         )?;
     }
@@ -403,7 +416,9 @@ mod tests {
                 (69..71, format!("{:>2}", 0)),
                 (71..72, " ".into()),
                 (72..80, format!("{:>8.5}", 0.1)),
-                (80..90, format!("{:>10.5}", Element::C.atomic_mass())),
+                (80..82, format!("{:>2}", 0)),
+                (82..86, format!("{:>4}", 0)),
+                (86..96, format!("{:>10.5}", Element::C.atomic_mass())),
             ],
         );
         assert_columns(
@@ -429,7 +444,9 @@ mod tests {
                 (69..71, format!("{:>2}", 2)),
                 (71..72, " ".into()),
                 (72..80, format!("{:>8.5}", -0.3)),
-                (80..90, format!("{:>10.5}", Element::N.atomic_mass())),
+                (80..82, format!("{:>2}", 0)),
+                (82..86, format!("{:>4}", 0)),
+                (86..96, format!("{:>10.5}", Element::N.atomic_mass())),
             ],
         );
         assert_columns(
@@ -455,7 +472,9 @@ mod tests {
                 (69..71, format!("{:>2}", 0)),
                 (71..72, " ".into()),
                 (72..80, format!("{:>8.5}", 0.0)),
-                (80..90, format!("{:>10.5}", Element::C.atomic_mass())),
+                (80..82, format!("{:>2}", 0)),
+                (82..86, format!("{:>4}", 0)),
+                (86..96, format!("{:>10.5}", Element::C.atomic_mass())),
             ],
         );
         assert_columns(
@@ -481,7 +500,9 @@ mod tests {
                 (69..71, format!("{:>2}", 1)),
                 (71..72, " ".into()),
                 (72..80, format!("{:>8.5}", -0.2)),
-                (80..90, format!("{:>10.5}", Element::O.atomic_mass())),
+                (80..82, format!("{:>2}", 0)),
+                (82..86, format!("{:>4}", 0)),
+                (86..96, format!("{:>10.5}", Element::O.atomic_mass())),
             ],
         );
 
@@ -509,8 +530,8 @@ mod tests {
 
         assert_eq!(
             first_atom_line.len(),
-            90,
-            "atom line width should be 90 characters"
+            96,
+            "atom line width should be 96 characters"
         );
 
         assert_columns(
@@ -536,7 +557,9 @@ mod tests {
                 (69..71, format!("{:>2}", 0)),
                 (71..72, " ".into()),
                 (72..80, format!("{:>8.5}", 0.1)),
-                (80..90, format!("{:>10.5}", Element::C.atomic_mass())),
+                (80..82, format!("{:>2}", 0)),
+                (82..86, format!("{:>4}", 0)),
+                (86..96, format!("{:>10.5}", Element::C.atomic_mass())),
             ],
         );
     }
@@ -654,7 +677,7 @@ mod tests {
             .lines()
             .find(|l| l.starts_with("ATOM") || l.starts_with("HETATM"))
             .unwrap();
-        assert_eq!(first.len(), 90, "water atom line width");
+        assert_eq!(first.len(), 96, "water atom line width");
         assert_columns(
             first,
             &[
@@ -678,7 +701,9 @@ mod tests {
                 (69..71, format!("{:>2}", 3)),
                 (71..72, " ".into()),
                 (72..80, format!("{:>8.5}", 0.0)),
-                (80..90, format!("{:>10.5}", Element::O.atomic_mass())),
+                (80..82, format!("{:>2}", 0)),
+                (82..86, format!("{:>4}", 0)),
+                (86..96, format!("{:>10.5}", Element::O.atomic_mass())),
             ],
         );
     }
