@@ -24,7 +24,7 @@ pub use charge::{
     LigandChargeMethod, NucleicScheme, ProteinScheme, QeqConfig, ResidueSelector, SolverOptions,
     WaterScheme,
 };
-pub use mpsim::MpsimConfig;
+pub use mpsim::{MPSIM_LIGAND_RESIDUE_ID, MPSIM_LIGAND_RESIDUE_NAME, MpsimConfig};
 pub use potential::{AnglePotentialType, BondPotentialType, VdwPotentialType};
 
 /// Main configuration for DREIDING force field parameterization.
@@ -75,9 +75,10 @@ pub struct ForgeConfig {
 
     /// Optional MPSim (legacy EM/MM engine) compatibility adapter.
     ///
-    /// When `Some`, the pipeline applies MPSim's DREIDING conventions:
-    /// renaming `H_HB` hydrogens to `H___A` and forcing neutral N/C protein
-    /// termini. See [`MpsimConfig`]. Defaults to `None` (disabled).
+    /// When `Some`, the pipeline applies the conventions of the legacy MPSim
+    /// BGF conversion: renaming `H_HB` hydrogens to `H___A`, capping every open
+    /// chain end (breaks included) in its neutral state, and relabelling every
+    /// ligand to `RES 999`. See [`MpsimConfig`]. Defaults to `None` (disabled).
     pub mpsim: Option<MpsimConfig>,
 }
 

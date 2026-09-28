@@ -21,7 +21,7 @@ const N_TERMINAL_PKA: f64 = 8.0;
 /// pH threshold for C-terminal protonation (COO⁻ → COOH).
 const C_TERMINAL_PKA: f64 = 3.1;
 
-/// Assigns charges using the hybrid biological/QEq method.
+/// Assigns charges using the hybrid biological/ligand method.
 ///
 /// # Arguments
 ///
@@ -39,6 +39,7 @@ pub fn assign_hybrid_charges(
     system: &mut IntermediateSystem,
     config: &HybridConfig,
     neutral_termini: bool,
+    preassigned: &HashMap<usize, f64>,
 ) -> Result<(), Error> {
     if !system.has_bio_metadata() {
         return Err(Error::MissingBioMetadata);
@@ -55,6 +56,7 @@ pub fn assign_hybrid_charges(
         ph,
         &classification,
         neutral_termini,
+        preassigned,
     )?;
 
     let ligand_groups = identify_ligand_groups(&metadata, &classification);
@@ -142,8 +144,16 @@ fn assign_fixed_charges(
     ph: f64,
     classification: &[AtomClass],
     neutral_termini: bool,
+    preassigned: &HashMap<usize, f64>,
 ) -> Result<(), Error> {
     for (idx, (&class, info)) in classification.iter().zip(&metadata.atom_info).enumerate() {
+        // Settled outside the residue libraries, which either have no entry for
+        // this atom or hold the modern parameterization rather than the
+        // convention being reproduced.
+        if let Some(&charge) = preassigned.get(&idx) {
+            system.atoms[idx].charge = charge;
+            continue;
+        }
         let charge = match class {
             AtomClass::Protein => lookup_protein_charge(config, info, ph, neutral_termini)?,
             AtomClass::NucleicAcid => lookup_nucleic_charge(config, info)?,
@@ -371,7 +381,7 @@ fn assign_ligand_charges(
     Ok(())
 }
 
-/// Finds the QEq method for a specific ligand.
+/// Finds the charge method for a specific ligand.
 fn find_ligand_method<'a>(
     custom_configs: &HashMap<(String, i32, Option<char>), &'a LigandChargeConfig>,
     chain_id: &str,

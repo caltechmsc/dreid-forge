@@ -17,8 +17,8 @@ mod typer;
 pub use config::{
     AnglePotentialType, BasisType, BondPotentialType, ChargeMethod, DampingStrategy,
     EmbeddedQeqConfig, ForgeConfig, HybridConfig, LigandChargeConfig, LigandChargeMethod,
-    MpsimConfig, NucleicScheme, ProteinScheme, QeqConfig, ResidueSelector, SolverOptions,
-    VdwPotentialType, WaterScheme,
+    MPSIM_LIGAND_RESIDUE_ID, MPSIM_LIGAND_RESIDUE_NAME, MpsimConfig, NucleicScheme, ProteinScheme,
+    QeqConfig, ResidueSelector, SolverOptions, VdwPotentialType, WaterScheme,
 };
 pub use error::Error;
 
@@ -71,14 +71,21 @@ pub fn forge(system: &System, config: &ForgeConfig) -> Result<ForgedSystem, Erro
     let ff_params = params::load_parameters(config.params.as_deref())?;
 
     let neutral_termini = config.mpsim.as_ref().is_some_and(|m| m.neutral_termini);
+    let relabel_ligand = config.mpsim.as_ref().is_some_and(|m| m.relabel_ligand);
 
-    // MPSim neutral-termini requires the terminal topology (NH2 / COOH) to match
-    // the neutral charge sets, so normalize a working copy up front. The
-    // normalized structure is also what the ForgedSystem carries into output.
+    // The MPSim conventions rewrite topology and labelling, so they run on a
+    // copy taken up front: the typer then reads the final connectivity, the
+    // charge step sees the final atom set, and the ForgedSystem carries the
+    // same structure into output.
     let owned_system;
-    let system: &System = if neutral_termini {
+    let system: &System = if neutral_termini || relabel_ligand {
         let mut normalized = system.clone();
-        mpsim::normalize_terminal_hydrogens(&mut normalized);
+        if neutral_termini {
+            mpsim::normalize_open_ends(&mut normalized);
+        }
+        if relabel_ligand {
+            mpsim::relabel_ligand_residues(&mut normalized);
+        }
         owned_system = normalized;
         &owned_system
     } else {
@@ -89,7 +96,22 @@ pub fn forge(system: &System, config: &ForgeConfig) -> Result<ForgedSystem, Erro
 
     typer::assign_atom_types(&mut intermediate, config.rules.as_deref())?;
 
-    charge::assign_charges(&mut intermediate, &config.charge_method, neutral_termini)?;
+    // The capped chain ends carry the converter's own charges: the aldehyde cap
+    // has no residue-library entry at all, and the amine cap's convention
+    // differs from the library's neutral terminal set. Both are supplied
+    // directly and kept out of the lookup.
+    let preassigned = if neutral_termini {
+        mpsim::open_end_charges(&intermediate)
+    } else {
+        Default::default()
+    };
+
+    charge::assign_charges(
+        &mut intermediate,
+        &config.charge_method,
+        neutral_termini,
+        &preassigned,
+    )?;
 
     let mut forged = paramgen::generate_parameters(system, &intermediate, &ff_params, config)?;
 
@@ -313,7 +335,7 @@ mod tests {
         let config = ForgeConfig {
             mpsim: Some(MpsimConfig {
                 rename_hb_hydrogen: false,
-                neutral_termini: true,
+                ..MpsimConfig::default()
             }),
             ..Default::default()
         };

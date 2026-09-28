@@ -144,10 +144,12 @@ pub struct QeqSolverOptions {
 pub struct MpsimOptions {
     /// Emit input for the legacy MPSim EM/MM engine.
     ///
-    /// Renames the DREIDING `H_HB` hydrogen type to MPSim's `H___A` and, for
-    /// protein systems, forces neutral N/C termini (–NH₂ / –COOH) in both
-    /// topology and charge, independent of pH. For `bio`, this selects the
-    /// hybrid charge method unless `--charge` is set explicitly.
+    /// Reproduces that pipeline's conventions: the DREIDING `H_HB` hydrogen type
+    /// is renamed to MPSim's `H___A`; for protein systems every open chain end,
+    /// breaks included, is capped neutral in both topology and charge
+    /// independent of pH (–NH₂ on the N side, the aldehyde –CHO on the C side);
+    /// and every ligand is relabelled to RES 999. For `bio`, this selects the
+    /// hybrid charge method unless `--charge qeq` is given.
     #[arg(long = "mpsim")]
     pub enabled: bool,
 }

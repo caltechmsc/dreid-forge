@@ -11,6 +11,7 @@ mod spatial;
 use super::config::ChargeMethod;
 use super::error::Error;
 use super::intermediate::IntermediateSystem;
+use std::collections::HashMap;
 
 /// Assigns partial charges to atoms based on the configured method.
 ///
@@ -26,6 +27,13 @@ use super::intermediate::IntermediateSystem;
 /// termini in the hybrid method (see [`hybrid::assign_hybrid_charges`]); it has
 /// no effect on the `None` or `Qeq` methods.
 ///
+/// `preassigned` carries charges settled outside any residue library, keyed by
+/// atom index. It applies to the hybrid method alone, replacing the library
+/// lookup for those atoms — a lookup that would either fail or return the modern
+/// parameterization in place of a convention. QEq needs none of it: it computes
+/// every charge from the structure, and writing fixed values over its solution
+/// would break the total-charge constraint it was solved under.
+///
 /// # Errors
 ///
 /// Returns [`Error`] if:
@@ -36,12 +44,13 @@ pub fn assign_charges(
     system: &mut IntermediateSystem,
     method: &ChargeMethod,
     neutral_termini: bool,
+    preassigned: &HashMap<usize, f64>,
 ) -> Result<(), Error> {
     match method {
         ChargeMethod::None => Ok(()),
         ChargeMethod::Qeq(config) => qeq::assign_qeq_charges(system, config),
         ChargeMethod::Hybrid(config) => {
-            hybrid::assign_hybrid_charges(system, config, neutral_termini)
+            hybrid::assign_hybrid_charges(system, config, neutral_termini, preassigned)
         }
     }
 }
@@ -76,7 +85,7 @@ mod tests {
         let water = make_water();
         let mut int = IntermediateSystem::from_system(&water).unwrap();
 
-        assign_charges(&mut int, &ChargeMethod::None, false).unwrap();
+        assign_charges(&mut int, &ChargeMethod::None, false, &HashMap::new()).unwrap();
 
         for atom in &int.atoms {
             assert_eq!(atom.charge, 0.0);
@@ -89,7 +98,13 @@ mod tests {
         let mut int = IntermediateSystem::from_system(&water).unwrap();
 
         let qeq_config = QeqConfig::default();
-        assign_charges(&mut int, &ChargeMethod::Qeq(qeq_config), false).unwrap();
+        assign_charges(
+            &mut int,
+            &ChargeMethod::Qeq(qeq_config),
+            false,
+            &HashMap::new(),
+        )
+        .unwrap();
 
         assert!(int.atoms[0].charge < 0.0);
         assert!(int.atoms[1].charge > 0.0);
@@ -108,7 +123,13 @@ mod tests {
             total_charge: -1.0,
             ..Default::default()
         };
-        assign_charges(&mut int, &ChargeMethod::Qeq(qeq_config), false).unwrap();
+        assign_charges(
+            &mut int,
+            &ChargeMethod::Qeq(qeq_config),
+            false,
+            &HashMap::new(),
+        )
+        .unwrap();
 
         let total: f64 = int.atoms.iter().map(|a| a.charge).sum();
         assert!((total + 1.0).abs() < 1e-9);
