@@ -213,7 +213,7 @@ These options are only used when `--charge hybrid` is selected.
 | `--nucleic-scheme <SCHEME>`        | `amber`, `charmm`                           | `amber`      | Nucleic acid force field charge scheme.         |
 | `--water-scheme <SCHEME>`          | `tip3p`, `tip3p-fb`, `spc`, `spc-e`, `opc3` | `tip3p`      | Water model charge scheme.                      |
 | `--ligand <CONFIG>`                | string (repeatable)                         | none         | Per-ligand configuration (see below).           |
-| `--default-ligand-method <METHOD>` | `vacuum`, `embedded`                        | `embedded`   | Default QEq method for unlisted ligands.        |
+| `--default-ligand-method <METHOD>` | `vacuum`, `embedded`, `zero`, `formal`      | `embedded`   | Default charge method for unlisted ligands.     |
 | `--default-ligand-cutoff <Å>`      | float                                       | `10.0`       | Default embedded QEq environment cutoff radius. |
 
 **Force field scheme options:**
@@ -234,12 +234,19 @@ These options are only used when `--charge hybrid` is selected.
   - `spc-e` — SPC/E
   - `opc3` — OPC3
 
+**Ligand charge methods:**
+
+- `embedded` — QEq with the surrounding biomolecule polarizing the ligand (default). The environment is real, so two copies of one ligand in different pockets come out with different charges.
+- `vacuum` — QEq on the isolated ligand. Charges depend only on the molecule, which is what you want when the same ligand must score identically across receptors, and what keeps chemically equivalent atoms equivalent.
+- `zero` — every ligand atom at exactly zero, suppressing the ligand's Coulomb term entirely even for a formally charged ligand.
+- `formal` — integer formal charges read off the ligand's own bond orders (`bond-order sum − neutral valence`), so a deprotonated carboxylate carries `-1` on its singly bonded oxygen and every other atom is zero. A neutral ligand is identical to `zero`. Requires explicit hydrogens; an atom missing one is indistinguishable from an anion.
+
 **Ligand configuration format:** `CHAIN:RESID[:ICODE][:METHOD[:CUTOFF]]`
 
 - `CHAIN` — Chain identifier (e.g., `A`, `L`)
 - `RESID` — Residue sequence number
 - `ICODE` — Optional insertion code (single character)
-- `METHOD` — Optional QEq method: `vacuum` or `embedded`
+- `METHOD` — Optional charge method: `vacuum`, `embedded`, `zero` or `formal`
 - `CUTOFF` — Optional cutoff radius for embedded method (Å)
 
 Examples:
@@ -293,29 +300,19 @@ These affect the DREIDING parameterization stage.
 | --------- | ---- | ------- | --------------------------------------------- |
 | `--mpsim` | flag | off     | Emit input for the legacy MPSim EM/MM engine. |
 
-`--mpsim` adapts the output to MPSim's DREIDING conventions:
+MPSim is fed by a hand-maintained BGF conversion whose output follows three conventions a modern parameterization does not. `--mpsim` reproduces all three, so a run can be laid beside those reference files atom for atom. None of them is the better chemistry, which is why none is a default.
 
-- **Atom types** — the hydrogen-bond hydrogen type `H_HB` is renamed to `H___A`.
-  This is a pure naming change; parameter lookup and H-bond terms are unaffected.
-- **Protein termini** — both chain termini are forced into their neutral,
-  uncharged protonation state, independent of pH: the N-terminus becomes `–NH₂`
-  (the extra `H3` is removed) and the C-terminus becomes `–COOH` (the `HOXT`
-  proton is built onto `OXT`). The matching neutral terminal charge sets are
-  applied, so each terminal residue's backbone carries no net formal charge.
-  Nucleic-acid 5′/3′ termini are untouched.
+- **Atom types** — the hydrogen-bond hydrogen type `H_HB` is renamed to `H___A`. A pure naming change; parameter lookup and H-bond terms are unaffected.
+- **Chain ends** — every _open_ end is capped in its neutral, uncharged state, independent of pH. An end is open when the backbone bond that would continue the chain is absent, so a break in the middle of a model is capped exactly like a real terminus:
 
-Because the neutral terminal charges live in the force-field (hybrid) charge
-path, `--mpsim` selects `--charge hybrid` automatically when `--charge` is left
-unset. An explicit `--charge` value is respected — the terminal _topology_ is
-still normalized, but the charges come from the method you chose.
+| side | DREID-Forge     | MPSim                      |
+| ---- | --------------- | -------------------------- |
+| N    | `–NH₃⁺` / `–NH` | `–NH₂`                     |
+| C    | `–COO⁻` / `–CO` | `–CHO` (cap hydrogen `HC`) |
 
-```bash
-# Protein → MPSim-ready BGF in one step (hybrid charges, neutral termini, H___A)
-dforge bio -i protein.pdb -o protein.bgf --mpsim
-```
+- **Ligand labelling** — every ligand is relabelled to `RES 999`. DREID-Forge otherwise keeps the input's own label, since a structure may hold several distinct ligands that one shared label collapses into a single residue.
 
-For `dforge chem`, `--mpsim` only applies the `H_HB → H___A` rename (small
-molecules have no protein termini).
+For `dforge chem`, `--mpsim` only applies the `H_HB → H___A` rename (small molecules have no protein chain ends).
 
 ---
 
