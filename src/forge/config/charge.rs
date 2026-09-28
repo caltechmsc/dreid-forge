@@ -87,7 +87,7 @@ impl Default for QeqConfig {
 /// Specifies how charges are assigned to different molecule types
 /// in a biological system. Standard residues (proteins, nucleic acids,
 /// water, ions) receive classical force field charges, while hetero
-/// groups (ligands) use QEq methods (vacuum or embedded).
+/// groups (ligands) use one of the [`LigandChargeMethod`] variants.
 ///
 /// # Molecule Classification
 ///
@@ -119,12 +119,12 @@ pub struct HybridConfig {
 
     /// Per-ligand charge configuration overrides.
     ///
-    /// Each entry specifies a residue selector and the QEq method to use
+    /// Each entry specifies a residue selector and the charge method to use
     /// for that specific ligand. Ligands not listed here will use
     /// [`default_ligand_method`](Self::default_ligand_method).
     pub ligand_configs: Vec<LigandChargeConfig>,
 
-    /// Default QEq method for ligands not in [`ligand_configs`](Self::ligand_configs).
+    /// Default charge method for ligands not in [`ligand_configs`](Self::ligand_configs).
     ///
     /// Default is [`LigandChargeMethod::Embedded`] with 10 Å cutoff and neutral
     /// total charge.
@@ -209,20 +209,24 @@ impl ResidueSelector {
 
 /// Charge configuration for a specific ligand residue.
 ///
-/// Combines a residue selector with the QEq method to use for
+/// Combines a residue selector with the charge method to use for
 /// that specific ligand.
 #[derive(Debug, Clone)]
 pub struct LigandChargeConfig {
     /// Selector identifying the target residue.
     pub selector: ResidueSelector,
-    /// QEq method to use for this ligand.
+    /// Charge method to use for this ligand.
     pub method: LigandChargeMethod,
 }
 
-/// QEq method variant for ligand charge assignment.
+/// How partial charges are obtained for a ligand.
 ///
-/// Ligands can use either vacuum QEq (isolated) or embedded QEq
-/// (polarized by surrounding fixed charges).
+/// The two QEq variants equilibrate electronegativity to produce distributed
+/// partial charges, differing only in whether the surrounding biomolecule
+/// polarizes the result. The two remaining variants do not compute anything:
+/// they reproduce the integer-charge conventions of pipelines that score van
+/// der Waals and hydrogen-bond terms only, so a run can be compared directly
+/// against such a benchmark.
 #[derive(Debug, Clone)]
 pub enum LigandChargeMethod {
     /// Vacuum QEq: ligand treated as isolated molecule.
@@ -235,6 +239,30 @@ pub enum LigandChargeMethod {
     /// The ligand's charge distribution is influenced by nearby
     /// protein/nucleic acid atoms within the cutoff radius.
     Embedded(EmbeddedQeqConfig),
+
+    /// Every ligand atom carries exactly zero charge.
+    ///
+    /// Suppresses the ligand's entire Coulomb contribution, including for a
+    /// ligand that is formally charged. Use it to score shape and hydrogen
+    /// bonding alone, or to reproduce a reference whose ligands were stripped
+    /// of charge.
+    Zero,
+
+    /// Integer formal charges derived from the ligand's own bond orders.
+    ///
+    /// Each atom is assigned `sum of bond orders - neutral valence`, the
+    /// textbook formal charge, so a deprotonated carboxylate places `-1` on
+    /// its singly bonded oxygen and leaves every other atom at zero. A neutral
+    /// ligand therefore comes out identical to [`Zero`](Self::Zero).
+    ///
+    /// An atom whose bond orders do not sum to an integer — an aromatic
+    /// (order 1.5) bond, for instance — has no well-defined formal charge
+    /// without a Kekulé assignment and is left at zero.
+    ///
+    /// The rule reads valences from the structure as given, so it requires
+    /// every hydrogen to be explicit. A carbon missing one is indistinguishable
+    /// from a carbanion and reads as `-1`.
+    Formal,
 }
 
 impl Default for LigandChargeMethod {
@@ -316,7 +344,7 @@ mod tests {
     }
 
     #[test]
-    fn ligand_qeq_method_default_is_vacuum() {
+    fn ligand_charge_method_default_is_vacuum() {
         assert!(matches!(
             LigandChargeMethod::default(),
             LigandChargeMethod::Vacuum(_)

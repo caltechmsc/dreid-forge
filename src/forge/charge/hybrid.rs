@@ -11,9 +11,10 @@ use crate::forge::config::{
 use crate::forge::error::Error;
 use crate::forge::intermediate::{IntermediateAtom, IntermediateSystem};
 use crate::model::metadata::{AtomResidueInfo, BioMetadata, ResidueCategory, StandardResidue};
+use crate::model::types::Element;
 use cheq::{ExternalPotential, PointCharge, QEqSolver, get_default_parameters};
 use ffcharge::{IonScheme, Position as FfPosition};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 /// pH threshold for N-terminal deprotonation (NH₃⁺ → NH₂).
 const N_TERMINAL_PKA: f64 = 8.0;
@@ -356,6 +357,14 @@ fn assign_ligand_charges(
                     &fixed_charge_indices,
                 )?;
             }
+            LigandChargeMethod::Zero => {
+                for &idx in &group.atom_indices {
+                    system.atoms[idx].charge = 0.0;
+                }
+            }
+            LigandChargeMethod::Formal => {
+                assign_formal_charges(system, &group.atom_indices);
+            }
         }
     }
 
@@ -373,6 +382,62 @@ fn find_ligand_method<'a>(
         return Some(&lc.method);
     }
     None
+}
+
+/// Assigns integer formal charges to a ligand from its own bond orders.
+///
+/// The formal charge of an atom is the bond-order sum it carries minus the
+/// bond-order sum it would carry while neutral, so a carboxylate oxygen with a
+/// single bond takes `-1` and its doubly bonded partner takes `0`. Elements
+/// with no well-defined neutral covalent valence, and atoms whose bond orders
+/// do not sum to an integer (an aromatic bond contributes 1.5), have no
+/// unambiguous formal charge and are left at zero.
+///
+/// Valences are read from the structure as given, so every hydrogen must be
+/// explicit — an atom missing one is indistinguishable from an anion.
+fn assign_formal_charges(system: &mut IntermediateSystem, atom_indices: &[usize]) {
+    let member: HashSet<usize> = atom_indices.iter().copied().collect();
+
+    let mut order_sum: HashMap<usize, f64> = atom_indices.iter().map(|&i| (i, 0.0)).collect();
+    for bond in &system.bonds {
+        // A bond leaving the ligand still fills a valence, so it counts whether
+        // or not the partner belongs to this group.
+        for near in [bond.i, bond.j] {
+            if member.contains(&near) {
+                *order_sum.entry(near).or_insert(0.0) += bond.order.value();
+            }
+        }
+    }
+
+    for &idx in atom_indices {
+        let sum = order_sum.get(&idx).copied().unwrap_or(0.0);
+        system.atoms[idx].charge = match neutral_valence(system.atoms[idx].element) {
+            Some(valence) if (sum - sum.round()).abs() < BOND_ORDER_EPSILON => {
+                sum.round() - valence
+            }
+            _ => 0.0,
+        };
+    }
+}
+
+/// Bond-order sums within this tolerance of an integer are treated as integral.
+const BOND_ORDER_EPSILON: f64 = 1e-6;
+
+/// Bond-order sum an atom of this element carries when it bears no formal
+/// charge, or `None` when the element has no single such value.
+///
+/// Only the main-group elements that appear in drug-like ligands are listed;
+/// transition metals and hypervalent centres are deliberately absent, because
+/// a formal charge derived from an octet argument would be wrong for them.
+fn neutral_valence(element: Element) -> Option<f64> {
+    use Element::*;
+    Some(match element {
+        H | F | Cl | Br | I => 1.0,
+        O | S | Se => 2.0,
+        N | P | B => 3.0,
+        C | Si => 4.0,
+        _ => return None,
+    })
 }
 
 /// Assigns charges to a ligand using vacuum QEq.
@@ -448,6 +513,107 @@ fn assign_embedded_qeq(
 mod tests {
     use super::*;
     use crate::model::metadata::{AtomResidueInfo, ResiduePosition};
+
+    /// Builds acetate with every hydrogen explicit: `C0` carries a doubly
+    /// bonded `O1`, a singly bonded `O2` and the methyl `C3`, which in turn
+    /// carries `H4`, `H5` and `H6`. This is the carboxylate motif the formal
+    /// charge rule has to get right.
+    fn acetate() -> IntermediateSystem {
+        use crate::model::types::BondOrder;
+        use Element::{C, H, O};
+
+        let mut system = IntermediateSystem {
+            atoms: [C, O, O, C, H, H, H]
+                .into_iter()
+                .map(|e| IntermediateAtom::new(e, [0.0, 0.0, 0.0]))
+                .collect(),
+            bonds: Vec::new(),
+            angles: Vec::new(),
+            torsions: Vec::new(),
+            inversions: Vec::new(),
+            bio_metadata: None,
+        };
+        for (i, j, order) in [
+            (0, 1, BondOrder::Double),
+            (0, 2, BondOrder::Single),
+            (0, 3, BondOrder::Single),
+            (3, 4, BondOrder::Single),
+            (3, 5, BondOrder::Single),
+            (3, 6, BondOrder::Single),
+        ] {
+            system
+                .bonds
+                .push(crate::forge::intermediate::IntermediateBond {
+                    i,
+                    j,
+                    order,
+                    physical_order: None,
+                });
+        }
+        system
+    }
+
+    #[test]
+    fn formal_charge_puts_minus_one_on_the_singly_bonded_oxygen() {
+        let mut system = acetate();
+        let all: Vec<usize> = (0..system.atoms.len()).collect();
+        assign_formal_charges(&mut system, &all);
+
+        let charges: Vec<f64> = system.atoms.iter().map(|a| a.charge).collect();
+        // Every atom fills its neutral valence except the carboxylate oxygen,
+        // which carries one bond order where oxygen wants two.
+        assert_eq!(charges, vec![0.0, 0.0, -1.0, 0.0, 0.0, 0.0, 0.0]);
+        assert_eq!(charges.iter().sum::<f64>(), -1.0);
+    }
+
+    #[test]
+    fn formal_charge_leaves_aromatic_bond_orders_alone() {
+        use crate::model::types::BondOrder;
+
+        let mut system = acetate();
+        // A delocalized carboxylate gives both oxygens a bond-order sum of 1.5,
+        // which no integer formal charge describes without a Kekule choice.
+        system.bonds[0].order = BondOrder::Aromatic;
+        system.bonds[1].order = BondOrder::Aromatic;
+        let all: Vec<usize> = (0..system.atoms.len()).collect();
+        assign_formal_charges(&mut system, &all);
+
+        assert_eq!(system.atoms[1].charge, 0.0);
+        assert_eq!(system.atoms[2].charge, 0.0);
+    }
+
+    #[test]
+    fn formal_charge_counts_bonds_that_leave_the_group() {
+        let mut system = acetate();
+        // Scoring only the carboxylate head: the bond to the methyl carbon is
+        // outside the selection but still fills a valence on C.
+        assign_formal_charges(&mut system, &[0, 1, 2]);
+
+        assert_eq!(system.atoms[0].charge, 0.0);
+        assert_eq!(system.atoms[2].charge, -1.0);
+    }
+
+    #[test]
+    fn formal_charge_reports_a_missing_hydrogen_rather_than_hiding_it() {
+        let mut system = acetate();
+        // Drop one methyl hydrogen without replacing it. The rule has no way to
+        // tell an incomplete structure from a genuine carbanion, so the methyl
+        // carbon reads as -1 instead of 0. Charges are only meaningful on a
+        // fully protonated structure, which is what the pipeline supplies.
+        system.bonds.pop();
+        assign_formal_charges(&mut system, &[0, 1, 2, 3]);
+
+        assert_eq!(system.atoms[3].charge, -1.0);
+    }
+
+    #[test]
+    fn neutral_valence_is_absent_for_elements_without_an_octet_argument() {
+        assert_eq!(neutral_valence(Element::C), Some(4.0));
+        assert_eq!(neutral_valence(Element::N), Some(3.0));
+        assert_eq!(neutral_valence(Element::O), Some(2.0));
+        assert_eq!(neutral_valence(Element::H), Some(1.0));
+        assert_eq!(neutral_valence(Element::Fe), None);
+    }
 
     #[test]
     fn classify_protein_atom() {

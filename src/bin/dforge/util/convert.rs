@@ -94,6 +94,8 @@ fn build_default_ligand_method(
             cutoff_radius: hybrid.default_ligand_cutoff,
             qeq,
         }),
+        cli::LigandChargeMethod::Zero => LibLigandChargeMethod::Zero,
+        cli::LigandChargeMethod::Formal => LibLigandChargeMethod::Formal,
     }
 }
 
@@ -194,7 +196,7 @@ fn parse_ligand_config(
 
 fn is_method_keyword(s: &str) -> bool {
     let lower = s.to_lowercase();
-    lower == "vacuum" || lower == "embedded"
+    matches!(lower.as_str(), "vacuum" | "embedded" | "zero" | "formal")
 }
 
 fn parse_ligand_method(
@@ -218,6 +220,8 @@ fn parse_ligand_method(
                 qeq,
             }))
         }
+        "zero" => Some(LibLigandChargeMethod::Zero),
+        "formal" => Some(LibLigandChargeMethod::Formal),
         _ => None,
     }
 }
@@ -431,5 +435,7 @@ pub fn ligand_method_display_name(method: cli::LigandChargeMethod) -> &'static s
     match method {
         cli::LigandChargeMethod::Vacuum => "Vacuum",
         cli::LigandChargeMethod::Embedded => "Embedded",
+        cli::LigandChargeMethod::Zero => "Zero",
+        cli::LigandChargeMethod::Formal => "Formal",
     }
 }

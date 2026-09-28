@@ -87,12 +87,12 @@ pub struct HybridChargeOptions {
 
     /// Ligand configuration (`CHAIN:RESID[:ICODE][:METHOD[:CUTOFF]]`), repeatable
     ///
-    /// METHOD: vacuum | embedded (default: use --default-ligand-method)
+    /// METHOD: vacuum | embedded | zero | formal (default: use --default-ligand-method)
     /// CUTOFF: environment radius in Å for embedded method
     #[arg(long = "ligand", value_name = "CONFIG", action = clap::ArgAction::Append)]
     pub ligands: Vec<String>,
 
-    /// Default ligand QEq method for unlisted ligands
+    /// Default ligand charge method for unlisted ligands
     #[arg(
         long = "default-ligand-method",
         value_name = "METHOD",
@@ -435,6 +435,10 @@ pub enum LigandChargeMethod {
     /// Embedded QEq (polarized by environment)
     #[default]
     Embedded,
+    /// Every ligand atom zero (suppresses the ligand Coulomb term)
+    Zero,
+    /// Integer formal charges from the ligand's bond orders
+    Formal,
 }
 
 #[derive(Clone, Copy, ValueEnum, Default)]
