@@ -98,7 +98,7 @@ pub struct HybridChargeOptions {
         value_name = "METHOD",
         default_value = "embedded"
     )]
-    pub default_ligand_method: LigandQeqMethod,
+    pub default_ligand_method: LigandChargeMethod,
 
     /// Default embedded QEq cutoff radius for unlisted ligands (Å)
     #[arg(
@@ -429,7 +429,7 @@ pub enum WaterScheme {
 }
 
 #[derive(Clone, Copy, ValueEnum, Default)]
-pub enum LigandQeqMethod {
+pub enum LigandChargeMethod {
     /// Vacuum QEq (isolated ligand)
     Vacuum,
     /// Embedded QEq (polarized by environment)

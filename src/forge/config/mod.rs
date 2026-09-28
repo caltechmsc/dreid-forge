@@ -21,7 +21,7 @@ mod potential;
 
 pub use charge::{
     BasisType, ChargeMethod, DampingStrategy, EmbeddedQeqConfig, HybridConfig, LigandChargeConfig,
-    LigandQeqMethod, NucleicScheme, ProteinScheme, QeqConfig, ResidueSelector, SolverOptions,
+    LigandChargeMethod, NucleicScheme, ProteinScheme, QeqConfig, ResidueSelector, SolverOptions,
     WaterScheme,
 };
 pub use mpsim::MpsimConfig;

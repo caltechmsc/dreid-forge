@@ -125,7 +125,7 @@ use std::fs::File;
 use std::io::BufReader;
 
 use dreid_forge::{forge, ForgeConfig, ForgeError};
-use dreid_forge::{ChargeMethod, HybridConfig, LigandChargeConfig, LigandQeqMethod};
+use dreid_forge::{ChargeMethod, HybridConfig, LigandChargeConfig, LigandChargeMethod};
 use dreid_forge::{ResidueSelector, EmbeddedQeqConfig, QeqConfig};
 use dreid_forge::io::{BioReader, Format, ProtonationConfig, TopologyConfig};
 
@@ -146,7 +146,7 @@ fn main() -> Result<(), ForgeError> {
             ligand_configs: vec![
                 LigandChargeConfig {
                     selector: ResidueSelector::new("A", 500, None),
-                    method: LigandQeqMethod::Embedded(EmbeddedQeqConfig {
+                    method: LigandChargeMethod::Embedded(EmbeddedQeqConfig {
                         cutoff_radius: 12.0,  // Include protein atoms within 12 Å
                         qeq: QeqConfig::default(),
                     }),

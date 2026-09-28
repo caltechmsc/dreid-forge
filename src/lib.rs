@@ -143,9 +143,9 @@ pub use model::metadata::{
 
 pub use forge::{
     AnglePotentialType, BasisType, BondPotentialType, ChargeMethod, DampingStrategy,
-    EmbeddedQeqConfig, ForgeConfig, HybridConfig, LigandChargeConfig, LigandQeqMethod, MpsimConfig,
-    NucleicScheme, ProteinScheme, QeqConfig, ResidueSelector, SolverOptions, VdwPotentialType,
-    WaterScheme, forge,
+    EmbeddedQeqConfig, ForgeConfig, HybridConfig, LigandChargeConfig, LigandChargeMethod,
+    MpsimConfig, NucleicScheme, ProteinScheme, QeqConfig, ResidueSelector, SolverOptions,
+    VdwPotentialType, WaterScheme, forge,
 };
 
 pub use forge::Error as ForgeError;

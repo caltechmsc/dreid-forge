@@ -126,9 +126,9 @@ pub struct HybridConfig {
 
     /// Default QEq method for ligands not in [`ligand_configs`](Self::ligand_configs).
     ///
-    /// Default is [`LigandQeqMethod::Embedded`] with 10 Å cutoff and neutral
+    /// Default is [`LigandChargeMethod::Embedded`] with 10 Å cutoff and neutral
     /// total charge.
-    pub default_ligand_method: LigandQeqMethod,
+    pub default_ligand_method: LigandChargeMethod,
 }
 
 impl Default for HybridConfig {
@@ -138,7 +138,7 @@ impl Default for HybridConfig {
             nucleic_scheme: NucleicScheme::default(),
             water_scheme: WaterScheme::default(),
             ligand_configs: Vec::new(),
-            default_ligand_method: LigandQeqMethod::Embedded(EmbeddedQeqConfig::default()),
+            default_ligand_method: LigandChargeMethod::Embedded(EmbeddedQeqConfig::default()),
         }
     }
 }
@@ -216,7 +216,7 @@ pub struct LigandChargeConfig {
     /// Selector identifying the target residue.
     pub selector: ResidueSelector,
     /// QEq method to use for this ligand.
-    pub method: LigandQeqMethod,
+    pub method: LigandChargeMethod,
 }
 
 /// QEq method variant for ligand charge assignment.
@@ -224,7 +224,7 @@ pub struct LigandChargeConfig {
 /// Ligands can use either vacuum QEq (isolated) or embedded QEq
 /// (polarized by surrounding fixed charges).
 #[derive(Debug, Clone)]
-pub enum LigandQeqMethod {
+pub enum LigandChargeMethod {
     /// Vacuum QEq: ligand treated as isolated molecule.
     ///
     /// Best for ligands in solution or far from biomolecular surfaces.
@@ -237,7 +237,7 @@ pub enum LigandQeqMethod {
     Embedded(EmbeddedQeqConfig),
 }
 
-impl Default for LigandQeqMethod {
+impl Default for LigandChargeMethod {
     fn default() -> Self {
         Self::Vacuum(QeqConfig::default())
     }
@@ -294,9 +294,9 @@ mod tests {
         assert!(config.ligand_configs.is_empty());
         assert!(matches!(
             config.default_ligand_method,
-            LigandQeqMethod::Embedded(_)
+            LigandChargeMethod::Embedded(_)
         ));
-        if let LigandQeqMethod::Embedded(embedded) = &config.default_ligand_method {
+        if let LigandChargeMethod::Embedded(embedded) = &config.default_ligand_method {
             assert_eq!(embedded.cutoff_radius, 10.0);
         }
     }
@@ -318,8 +318,8 @@ mod tests {
     #[test]
     fn ligand_qeq_method_default_is_vacuum() {
         assert!(matches!(
-            LigandQeqMethod::default(),
-            LigandQeqMethod::Vacuum(_)
+            LigandChargeMethod::default(),
+            LigandChargeMethod::Vacuum(_)
         ));
     }
 
@@ -334,7 +334,7 @@ mod tests {
         let config = HybridConfig {
             ligand_configs: vec![LigandChargeConfig {
                 selector: ResidueSelector::new("A", 500, None),
-                method: LigandQeqMethod::Embedded(EmbeddedQeqConfig {
+                method: LigandChargeMethod::Embedded(EmbeddedQeqConfig {
                     cutoff_radius: 8.0,
                     qeq: QeqConfig {
                         total_charge: -1.0,
@@ -348,7 +348,7 @@ mod tests {
         assert_eq!(config.ligand_configs.len(), 1);
         assert!(config.ligand_configs[0].selector.matches("A", 500, None));
 
-        if let LigandQeqMethod::Embedded(embedded) = &config.ligand_configs[0].method {
+        if let LigandChargeMethod::Embedded(embedded) = &config.ligand_configs[0].method {
             assert_eq!(embedded.cutoff_radius, 8.0);
             assert_eq!(embedded.qeq.total_charge, -1.0);
         } else {

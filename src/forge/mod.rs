@@ -16,9 +16,9 @@ mod typer;
 
 pub use config::{
     AnglePotentialType, BasisType, BondPotentialType, ChargeMethod, DampingStrategy,
-    EmbeddedQeqConfig, ForgeConfig, HybridConfig, LigandChargeConfig, LigandQeqMethod, MpsimConfig,
-    NucleicScheme, ProteinScheme, QeqConfig, ResidueSelector, SolverOptions, VdwPotentialType,
-    WaterScheme,
+    EmbeddedQeqConfig, ForgeConfig, HybridConfig, LigandChargeConfig, LigandChargeMethod,
+    MpsimConfig, NucleicScheme, ProteinScheme, QeqConfig, ResidueSelector, SolverOptions,
+    VdwPotentialType, WaterScheme,
 };
 pub use error::Error;
 

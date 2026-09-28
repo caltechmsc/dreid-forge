@@ -3,7 +3,7 @@ use dreid_forge::io::{
 };
 use dreid_forge::{
     AnglePotentialType, BondPotentialType, ChargeMethod as LibChargeMethod, EmbeddedQeqConfig,
-    HybridConfig, LigandChargeConfig, LigandQeqMethod as LibLigandQeqMethod, QeqConfig,
+    HybridConfig, LigandChargeConfig, LigandChargeMethod as LibLigandChargeMethod, QeqConfig,
     ResidueSelector, SolverOptions, VdwPotentialType,
 };
 use dreid_forge::{BasisType as LibBasisType, DampingStrategy as LibDampingStrategy};
@@ -82,15 +82,15 @@ fn build_default_ligand_method(
     hybrid: &cli::HybridChargeOptions,
     solver_options: &SolverOptions,
     total_charge: f64,
-) -> LibLigandQeqMethod {
+) -> LibLigandChargeMethod {
     let qeq = QeqConfig {
         total_charge,
         solver_options: *solver_options,
     };
 
     match hybrid.default_ligand_method {
-        cli::LigandQeqMethod::Vacuum => LibLigandQeqMethod::Vacuum(qeq),
-        cli::LigandQeqMethod::Embedded => LibLigandQeqMethod::Embedded(EmbeddedQeqConfig {
+        cli::LigandChargeMethod::Vacuum => LibLigandChargeMethod::Vacuum(qeq),
+        cli::LigandChargeMethod::Embedded => LibLigandChargeMethod::Embedded(EmbeddedQeqConfig {
             cutoff_radius: hybrid.default_ligand_cutoff,
             qeq,
         }),
@@ -203,17 +203,17 @@ fn parse_ligand_method(
     solver_options: &SolverOptions,
     total_charge: f64,
     hybrid: &cli::HybridChargeOptions,
-) -> Option<LibLigandQeqMethod> {
+) -> Option<LibLigandChargeMethod> {
     let qeq = QeqConfig {
         total_charge,
         solver_options: *solver_options,
     };
 
     match method_str.to_lowercase().as_str() {
-        "vacuum" => Some(LibLigandQeqMethod::Vacuum(qeq)),
+        "vacuum" => Some(LibLigandChargeMethod::Vacuum(qeq)),
         "embedded" => {
             let cutoff_radius = cutoff.unwrap_or(hybrid.default_ligand_cutoff);
-            Some(LibLigandQeqMethod::Embedded(EmbeddedQeqConfig {
+            Some(LibLigandChargeMethod::Embedded(EmbeddedQeqConfig {
                 cutoff_radius,
                 qeq,
             }))
@@ -427,9 +427,9 @@ pub fn water_scheme_display_name(scheme: cli::WaterScheme) -> &'static str {
     }
 }
 
-pub fn ligand_method_display_name(method: cli::LigandQeqMethod) -> &'static str {
+pub fn ligand_method_display_name(method: cli::LigandChargeMethod) -> &'static str {
     match method {
-        cli::LigandQeqMethod::Vacuum => "Vacuum",
-        cli::LigandQeqMethod::Embedded => "Embedded",
+        cli::LigandChargeMethod::Vacuum => "Vacuum",
+        cli::LigandChargeMethod::Embedded => "Embedded",
     }
 }

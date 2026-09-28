@@ -6,7 +6,7 @@
 
 use super::spatial::SpatialGrid;
 use crate::forge::config::{
-    EmbeddedQeqConfig, HybridConfig, LigandChargeConfig, LigandQeqMethod, QeqConfig,
+    EmbeddedQeqConfig, HybridConfig, LigandChargeConfig, LigandChargeMethod, QeqConfig,
 };
 use crate::forge::error::Error;
 use crate::forge::intermediate::{IntermediateAtom, IntermediateSystem};
@@ -344,10 +344,10 @@ fn assign_ligand_charges(
             .unwrap_or(&config.default_ligand_method);
 
         match method {
-            LigandQeqMethod::Vacuum(qeq_config) => {
+            LigandChargeMethod::Vacuum(qeq_config) => {
                 assign_vacuum_qeq(system, &group.atom_indices, qeq_config)?;
             }
-            LigandQeqMethod::Embedded(embedded_config) => {
+            LigandChargeMethod::Embedded(embedded_config) => {
                 assign_embedded_qeq(
                     system,
                     &group.atom_indices,
@@ -368,7 +368,7 @@ fn find_ligand_method<'a>(
     chain_id: &str,
     residue_id: i32,
     insertion_code: Option<char>,
-) -> Option<&'a LigandQeqMethod> {
+) -> Option<&'a LigandChargeMethod> {
     if let Some(lc) = custom_configs.get(&(chain_id.to_string(), residue_id, insertion_code)) {
         return Some(&lc.method);
     }
