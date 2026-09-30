@@ -87,7 +87,7 @@ impl Default for QeqConfig {
 /// Specifies how charges are assigned to different molecule types
 /// in a biological system. Standard residues (proteins, nucleic acids,
 /// water, ions) receive classical force field charges, while hetero
-/// groups (ligands) use QEq methods (vacuum or embedded).
+/// groups (ligands) use one of the [`LigandChargeMethod`] variants.
 ///
 /// # Molecule Classification
 ///
@@ -119,16 +119,16 @@ pub struct HybridConfig {
 
     /// Per-ligand charge configuration overrides.
     ///
-    /// Each entry specifies a residue selector and the QEq method to use
+    /// Each entry specifies a residue selector and the charge method to use
     /// for that specific ligand. Ligands not listed here will use
     /// [`default_ligand_method`](Self::default_ligand_method).
     pub ligand_configs: Vec<LigandChargeConfig>,
 
-    /// Default QEq method for ligands not in [`ligand_configs`](Self::ligand_configs).
+    /// Default charge method for ligands not in [`ligand_configs`](Self::ligand_configs).
     ///
-    /// Default is [`LigandQeqMethod::Embedded`] with 10 Å cutoff and neutral
+    /// Default is [`LigandChargeMethod::Embedded`] with 10 Å cutoff and neutral
     /// total charge.
-    pub default_ligand_method: LigandQeqMethod,
+    pub default_ligand_method: LigandChargeMethod,
 }
 
 impl Default for HybridConfig {
@@ -138,7 +138,7 @@ impl Default for HybridConfig {
             nucleic_scheme: NucleicScheme::default(),
             water_scheme: WaterScheme::default(),
             ligand_configs: Vec::new(),
-            default_ligand_method: LigandQeqMethod::Embedded(EmbeddedQeqConfig::default()),
+            default_ligand_method: LigandChargeMethod::Embedded(EmbeddedQeqConfig::default()),
         }
     }
 }
@@ -209,22 +209,26 @@ impl ResidueSelector {
 
 /// Charge configuration for a specific ligand residue.
 ///
-/// Combines a residue selector with the QEq method to use for
+/// Combines a residue selector with the charge method to use for
 /// that specific ligand.
 #[derive(Debug, Clone)]
 pub struct LigandChargeConfig {
     /// Selector identifying the target residue.
     pub selector: ResidueSelector,
-    /// QEq method to use for this ligand.
-    pub method: LigandQeqMethod,
+    /// Charge method to use for this ligand.
+    pub method: LigandChargeMethod,
 }
 
-/// QEq method variant for ligand charge assignment.
+/// How partial charges are obtained for a ligand.
 ///
-/// Ligands can use either vacuum QEq (isolated) or embedded QEq
-/// (polarized by surrounding fixed charges).
+/// The two QEq variants equilibrate electronegativity to produce distributed
+/// partial charges, differing only in whether the surrounding biomolecule
+/// polarizes the result. The two remaining variants do not compute anything:
+/// they reproduce the integer-charge conventions of pipelines that score van
+/// der Waals and hydrogen-bond terms only, so a run can be compared directly
+/// against such a benchmark.
 #[derive(Debug, Clone)]
-pub enum LigandQeqMethod {
+pub enum LigandChargeMethod {
     /// Vacuum QEq: ligand treated as isolated molecule.
     ///
     /// Best for ligands in solution or far from biomolecular surfaces.
@@ -235,9 +239,33 @@ pub enum LigandQeqMethod {
     /// The ligand's charge distribution is influenced by nearby
     /// protein/nucleic acid atoms within the cutoff radius.
     Embedded(EmbeddedQeqConfig),
+
+    /// Every ligand atom carries exactly zero charge.
+    ///
+    /// Suppresses the ligand's entire Coulomb contribution, including for a
+    /// ligand that is formally charged. Use it to score shape and hydrogen
+    /// bonding alone, or to reproduce a reference whose ligands were stripped
+    /// of charge.
+    Zero,
+
+    /// Integer formal charges derived from the ligand's own bond orders.
+    ///
+    /// Each atom is assigned `sum of bond orders - neutral valence`, the
+    /// textbook formal charge, so a deprotonated carboxylate places `-1` on
+    /// its singly bonded oxygen and leaves every other atom at zero. A neutral
+    /// ligand therefore comes out identical to [`Zero`](Self::Zero).
+    ///
+    /// An atom whose bond orders do not sum to an integer — an aromatic
+    /// (order 1.5) bond, for instance — has no well-defined formal charge
+    /// without a Kekulé assignment and is left at zero.
+    ///
+    /// The rule reads valences from the structure as given, so it requires
+    /// every hydrogen to be explicit. A carbon missing one is indistinguishable
+    /// from a carbanion and reads as `-1`.
+    Formal,
 }
 
-impl Default for LigandQeqMethod {
+impl Default for LigandChargeMethod {
     fn default() -> Self {
         Self::Vacuum(QeqConfig::default())
     }
@@ -294,9 +322,9 @@ mod tests {
         assert!(config.ligand_configs.is_empty());
         assert!(matches!(
             config.default_ligand_method,
-            LigandQeqMethod::Embedded(_)
+            LigandChargeMethod::Embedded(_)
         ));
-        if let LigandQeqMethod::Embedded(embedded) = &config.default_ligand_method {
+        if let LigandChargeMethod::Embedded(embedded) = &config.default_ligand_method {
             assert_eq!(embedded.cutoff_radius, 10.0);
         }
     }
@@ -316,10 +344,10 @@ mod tests {
     }
 
     #[test]
-    fn ligand_qeq_method_default_is_vacuum() {
+    fn ligand_charge_method_default_is_vacuum() {
         assert!(matches!(
-            LigandQeqMethod::default(),
-            LigandQeqMethod::Vacuum(_)
+            LigandChargeMethod::default(),
+            LigandChargeMethod::Vacuum(_)
         ));
     }
 
@@ -334,7 +362,7 @@ mod tests {
         let config = HybridConfig {
             ligand_configs: vec![LigandChargeConfig {
                 selector: ResidueSelector::new("A", 500, None),
-                method: LigandQeqMethod::Embedded(EmbeddedQeqConfig {
+                method: LigandChargeMethod::Embedded(EmbeddedQeqConfig {
                     cutoff_radius: 8.0,
                     qeq: QeqConfig {
                         total_charge: -1.0,
@@ -348,7 +376,7 @@ mod tests {
         assert_eq!(config.ligand_configs.len(), 1);
         assert!(config.ligand_configs[0].selector.matches("A", 500, None));
 
-        if let LigandQeqMethod::Embedded(embedded) = &config.ligand_configs[0].method {
+        if let LigandChargeMethod::Embedded(embedded) = &config.ligand_configs[0].method {
             assert_eq!(embedded.cutoff_radius, 8.0);
             assert_eq!(embedded.qeq.total_charge, -1.0);
         } else {

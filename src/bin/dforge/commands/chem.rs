@@ -39,7 +39,8 @@ pub fn run_chem(args: ChemArgs, ctx: DisplayContext) -> Result<()> {
     }
 
     progress.step("Running DREIDING parameterization");
-    let forge_config = build_chem_forge_config(&args.charge, &args.qeq, &args.potential)?;
+    let forge_config =
+        build_chem_forge_config(&args.charge, &args.qeq, &args.potential, &args.mpsim)?;
     let forged = forge(&system, &forge_config).context("Parameterization failed")?;
 
     let param_substeps = build_param_substeps(&args);
@@ -120,6 +121,10 @@ fn build_param_substeps(args: &ChemArgs) -> Vec<String> {
 
     if args.potential.params.is_some() {
         steps.push("Apply custom parameters".to_string());
+    }
+
+    if args.mpsim.enabled {
+        steps.push("Apply MPSim adapter (H___A type naming)".to_string());
     }
 
     steps

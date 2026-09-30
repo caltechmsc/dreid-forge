@@ -11,7 +11,18 @@ use std::io::Write;
 
 const DEFAULT_HEADERS: [&str; 2] = ["BIOGRF  332", "FORCEFIELD DREIDING"];
 const FORMAT_ATOM: &str =
-    "FORMAT ATOM   (a6,1x,i5,1x,a5,1x,a3,1x,a1,1x,a5,3f10.5,1x,a5,i3,i2,1x,f8.5,f10.5)";
+    "FORMAT ATOM   (a6,1x,i5,1x,a5,1x,a3,1x,a1,1x,a5,3f10.5,1x,a5,i3,i2,1x,f8.5,i2,i4,f10.5)";
+
+/// Mobility flags occupying the two integer fields between the charge and the
+/// atomic mass.
+///
+/// Biograf reserves these for per-atom fixed/movable state used by the
+/// minimiser. DREID-Forge parameterizes structures without pinning atoms, so
+/// both are always emitted as zero — every atom free to move. They are not
+/// optional padding: a reader following the declared `FORMAT ATOM` record
+/// consumes them before the mass, so omitting them shifts the mass into these
+/// columns and corrupts it.
+const MOBILITY_FLAGS: (i32, i32) = (0, 0);
 const FORMAT_CONECT: &str = "FORMAT CONECT (a6,12i6)";
 
 /// Writes a parameterized system to BGF format.
@@ -135,13 +146,13 @@ pub fn write<W: Write>(mut writer: W, forged: &ForgedSystem) -> Result<(), Error
             .ok_or_else(|| Error::Conversion("residue id map missing for atom".into()))?;
 
         let atoms_connected: usize = adjacency.get(&(serial + 1)).map(|s| s.len()).unwrap_or(0);
-        let lone_pairs: usize = 0;
+        let lone_pairs = lone_pair_count(ff_type, atoms_connected);
 
         let chain_char = info.chain_id.chars().next().unwrap_or(' ');
 
         writeln!(
             writer,
-            "{:<6} {:>5} {:<5} {:<3} {:1} {:>5}{:>10.5}{:>10.5}{:>10.5} {:<5}{:>3}{:>2} {:>8.5}{:>10.5}",
+            "{:<6} {:>5} {:<5} {:<3} {:1} {:>5}{:>10.5}{:>10.5}{:>10.5} {:<5}{:>3}{:>2} {:>8.5}{:>2}{:>4}{:>10.5}",
             fit_left(record, 6),
             serial + 1,
             fit_left(&info.atom_name, 5),
@@ -155,6 +166,8 @@ pub fn write<W: Write>(mut writer: W, forged: &ForgedSystem) -> Result<(), Error
             atoms_connected,
             lone_pairs,
             props.charge,
+            MOBILITY_FLAGS.0,
+            MOBILITY_FLAGS.1,
             atom.element.atomic_mass(),
         )?;
     }
@@ -183,6 +196,46 @@ pub fn write<W: Write>(mut writer: W, forged: &ForgedSystem) -> Result<(), Error
     Ok(())
 }
 
+/// Number of lone pairs available on an atom to accept a hydrogen bond.
+///
+/// The BGF lone-pair column is not decorative: downstream DREIDING engines
+/// (MPSim and the Biogroup scoring tools) treat an atom as a hydrogen-bond
+/// acceptor only when this count is non-zero, so emitting a constant zero
+/// silently suppresses every hydrogen-bond term.
+///
+/// A DREIDING type name encodes the hybridization of its centre in the
+/// suffix, which fixes the steric number (sigma bonds plus lone pairs):
+///
+/// | suffix | hybridization | steric number |
+/// |--------|---------------|---------------|
+/// | `_3`   | sp³           | 4             |
+/// | `_2`   | sp²           | 3             |
+/// | `_R`   | resonant      | 3             |
+/// | `_1`   | sp            | 2             |
+///
+/// so the free lone pairs are `steric number - connectivity`. Hydrogens and
+/// types without a hybridization suffix (metals, halides) never accept.
+fn lone_pair_count(ff_type: &str, connectivity: usize) -> usize {
+    let ff_type = ff_type.trim();
+    // Only nitrogen, oxygen and sulfur appear as acceptors in the DREIDING
+    // hydrogen-bond table, so no other element is given a count here even
+    // where it formally carries lone pairs.
+    let element = ff_type.split('_').next().unwrap_or("");
+    if !matches!(element, "N" | "O" | "S") {
+        return 0;
+    }
+    let steric: usize = if ff_type.ends_with("_3") {
+        4
+    } else if ff_type.ends_with("_2") || ff_type.ends_with("_R") {
+        3
+    } else if ff_type.ends_with("_1") {
+        2
+    } else {
+        return 0;
+    };
+    steric.saturating_sub(connectivity)
+}
+
 fn fit_left(text: &str, width: usize) -> String {
     let mut s = text.trim().to_string();
     if width == 0 {
@@ -200,6 +253,31 @@ fn fit_left(text: &str, width: usize) -> String {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn lone_pairs_follow_steric_number_minus_connectivity() {
+        use super::lone_pair_count;
+
+        // Carbonyl / carboxylate oxygen: sp2, one sigma bond -> 2 free pairs.
+        assert_eq!(lone_pair_count("O_2", 1), 2);
+        // Hydroxyl and thiol: sp3, two sigma bonds -> 2 free pairs.
+        assert_eq!(lone_pair_count("O_3", 2), 2);
+        assert_eq!(lone_pair_count("S_3", 2), 2);
+        // Backbone amide nitrogen: resonant, three sigma bonds -> no free pair.
+        assert_eq!(lone_pair_count("N_R", 3), 0);
+        // Pyridine-type ring nitrogen: resonant, two sigma bonds -> one free pair.
+        assert_eq!(lone_pair_count("N_R", 2), 1);
+        // Ammonium nitrogen: sp3, four sigma bonds -> no free pair.
+        assert_eq!(lone_pair_count("N_3", 4), 0);
+        // Saturated carbon never accepts, even when under-coordinated.
+        assert_eq!(lone_pair_count("C_3", 4), 0);
+        // Hydrogens and suffix-less types never accept.
+        assert_eq!(lone_pair_count("H___A", 1), 0);
+        assert_eq!(lone_pair_count("H_", 1), 0);
+        assert_eq!(lone_pair_count("Na", 0), 0);
+        // Connectivity beyond the steric number saturates at zero.
+        assert_eq!(lone_pair_count("O_3", 9), 0);
+    }
+
     use super::*;
     use crate::model::{
         atom::Atom,
@@ -338,7 +416,9 @@ mod tests {
                 (69..71, format!("{:>2}", 0)),
                 (71..72, " ".into()),
                 (72..80, format!("{:>8.5}", 0.1)),
-                (80..90, format!("{:>10.5}", Element::C.atomic_mass())),
+                (80..82, format!("{:>2}", 0)),
+                (82..86, format!("{:>4}", 0)),
+                (86..96, format!("{:>10.5}", Element::C.atomic_mass())),
             ],
         );
         assert_columns(
@@ -361,10 +441,12 @@ mod tests {
                 (60..61, " ".into()),
                 (61..66, format!("{:<5}", "N_R")),
                 (66..69, format!("{:>3}", 1)),
-                (69..71, format!("{:>2}", 0)),
+                (69..71, format!("{:>2}", 2)),
                 (71..72, " ".into()),
                 (72..80, format!("{:>8.5}", -0.3)),
-                (80..90, format!("{:>10.5}", Element::N.atomic_mass())),
+                (80..82, format!("{:>2}", 0)),
+                (82..86, format!("{:>4}", 0)),
+                (86..96, format!("{:>10.5}", Element::N.atomic_mass())),
             ],
         );
         assert_columns(
@@ -390,7 +472,9 @@ mod tests {
                 (69..71, format!("{:>2}", 0)),
                 (71..72, " ".into()),
                 (72..80, format!("{:>8.5}", 0.0)),
-                (80..90, format!("{:>10.5}", Element::C.atomic_mass())),
+                (80..82, format!("{:>2}", 0)),
+                (82..86, format!("{:>4}", 0)),
+                (86..96, format!("{:>10.5}", Element::C.atomic_mass())),
             ],
         );
         assert_columns(
@@ -413,10 +497,12 @@ mod tests {
                 (60..61, " ".into()),
                 (61..66, format!("{:<5}", "O_2")),
                 (66..69, format!("{:>3}", 2)),
-                (69..71, format!("{:>2}", 0)),
+                (69..71, format!("{:>2}", 1)),
                 (71..72, " ".into()),
                 (72..80, format!("{:>8.5}", -0.2)),
-                (80..90, format!("{:>10.5}", Element::O.atomic_mass())),
+                (80..82, format!("{:>2}", 0)),
+                (82..86, format!("{:>4}", 0)),
+                (86..96, format!("{:>10.5}", Element::O.atomic_mass())),
             ],
         );
 
@@ -444,8 +530,8 @@ mod tests {
 
         assert_eq!(
             first_atom_line.len(),
-            90,
-            "atom line width should be 90 characters"
+            96,
+            "atom line width should be 96 characters"
         );
 
         assert_columns(
@@ -471,7 +557,9 @@ mod tests {
                 (69..71, format!("{:>2}", 0)),
                 (71..72, " ".into()),
                 (72..80, format!("{:>8.5}", 0.1)),
-                (80..90, format!("{:>10.5}", Element::C.atomic_mass())),
+                (80..82, format!("{:>2}", 0)),
+                (82..86, format!("{:>4}", 0)),
+                (86..96, format!("{:>10.5}", Element::C.atomic_mass())),
             ],
         );
     }
@@ -589,7 +677,7 @@ mod tests {
             .lines()
             .find(|l| l.starts_with("ATOM") || l.starts_with("HETATM"))
             .unwrap();
-        assert_eq!(first.len(), 90, "water atom line width");
+        assert_eq!(first.len(), 96, "water atom line width");
         assert_columns(
             first,
             &[
@@ -610,10 +698,12 @@ mod tests {
                 (60..61, " ".into()),
                 (61..66, format!("{:<5}", "O_2")),
                 (66..69, format!("{:>3}", 0)),
-                (69..71, format!("{:>2}", 0)),
+                (69..71, format!("{:>2}", 3)),
                 (71..72, " ".into()),
                 (72..80, format!("{:>8.5}", 0.0)),
-                (80..90, format!("{:>10.5}", Element::O.atomic_mass())),
+                (80..82, format!("{:>2}", 0)),
+                (82..86, format!("{:>4}", 0)),
+                (86..96, format!("{:>10.5}", Element::O.atomic_mass())),
             ],
         );
     }

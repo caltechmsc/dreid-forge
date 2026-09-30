@@ -87,18 +87,18 @@ pub struct HybridChargeOptions {
 
     /// Ligand configuration (`CHAIN:RESID[:ICODE][:METHOD[:CUTOFF]]`), repeatable
     ///
-    /// METHOD: vacuum | embedded (default: use --default-ligand-method)
+    /// METHOD: vacuum | embedded | zero | formal (default: use --default-ligand-method)
     /// CUTOFF: environment radius in Å for embedded method
     #[arg(long = "ligand", value_name = "CONFIG", action = clap::ArgAction::Append)]
     pub ligands: Vec<String>,
 
-    /// Default ligand QEq method for unlisted ligands
+    /// Default ligand charge method for unlisted ligands
     #[arg(
         long = "default-ligand-method",
         value_name = "METHOD",
         default_value = "embedded"
     )]
-    pub default_ligand_method: LigandQeqMethod,
+    pub default_ligand_method: LigandChargeMethod,
 
     /// Default embedded QEq cutoff radius for unlisted ligands (Å)
     #[arg(
@@ -136,6 +136,22 @@ pub struct QeqSolverOptions {
     /// SCF damping strategy (`none`, `fixed:VALUE`, `auto`, `auto:VALUE`)
     #[arg(long = "qeq-damping", value_name = "STRATEGY", default_value = "auto")]
     pub damping: DampingStrategy,
+}
+
+/// MPSim compatibility options shared by bio and chem commands.
+#[derive(Args)]
+#[command(next_help_heading = "MPSim Compatibility")]
+pub struct MpsimOptions {
+    /// Emit input for the legacy MPSim EM/MM engine.
+    ///
+    /// Reproduces that pipeline's conventions: the DREIDING `H_HB` hydrogen type
+    /// is renamed to MPSim's `H___A`; for protein systems every open chain end,
+    /// breaks included, is capped neutral in both topology and charge
+    /// independent of pH (–NH₂ on the N side, the aldehyde –CHO on the C side);
+    /// and every ligand is relabelled to RES 999. For `bio`, this selects the
+    /// hybrid charge method unless `--charge qeq` is given.
+    #[arg(long = "mpsim")]
+    pub enabled: bool,
 }
 
 /// Potential function options shared by bio and chem commands.
@@ -199,6 +215,9 @@ pub struct BioArgs {
 
     #[command(flatten)]
     pub potential: PotentialOptions,
+
+    #[command(flatten)]
+    pub mpsim: MpsimOptions,
 }
 
 #[derive(Args)]
@@ -322,6 +341,9 @@ pub struct ChemArgs {
 
     #[command(flatten)]
     pub potential: PotentialOptions,
+
+    #[command(flatten)]
+    pub mpsim: MpsimOptions,
 }
 
 #[derive(Clone, Copy, ValueEnum)]
@@ -409,12 +431,16 @@ pub enum WaterScheme {
 }
 
 #[derive(Clone, Copy, ValueEnum, Default)]
-pub enum LigandQeqMethod {
+pub enum LigandChargeMethod {
     /// Vacuum QEq (isolated ligand)
     Vacuum,
     /// Embedded QEq (polarized by environment)
     #[default]
     Embedded,
+    /// Every ligand atom zero (suppresses the ligand Coulomb term)
+    Zero,
+    /// Integer formal charges from the ligand's bond orders
+    Formal,
 }
 
 #[derive(Clone, Copy, ValueEnum, Default)]

@@ -3,7 +3,7 @@ use dreid_forge::io::{
 };
 use dreid_forge::{
     AnglePotentialType, BondPotentialType, ChargeMethod as LibChargeMethod, EmbeddedQeqConfig,
-    HybridConfig, LigandChargeConfig, LigandQeqMethod as LibLigandQeqMethod, QeqConfig,
+    HybridConfig, LigandChargeConfig, LigandChargeMethod as LibLigandChargeMethod, QeqConfig,
     ResidueSelector, SolverOptions, VdwPotentialType,
 };
 use dreid_forge::{BasisType as LibBasisType, DampingStrategy as LibDampingStrategy};
@@ -31,8 +31,18 @@ pub fn build_bio_charge_method(
     charge: &cli::ChargeOptions,
     hybrid: &cli::HybridChargeOptions,
     qeq: &cli::QeqSolverOptions,
+    mpsim: bool,
 ) -> LibChargeMethod {
-    match charge.method {
+    // MPSim's neutral-termini charges only exist in the hybrid (force-field)
+    // path. When --mpsim is set and no charge method was chosen, default to
+    // hybrid so the requested neutral termini are actually assigned.
+    let method = if mpsim && matches!(charge.method, cli::ChargeMethod::None) {
+        cli::ChargeMethod::Hybrid
+    } else {
+        charge.method
+    };
+
+    match method {
         cli::ChargeMethod::None => LibChargeMethod::None,
         cli::ChargeMethod::Qeq => LibChargeMethod::Qeq(QeqConfig {
             total_charge: charge.total_charge,
@@ -72,18 +82,20 @@ fn build_default_ligand_method(
     hybrid: &cli::HybridChargeOptions,
     solver_options: &SolverOptions,
     total_charge: f64,
-) -> LibLigandQeqMethod {
+) -> LibLigandChargeMethod {
     let qeq = QeqConfig {
         total_charge,
         solver_options: *solver_options,
     };
 
     match hybrid.default_ligand_method {
-        cli::LigandQeqMethod::Vacuum => LibLigandQeqMethod::Vacuum(qeq),
-        cli::LigandQeqMethod::Embedded => LibLigandQeqMethod::Embedded(EmbeddedQeqConfig {
+        cli::LigandChargeMethod::Vacuum => LibLigandChargeMethod::Vacuum(qeq),
+        cli::LigandChargeMethod::Embedded => LibLigandChargeMethod::Embedded(EmbeddedQeqConfig {
             cutoff_radius: hybrid.default_ligand_cutoff,
             qeq,
         }),
+        cli::LigandChargeMethod::Zero => LibLigandChargeMethod::Zero,
+        cli::LigandChargeMethod::Formal => LibLigandChargeMethod::Formal,
     }
 }
 
@@ -184,7 +196,7 @@ fn parse_ligand_config(
 
 fn is_method_keyword(s: &str) -> bool {
     let lower = s.to_lowercase();
-    lower == "vacuum" || lower == "embedded"
+    matches!(lower.as_str(), "vacuum" | "embedded" | "zero" | "formal")
 }
 
 fn parse_ligand_method(
@@ -193,21 +205,23 @@ fn parse_ligand_method(
     solver_options: &SolverOptions,
     total_charge: f64,
     hybrid: &cli::HybridChargeOptions,
-) -> Option<LibLigandQeqMethod> {
+) -> Option<LibLigandChargeMethod> {
     let qeq = QeqConfig {
         total_charge,
         solver_options: *solver_options,
     };
 
     match method_str.to_lowercase().as_str() {
-        "vacuum" => Some(LibLigandQeqMethod::Vacuum(qeq)),
+        "vacuum" => Some(LibLigandChargeMethod::Vacuum(qeq)),
         "embedded" => {
             let cutoff_radius = cutoff.unwrap_or(hybrid.default_ligand_cutoff);
-            Some(LibLigandQeqMethod::Embedded(EmbeddedQeqConfig {
+            Some(LibLigandChargeMethod::Embedded(EmbeddedQeqConfig {
                 cutoff_radius,
                 qeq,
             }))
         }
+        "zero" => Some(LibLigandChargeMethod::Zero),
+        "formal" => Some(LibLigandChargeMethod::Formal),
         _ => None,
     }
 }
@@ -417,9 +431,11 @@ pub fn water_scheme_display_name(scheme: cli::WaterScheme) -> &'static str {
     }
 }
 
-pub fn ligand_method_display_name(method: cli::LigandQeqMethod) -> &'static str {
+pub fn ligand_method_display_name(method: cli::LigandChargeMethod) -> &'static str {
     match method {
-        cli::LigandQeqMethod::Vacuum => "Vacuum",
-        cli::LigandQeqMethod::Embedded => "Embedded",
+        cli::LigandChargeMethod::Vacuum => "Vacuum",
+        cli::LigandChargeMethod::Embedded => "Embedded",
+        cli::LigandChargeMethod::Zero => "Zero",
+        cli::LigandChargeMethod::Formal => "Formal",
     }
 }

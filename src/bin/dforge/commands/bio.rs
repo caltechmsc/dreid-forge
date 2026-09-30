@@ -44,8 +44,13 @@ pub fn run_bio(args: BioArgs, ctx: DisplayContext) -> Result<()> {
     }
 
     progress.step("Running DREIDING parameterization");
-    let forge_config =
-        build_bio_forge_config(&args.charge, &args.hybrid, &args.qeq, &args.potential)?;
+    let forge_config = build_bio_forge_config(
+        &args.charge,
+        &args.hybrid,
+        &args.qeq,
+        &args.potential,
+        &args.mpsim,
+    )?;
     let forged = forge(&system, &forge_config).context("Parameterization failed")?;
 
     let param_substeps = build_param_substeps(&args);
@@ -225,6 +230,10 @@ fn build_param_substeps(args: &BioArgs) -> Vec<String> {
     }
 
     steps.push("Compute H-bond pairs".to_string());
+
+    if args.mpsim.enabled {
+        steps.push("Apply MPSim adapter (H___A, neutral N/C termini)".to_string());
+    }
 
     steps
 }

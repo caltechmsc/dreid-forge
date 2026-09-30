@@ -64,7 +64,7 @@ fn print_type_distribution(out: &mut impl Write, forged: &ForgedSystem) {
             (name, count)
         })
         .collect();
-    sorted.sort_by(|a, b| b.1.cmp(&a.1));
+    sorted.sort_by_key(|(_, count)| std::cmp::Reverse(*count));
 
     print_distribution_table(out, "Atom Type Distribution", &sorted, total);
 }
@@ -80,7 +80,7 @@ fn print_element_distribution(out: &mut impl Write, system: &System) {
         .into_iter()
         .map(|(e, c)| (format!("{:?}", e), c))
         .collect();
-    sorted.sort_by(|a, b| b.1.cmp(&a.1));
+    sorted.sort_by_key(|(_, count)| std::cmp::Reverse(*count));
 
     print_distribution_table(out, "Element Distribution", &sorted, total);
 }

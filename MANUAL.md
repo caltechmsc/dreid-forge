@@ -213,7 +213,7 @@ These options are only used when `--charge hybrid` is selected.
 | `--nucleic-scheme <SCHEME>`        | `amber`, `charmm`                           | `amber`      | Nucleic acid force field charge scheme.         |
 | `--water-scheme <SCHEME>`          | `tip3p`, `tip3p-fb`, `spc`, `spc-e`, `opc3` | `tip3p`      | Water model charge scheme.                      |
 | `--ligand <CONFIG>`                | string (repeatable)                         | none         | Per-ligand configuration (see below).           |
-| `--default-ligand-method <METHOD>` | `vacuum`, `embedded`                        | `embedded`   | Default QEq method for unlisted ligands.        |
+| `--default-ligand-method <METHOD>` | `vacuum`, `embedded`, `zero`, `formal`      | `embedded`   | Default charge method for unlisted ligands.     |
 | `--default-ligand-cutoff <Å>`      | float                                       | `10.0`       | Default embedded QEq environment cutoff radius. |
 
 **Force field scheme options:**
@@ -234,12 +234,19 @@ These options are only used when `--charge hybrid` is selected.
   - `spc-e` — SPC/E
   - `opc3` — OPC3
 
+**Ligand charge methods:**
+
+- `embedded` — QEq with the surrounding biomolecule polarizing the ligand (default). The environment is real, so two copies of one ligand in different pockets come out with different charges.
+- `vacuum` — QEq on the isolated ligand. Charges depend only on the molecule, which is what you want when the same ligand must score identically across receptors, and what keeps chemically equivalent atoms equivalent.
+- `zero` — every ligand atom at exactly zero, suppressing the ligand's Coulomb term entirely even for a formally charged ligand.
+- `formal` — integer formal charges read off the ligand's own bond orders (`bond-order sum − neutral valence`), so a deprotonated carboxylate carries `-1` on its singly bonded oxygen and every other atom is zero. A neutral ligand is identical to `zero`. Requires explicit hydrogens; an atom missing one is indistinguishable from an anion.
+
 **Ligand configuration format:** `CHAIN:RESID[:ICODE][:METHOD[:CUTOFF]]`
 
 - `CHAIN` — Chain identifier (e.g., `A`, `L`)
 - `RESID` — Residue sequence number
 - `ICODE` — Optional insertion code (single character)
-- `METHOD` — Optional QEq method: `vacuum` or `embedded`
+- `METHOD` — Optional charge method: `vacuum`, `embedded`, `zero` or `formal`
 - `CUTOFF` — Optional cutoff radius for embedded method (Å)
 
 Examples:
@@ -286,6 +293,26 @@ These affect the DREIDING parameterization stage.
 | `--vdw-potential <TYPE>`   | `lj`, `exp6`        | `lj`       | van der Waals potential functional form. (`lennard-jones` and `buckingham` are accepted aliases.) |
 | `--rules <FILE>`           | path                | none       | Custom typing rules (TOML file).                                                                  |
 | `--params <FILE>`          | path                | none       | Custom force field parameters (TOML file).                                                        |
+
+### MPSim Compatibility
+
+| Flag      | Type | Default | Meaning                                       |
+| --------- | ---- | ------- | --------------------------------------------- |
+| `--mpsim` | flag | off     | Emit input for the legacy MPSim EM/MM engine. |
+
+MPSim is fed by a hand-maintained BGF conversion whose output follows three conventions a modern parameterization does not. `--mpsim` reproduces all three, so a run can be laid beside those reference files atom for atom. None of them is the better chemistry, which is why none is a default.
+
+- **Atom types** — the hydrogen-bond hydrogen type `H_HB` is renamed to `H___A`. A pure naming change; parameter lookup and H-bond terms are unaffected.
+- **Chain ends** — every _open_ end is capped in its neutral, uncharged state, independent of pH. An end is open when the backbone bond that would continue the chain is absent, so a break in the middle of a model is capped exactly like a real terminus:
+
+| side | DREID-Forge     | MPSim                      |
+| ---- | --------------- | -------------------------- |
+| N    | `–NH₃⁺` / `–NH` | `–NH₂`                     |
+| C    | `–COO⁻` / `–CO` | `–CHO` (cap hydrogen `HC`) |
+
+- **Ligand labelling** — every ligand is relabelled to `RES 999`. DREID-Forge otherwise keeps the input's own label, since a structure may hold several distinct ligands that one shared label collapses into a single residue.
+
+For `dforge chem`, `--mpsim` only applies the `H_HB → H___A` rename (small molecules have no protein chain ends).
 
 ---
 
